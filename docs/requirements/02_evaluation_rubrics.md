@@ -432,6 +432,46 @@ Each `rubric_version` must ultimately store `code`, `version`, `status`, `criter
 5. Fully missing assessable set → **no final numeric score**; no division by zero; required failures trigger human review according to approved policy.
 6. The six anchors describe observable rubric-specific behavior, but SMEs must calibrate borderline examples and check inter-rater agreement before publication.
 
+## Candidate calibration and adjudication protocol (Stage 01 specification)
+
+The existing per-criterion anchors define scores 0–5 but do **not** establish scientifically validated boundaries. The following operational guidance is for **expert calibration and future internal tests**, not a claim that an SME has signed or that benchmark results exist.
+
+| Domain / criterion | Candidate low anchor example | Candidate middle anchor example | Candidate high anchor example | Uncertainty boundary |
+|---|---|---|---|---|
+| `speech` / `speech_coherence` | Score 0: assertions systematically contradict each other and no argument connects | Score 3: overall topic/line of thought is traceable with one or more material transitions unsupported | Score 5: introduction, claims, links and conclusion are explicitly coherent | A one-sentence fragment without sufficient transitions => `not_assessed`; neither invent missing paragraphs nor penalize as score 0 |
+| `media` / `media_message_clarity` | Score 0: reader cannot identify any coherent key message | Score 3: key message is identifiable but partly buried in distracting or competing claims | Score 5: the key message is explicit, consistent and understandable in the supplied text | Without channel/audience metadata, assess **textual** clarity, not actual audience impact |
+| `research` / `research_methodology` | Score 0: research method is self-contradictory or demonstrably unusable *in the supplied account* | Score 3: method is described, but critical sampling, procedure or analysis detail is missing | Score 5: design, sample, procedure and analysis are clearly described and internally consistent | A supplied excerpt without a methods section may be `not_assessed`, not a defensible score 0 |
+| `research` / `research_novelty` | No numerical anchor is authoritatively applicable without a trusted comparative corpus and defined method | A candidate text's self-assertion of novelty cannot justify even a mid-range novelty score | No claim of verified novelty without documented corpus coverage and authorized expert validation | Default `not_assessed`, score `null`, reason `UNVERIFIED_SOURCE`; any provisional numeric score requires an explicitly validated reference process |
+
+**Rater procedure (candidate, future work):**
+
+1. Give independent, authorized SME raters the same input, allowed context, domain rubric version and definitions. Preserve distinct ratings and specific text spans; do not pre-fill another rater's choices.
+2. For every criterion, require an explicit `applicability` judgment (`applicable`, `not_applicable`, `undetermined`) and `assessed`/ `not_assessed` result; a `0` must be grounded in observed failure, never substituted for no evidence.
+3. Include borderline synthetic examples, ZWNJ/Unicode edge cases, short excerpts, conflicting paragraphs and research without a corpus. Record why raters choose adjacent anchors (e.g. 2 vs 3, 3 vs 4).
+4. Resolve disagreements through documented adjudication, preserve pre-adjudication scores and track per-criterion inter-rater agreement. Specific tolerances, sample sizes and number of adjudicators remain `OD-14 OPEN`; no quality gate is declared PASSED based on this draft.
+5. No official grade or Published rubric may be inferred from this text. Internal engineering can freeze `candidate-0.1` and use only authorized synthetic data; final SME/employer acceptance is in Stage 12 under `D-015`.
+
+### Evidence provenance contract — source text vs reference corpus
+
+| Evidence source class | Candidate structural fields | Permitted inference and validation |
+|---|---|---|
+| `original_submission` | `quote`, `start_offset`, `end_offset`, `source_kind` | Quote must match an exact span in the **unaltered original user text**; half-open range and offset unit remain `OD-11 OPEN`. This supports claims **about what the author wrote**, not truth of the claim. |
+| `approved_reference_corpus` (research only) | `corpus_id`, `corpus_version_or_hash`, `document_id`, `quote`, `source_offsets`, `access_scope`, `verification_method` | Only an authorization-checked, immutable or revision-pinned **internal** corpus can supply external comparison evidence. Verify document exists, offsets match its pinned revision, access rights and citation context; never accept an arbitrary web URL or a model-created citation as verified. |
+| `unverified_reference` | `displayed_citation`, `reason` | Textual citation style/format may be described, but source existence, scientific correctness or novelty cannot be certified; use `not_assessed` for claims requiring verified comparison. |
+
+**Invariants:** Original-text evidence and external reference evidence must never share a source identifier or offset coordinate system silently. All provenance data and excerpts are classified at least as sensitive as their underlying documents; ordinary logs and Git must not contain them. Preserve hashes/version identifiers, not unapproved raw corpus data, in permitted audit metadata. If a reference corpus is unavailable, corrupted, unauthorized or incomplete for the intended claim, **abstain** rather than invent comparative findings.
+
+### Applicability and abstention decision table (policy still OPEN)
+
+| Observed case | Candidate criterion handling | Impact on final report |
+|---|---|---|
+| Applicable criterion with demonstrably poor content | `assessed`, justified score `0..5` and valid text evidence | Eligible for deterministic score computation |
+| Applicable criterion but absent evidence or missing audience context | `not_assessed`, score `null`, reason `INSUFFICIENT_TEXT`/`MISSING_CONTEXT` | Counts against assessed coverage under an explicitly selected candidate denominator policy; required omission triggers conservative review |
+| Truly out-of-scope criterion for the document | `not_assessed`, score `null`, reason `NOT_APPLICABLE` | Denominator treatment is **not approved** (`OD-04`); record explicit applicability decision so no silent reweighting occurs |
+| Research novelty without adequate internal corpus and method | `not_assessed`, score `null`, reason `UNVERIFIED_SOURCE` | `needs_human_review=true` if novelty is relevant; no unsupported novelty score |
+| Offset mismatch / made-up quote / unverifiable source | Reject or abstain; never transform into valid evidence | Invalid output is retried only within controlled policy; not published as a successful assessment |
+
+
 ## Approval and traceability
 
 **Business acceptance is deferred, not waived:** all weights, anchors, scope, required flags, applicability, acceptable evidence examples and thresholds remain OPEN (`OD-03/04/11/14`) for formal final Stage 12 acceptance under `D-015`. Internal Stage 03/06/08/11 engineering and benchmarking may use identified, frozen **candidate versions** and permitted synthetic data, explicitly labeled non-official. No unapproved rubric may generate a purportedly official enterprise score; no final Production release without real domain expert review and quality gates. FR-02..06, FR-11; Stage 03 benchmark, Stage 06 version management, Stage 08 engine, Stage 11 AI regression. See [product](01_product_requirements.md), [acceptance](03_acceptance_criteria.md), [decisions](05_open_decisions.md).
