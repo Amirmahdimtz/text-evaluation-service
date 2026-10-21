@@ -38,6 +38,22 @@ def fenced_json(text: str, heading: str) -> dict:
     return json.loads(match.group(1))
 
 
+def stage_tracker_preserved(decisions: str) -> bool:
+    """Keep Stage 02 blocked; require recorded approval for later Stage 03 states."""
+    stage02 = re.search(r"(?m)^\| 02 \|[^|\n]*\| `BLOCKED` \|", decisions)
+    stage03 = re.search(
+        r"(?m)^\| 03 \|[^|\n]*\| `(NOT_STARTED|IN_PROGRESS|BLOCKED|DONE)` \|",
+        decisions,
+    )
+    conditional_entry = re.search(
+        r"(?m)^\| `D-016` \|[^|\n]*\| `CONFIRMED`(?:\s|\|)",
+        decisions,
+    )
+    return bool(stage02 and stage03 and (
+        stage03.group(1) == "NOT_STARTED" or conditional_entry
+    ))
+
+
 def check(root: Path) -> tuple[list[tuple[str, bool]], list[str]]:
     results: list[tuple[str, bool]] = []
     notes: list[str] = []
@@ -63,8 +79,7 @@ def check(root: Path) -> tuple[list[tuple[str, bool]], list[str]]:
     record("gate ownership recorded", "STAGE02_GATE_DECOMPOSITION" in adrs
            and "Stage 04" in adrs and "Stage 05" in adrs
            and "NOT_APPROVED" in adrs)
-    record("stage tracker preserved", bool(re.search(r"\| 02 \|[^\n]*BLOCKED", decisions))
-           and bool(re.search(r"\| 03 \|[^\n]*NOT_STARTED", decisions)))
+    record("stage tracker preserved", stage_tracker_preserved(decisions))
     record("candidate rubric isolated", "non-production test scope" in api
            and "candidate-0.1" in api and "fail closed" in api)
     record("status fields specified separately", all(x in api for x in

@@ -68,3 +68,10 @@ Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، 
 - کنترل محتوای واقعی GitHub پس از Push: **40/40 static/documentation checks PASS** شامل وجود مسیرها، ارجاع Markdown، بسته‌شدن Code Fenceها، زبان فارسی اسناد، پوشش سه حوزه، وضعیت‌های صادقانه Gate، کدهای Benchmark Validator و الگوهای آشکار Secret. این بررسی Security Certification یا Runtime Test نیست.
 - دستورهای اجراشده در Sandbox دستیار: `python -m py_compile scripts/benchmark/validate_stage03_outputs.py scripts/benchmark/test_validate_stage03_outputs.py` → PASS؛ `python -m unittest discover -s scripts/benchmark -p 'test_*.py' -v` → **11/11 PASS**؛ اجرای `python scripts/benchmark/validate_stage03_outputs.py --input <synthetic-test-jsonl>` با یک رکورد Synthetic → `PASS`, `valid=1`, `invalid=0`. Validator فقط Schema و Exact Offset را می‌سنجد.
 - دستور `nvidia-smi` در Sandbox دستیار موجود نبود؛ این مشاهده **هیچ اطلاعاتی درباره GPU سازمانی اثبات نمی‌کند**. Inventory سازمان `UNVERIFIED` است. مدل، vLLM، GPU Benchmark، Dataset کارشناسی، Quality و No-Egress همچنان `PENDING_SERVER`/`NOT_MEASURABLE` هستند.
+
+## ۸. شواهد جدید اجرای تست روی سیستم کاربر — 2026-10-21
+
+- روی Git HEAD `88d56fdca17019fa7e85e9caf86171a4b1d3d486`، کاربر نتیجه اجرای واقعی PowerShell را ارائه کرد: `python -m py_compile` بدون خطا و `python -m unittest discover -s scripts/benchmark -p 'test_*.py' -v` با **11/11 PASS** و `Ran 11 tests in 1.691s`.
+- اجرای `python scripts/verification/check_stage02_docs.py` نتیجه **18/19 PASS** داد؛ تنها شرط `stage tracker preserved` به دلیل انتظار قدیمی `NOT_STARTED` در برابر ورود مشروط تأییدشده `D-016` شکست خورد. این خطا از Benchmark مدل یا تست Validator نیست. Regression Fix و Test مستقل برای شرط جدید اضافه شد؛ تکرار کامل Checker روی Commit اصلاح‌شده هنوز `PENDING_USER_LOCAL` است.
+- `git status --short` فقط `scripts/benchmark/__pycache__/` را Untracked نشان داد؛ Root `.gitignore` برای بی‌اثرکردن Cache خودکار Python اضافه شد و هیچ داده‌ای حذف نشد.
+- این شواهد همچنان به معنی اندازه‌گیری GPU، Accuracy فارسی، Evidence Relevance یا Quality مدل نیستند؛ آن آزمون‌ها `PENDING_SERVER` و MAE مرجع کارشناسی `NOT_MEASURABLE` باقی می‌مانند.
