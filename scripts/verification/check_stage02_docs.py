@@ -64,6 +64,22 @@ def check(root: Path) -> tuple[list[tuple[str, bool]], list[str]]:
            and "candidate-0.1" in api and "fail closed" in api)
     record("status fields specified separately", all(x in api for x in
            ("processing_status", "result_status", "needs_human_review")))
+    def table_response(route: str) -> str:
+        row = next((line for line in api.splitlines()
+                    if line.startswith("| " + route + " |")), "")
+        cells = row.split("|")
+        return cells[3].strip() if len(cells) == 6 else ""
+
+    job_response = table_response("GET /jobs/{job_id}")
+    evaluation_response = table_response("GET /evaluations/{evaluation_id}")
+    record("canonical job/report DTO field names",
+           bool(job_response and evaluation_response)
+           and "EvaluationJobStatusDto:" in job_response
+           and "processing_status" in job_response
+           and re.search(r"\bstatus\b", job_response) is None
+           and "EvaluationReportDto:" in evaluation_response
+           and "evaluation_type" in evaluation_response
+           and re.search(r"\bdomain\b", evaluation_response) is None)
     try:
         report = indented_json(api, "**Synthetic illustration only")
         record("Stage 02 result example", report.get("processing_status") == "completed"
