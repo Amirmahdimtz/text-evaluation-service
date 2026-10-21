@@ -23,7 +23,7 @@ Status همه ردیف‌ها PROPOSED_CONTRACT است. DTOها در src/applica
 |---|---|---|---|
 | POST /evaluations | CreateEvaluationDto: R text:string nonempty; R evaluation_type enum speech/media/research; O rubric_version:string; O context:allowlisted object. R Idempotency-Key header (candidate) | EvaluationAcceptedDto: evaluation_id, job_id, processing_status, rubric code/version, schema_version, status_url; 202 | scope permission evaluate:create; key unique inside org+principal+operation; same fingerprint returns same IDs, mismatch 409; no pagination |
 | GET /jobs/{job_id} | JobStatusQueryDto: R UUID path | EvaluationJobStatusDto: job_id, evaluation_id, status, safe_error_code?, retryable?, submitted_at, updated_at, completed_at?; 200 | evaluate:read with owner/unit scope; 404 invisible; no pagination |
-| GET /evaluations/{evaluation_id} | EvaluationIdQueryDto: R UUID path | EvaluationReportDto: domain, rubric metadata, job/status, final_score?, coverage?, needs_human_review, criteria, provenance, times; 200 when accessible, including pending representation | evaluate:read scoped; no pagination for one result; default excludes source_text |
+| GET /evaluations/{evaluation_id} | EvaluationIdQueryDto: R UUID path | EvaluationReportDto: domain, rubric metadata, processing_status, result_status?, final_score?, coverage?, needs_human_review, criteria, provenance, times; 200 when accessible, including pending representation | evaluate:read scoped; no pagination for one result; default excludes source_text |
 | GET /evaluations/{evaluation_id}/criteria | CriterionResultsQueryDto: R UUID path; O cursor:string and limit:positive int (limits OPEN) | CriterionPageDto: criteria[], next_cursor?, schema_version; 200 | evaluate:read scoped; cursor opaque/scoped and stable sort (criterion ordering fixed by snapshot); pagination only if criteria collection requires it |
 | GET /rubrics | RubricListQueryDto: O evaluation_type enum; O cursor/limit | RubricPageDto: published authorized rubric summaries, next_cursor?; 200 | rubric:read permission scoped; no unapproved Draft visibility; cursor for genuine collections |
 | GET /rubrics/{rubric_version_id} | RubricVersionQueryDto: R UUID path | RubricVersionResponseDto: code, version, checksum, published_at, allowed criteria/anchors and coverage policy; 200 | rubric:read and scope; only authorized immutable Published snapshots; 404 otherwise |
@@ -45,12 +45,13 @@ Status همه ردیف‌ها PROPOSED_CONTRACT است. DTOها در src/applica
 ### EvaluationAcceptedDto / JobStatusDto
 
 - Required evaluation_id, job_id, processing_status, schema_version; rubric pinned version fields required once evaluation is created.
-- Candidate job status vocabulary: pending, processing, completed, failed_retryable, failed_terminal. Business result status distinguished from job transport state: completed result may be partial or needs_human_review. Do not overload the same status field ambiguously.
+- Candidate `processing_status` (Job lifecycle) values: `pending`, `processing`, `completed`, `failed_retryable`, `failed_terminal`. These describe transport/execution only; a job can complete successfully even if evaluation evidence is insufficient.
+- Candidate `result_status` (evaluation outcome) values: `assessed`, `partial`, `not_assessed`. It is absent/null while no result exists and is present after a completed evaluation. `needs_human_review` is an independent boolean; it does NOT replace either status. A completed job with no assessed criteria has `processing_status=completed`, `result_status=not_assessed`, `needs_human_review=true` under this synthetic conservative fixture. Exact official result taxonomy and review policy remain OD-04/09/15 OPEN.
 - Optional safe_error_code; never include raw prompt, model exception or stack trace. 404 for unauthorized/missing resource. 503 if dependency unavailable according to fail-closed policy. No positive promise of completion time before benchmarks.
 
 ### EvaluationReportDto / CriterionResultDto
 
-- Required evaluation_id, evaluation_type, processing_status, rubric code/version/checksum, needs_human_review (when result exists), schema_version; optional final_score_0_100, coverage_fraction, criteria[], provenance, completed_at.
+- Required evaluation_id, evaluation_type, processing_status, rubric code/version/checksum and schema_version; result_status and needs_human_review are required only once a result is available (null/omitted while pending); optional final_score_0_100, coverage_fraction, criteria[], provenance, completed_at.
 - Criterion requires criterion_code from pinned rubric, applicability (applicable/not_applicable/undetermined), status assessed/not_assessed, score integer 0..5 ONLY if assessed, otherwise null, max_score=5 only under candidate scoring policy D-008, reason/reason_code, strengths, weaknesses, recommendations and evidence[].
 - Validation: assessed => exact valid numerical score + accepted evidence/anchor-based rationale; not_assessed => score null and reason_code required. Required criterion unassessed triggers policy-based review. No evaluated criteria => final score null (do not divide by zero).
 - coverage_fraction = assessed applicable weight / all applicable weight, in [0,1] if denominator defined; final_score_0_100 calculated in Python from pinned rubric, not model. Decimal precision/rounding/applicability/threshold policy OD-04 OPEN; report carries policy version, no fabricated threshold.
@@ -59,6 +60,7 @@ Status همه ردیف‌ها PROPOSED_CONTRACT است. DTOها در src/applica
 ### RubricVersionResponseDto and Feedback
 
 - Rubric version includes immutable criteria snapshot, weight, anchors, applicability, evidence requirements, checksum and published_at. No in-place edit after publish; source candidate-0.1 is not Published.
+- Explicit environment separation: Stage 03 benchmarks may use version-pinned `candidate-0.1` ONLY as an internal benchmark fixture with synthetic/authorized data; internal Stage 06–11 software tests may load it only in an isolated non-production test scope. Public/production `/rubrics` discovery, default rubric resolution and official scoring require a separately authorized Published snapshot and must fail closed if none exists. An internal candidate does not become Published by being used in benchmarks. Exact publication approvals/workflow remain OD-03/06/07/15 OPEN.
 - Feedback is an append-only record of reviewer identity from Auth Context, action/decision, reason, optional criterion and versioned correction. Original AI result must remain intact for audit. Approval-required decision enum, reviewer workflow and correction model OD-06/09/15 OPEN.
 - Pagination, if applicable: stable order + opaque cursor scoped to principal/filter/org; verify cursor tampering and no cross-scope skip. page limit upper bound is not assumed; malformed cursor => 400.
 
@@ -71,7 +73,8 @@ Status همه ردیف‌ها PROPOSED_CONTRACT است. DTOها در src/applica
       "evaluation_id": "00000000-0000-4000-8000-000000000001",
       "job_id": "00000000-0000-4000-8000-000000000002",
       "evaluation_type": "speech",
-      "processing_status": "needs_human_review",
+      "processing_status": "completed",
+      "result_status": "not_assessed",
       "rubric": {
         "code": "speech",
         "version": "candidate-0.1",
@@ -100,7 +103,7 @@ Status همه ردیف‌ها PROPOSED_CONTRACT است. DTOها در src/applica
       "publishable_as_official_score": false
     }
 
-No numeric result is emitted in this synthetic abstention example. coverage is null because no full authorized rubric snapshot/applicability denominator is supplied. Real completed result must carry all pinned revision metadata and a fully validated criterion set.
+The fixture above illustrates a successful job with an unassessed evaluation, not an officially Published rubric or a deployable response. It cannot be returned from the authorized Published-rubric API without an approved rubric publication workflow. No numeric result is emitted in this synthetic abstention example. coverage is null because no full authorized rubric snapshot/applicability denominator is supplied. Real completed result must carry all pinned revision metadata and a fully validated criterion set.
 
 **Synthetic text-span illustration**, where original Python text is «متن کوتاه»:
 
@@ -138,7 +141,7 @@ Pending job/report may return HTTP 200 with processing_status=pending and no sco
 
 ## 6. Versioning, audit and error boundary
 
-- Version triplet: API schema_version + pinned rubric code/version/checksum + model artifact/revision/hash and prompt version/hash. Store runtime version, preprocessing/scoring policy version, generation parameters, corpus revision and result revision where applicable.
+- Version triplet: API schema_version + pinned rubric code/version/checksum + model artifact/revision/hash and prompt version/hash. Preserve processing_status (transport), result_status (assessment outcome), needs_human_review (workflow flag) as distinct fields in DTOs, persistence and any versioned report contract. Store runtime version, preprocessing/scoring policy version, generation parameters, corpus revision and result revision where applicable.
 - Audit successful and rejected transitions without source text; feedback append/revision and authorized resource read are audit-relevant. Database/outbox sink vs approved internal log sink remains OD-08.
 - Python computes and persists score; explainability/revision data reflect exactly what was scored. Historical reports remain based on the original pinned rubric/model/policy, never silently recomputed with latest.
 - HTTP Controller converts typed Core failures to statuses; Core is HTTP-agnostic; Infrastructure errors normalized without leaking SQL/details.
