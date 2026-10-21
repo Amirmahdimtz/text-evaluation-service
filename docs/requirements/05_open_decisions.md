@@ -88,16 +88,31 @@ For every future approval, record **ID, decision value, scope, approver/role, da
 
 **Acceptance Gate:** Written sign-off of Requirements Baseline + approval responsibility for all Open Decisions is still outstanding. No Stage 02 implementation is authorized merely by writing these documents. If official approval is missing, report `BLOCKED_FOR_APPROVAL`.
 
-## 6. Stage 01 tracking record (provisional, updated upon validation)
+## 6. Stage 01 tracking record (validated documentation; business approval pending)
 
 - Date: 2026-10-21
 - Source documents reviewed: `Service_Architecture_Guide_FA.md`, `Text_Evaluation_Service_Implementation_Plan_FA.md` v1.0.0 (provided in Project Sources; not edited there).
 - GitHub repository at start: public, empty, `main` without initial commit; confirmed via GitHub API 409. Documentation-only initialization performed as separate Conventional Commits.
 - Files: five `docs/requirements/*.md` Stage 01 artifacts; no application code, migration, secrets or production changes.
-- Tests: automated Stage 01 document coverage/link/consistency/security scan to be recorded after actual execution. Product/GPU/security runtime tests `NOT_RUN` / `PENDING_SERVER`.
+- Tests: **2026-10-21 GitHub-stored-file automated validation executed: 18/18 PASS**, checking five file existence, FR-01..12, 28 unique FR ACs, 18 distinct Rubric criteria and 0..5 anchors, required rubric attributes, candidate weight declaration, 14 NFR ACs, internal-AI security clauses, D/OD statuses, Stage gate, all relative Markdown links, no conflict markers, high-confidence secret-token heuristics, Markdown table column consistency and code-fence balance. This is documentation QA only. Product/API/DB/migration tests `NOT_RUN`; internal GPU/no-egress/load/recovery/AI benchmark `PENDING_SERVER`. No security audit or DLP certification is implied.
 - Approval: `OD-16 OPEN`. Remaining values OPEN and candidates not Published.
 - Project Sources synchronization: Source document's original Progress Tracker remains `NOT_STARTED` unless independently updated; GitHub file here is the evidence-backed Stage 01 update. **Manual synchronization or authoritative pointer change is needed.**
 - Next stage: none without explicit user request and stage gate sign-off.
+
+### Verified Stage 01 validation evidence (2026-10-21)
+
+| Evidence | Real result | Interpretation |
+|---|---|---|
+| GitHub repository/file tree | `main` contains only five `docs/requirements/*.md` artifacts | Stage 01 documentation-only change scope verified |
+| Document structural check | `18 PASS / 0 FAIL` | All FRs/ACs, three Rubrics, 18 Criteria, anchors, decisions, links, table/fence syntax checked on fetched `main` |
+| Rubric validation | 18 unique candidate Criteria; all have 9 required fields and score anchors 0–5 | Syntactic/structural, **not** expert approval |
+| Traceability | 12 FRs, 28 unique FR ACs; 14 NFR ACs | Test plans specified; **not** product-test execution |
+| Security scan (heuristic) | No high-confidence private-key/API-token patterns detected | Does **not** replace human DLP/security review |
+| Product/API/DB/Migrations/Model tests | `NOT_RUN` | No Application source existed at Stage 01; not claims of software quality |
+| GPU/Inference/AI quality/Load/No-Egress/Backup restore | `PENDING_SERVER` | Requires authorized organizational infrastructure in Stage 03/04/11 |
+| Business/SME/Security sign-offs | `BLOCKED_FOR_APPROVAL` | **Stage 01 is not DONE** |
+
+**GitHub change history at validation:** `7569472451bfcb00a54cab8b61c63734dd8227fd` (initial product requirements), `92f4339a8f59cf8b0f09d199f31e43cd11e83cfb` (Rubrics), `98093a3114d6d503ac64151594b74f37be26f7c3` (AC), `fa09e40093e7f89df6a0ae9e331370444982222c` (Security), `fb3a15700302d305668c2f287807ad0958c72a48` (Decisions). This validation record is an additional documentation-only Conventional Commit.
 
 ## 7. Approval questions for the employer (prioritized)
 
