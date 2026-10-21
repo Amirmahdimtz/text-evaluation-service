@@ -1,6 +1,6 @@
 # Open Decisions, Decision Log and Stage 01 Progress
 
-> **Date:** 2026-10-21 · **Status:** `IN_PROGRESS` (outstanding internal documentation QA; employer approval is deferred to Stage 12 under `D-015`, not a Stage 01 blocker).  
+> **Date:** 2026-10-21 · **Stage 01 status:** `DONE` (internal documentation gates PASSED; cleared for Stage 02 on explicit user request). Employer acceptance deferred to Stage 12 under `D-015`.  
 > **No invented approvals:** OPEN/PROPOSED/CANDIDATE are not CONFIRMED. Generic roles below are proposed approval responsibilities, not verified employer identities.  
 > **Sources:** Implementation Plan §§0,3,4,6,7,10/Stage 01,13–14; Architecture Guide; explicit project instructions.
 
@@ -32,7 +32,7 @@
 - **Stage 12 (final delivery):** Seek consolidated formal employer/authorized SME acceptance of business scope, Rubrics, measurable quality, security/privacy documentation and the final product, after real evidence from prior stages is available. Do not call the product `Production-Ready` without final Gates and sign-off.
 - **Unresolved business settings:** Keep each OPEN with a proposed, versioned, clearly non-final design path. Implement/test candidates using permitted synthetic data where feasible; do not represent provisional weights, thresholds, scope or decisions as approved, or publish official enterprise grades before final acceptance.
 - **Irreducible safety/permission prerequisites:** Authorization to use real confidential data, security controls, use of protected infrastructure, secret changes, destructive operations and Production deployment remain mandatory **before those specific actions**. These are not customer acceptance sign-offs for ordinary stage completion.
-- **Progression:** Each next stage still requires a **new explicit request from the user**, and a technically satisfied prior-stage gate or documented, user-authorized conditional continuation. Stage 01 remains `IN_PROGRESS` for separately identified document completeness issues; **not** due to missing employer signature.
+- **Progression:** Each next stage still requires a **new explicit request from the user** and a satisfied internal gate. Stage 01's internal documentation gaps were remedied and validated (`DONE`); missing employer signature is **not** a gate. Stage 02 has **not started**.
 - **Source precedence:** This user-confirmed amendment supersedes the *intermediate formal sign-off timing* in `Text_Evaluation_Service_Implementation_Plan_FA.md` (§§0, 4.2, 10/Stage 01, Stage 06, 12). All other baseline engineering/security requirements continue to apply. Original Project Sources remain unchanged and need synchronization with this decision.
 
 ## 2. Employer decision requests (ALL OPEN)
@@ -81,7 +81,7 @@ For every future approval, record **ID, decision value, scope, approver/role, da
 
 | Stage | Name | Status | Evidence |
 |---:|---|---|---|
-| 01 | Requirements & Acceptance | `IN_PROGRESS` | Five draft specifications produced and initial structural checks passed; documentation audit found outstanding business report/JSON example, domain input matrix and rubric calibration/evidence details. **External customer sign-off deferred to Stage 12 and does not block Stage 01.** |
+| 01 | Requirements & Acceptance | `DONE` | Five candidate baseline specifications, domain input matrix, validated synthetic business-report JSON, rubric calibration and evidence provenance added. **25/25 latest GitHub-stored-file documentation checks PASS**. Formal customer sign-off deferred to Stage 12 (`D-015`); **Stage 02 entry internally cleared, not started.** |
 | 02 | Repository & Detailed Architecture | `NOT_STARTED` | Not authorized as a stage |
 | 03 | Local Model Benchmark | `NOT_STARTED` | `PENDING_SERVER` for real model/GPU tests; no benchmark claim |
 | 04 | Infrastructure & Security | `NOT_STARTED` | No egress/recovery tests performed |
@@ -94,35 +94,35 @@ For every future approval, record **ID, decision value, scope, approver/role, da
 | 11 | Full Verification & Calibration | `NOT_STARTED` | `PENDING_SERVER` for AI/Load/Security/Recovery tests |
 | 12 | Production Release & Handover | `NOT_STARTED` | No production operations |
 
-**Stage 01 technical deliverables:** [Product FR/NFR](01_product_requirements.md) · [Candidate Rubrics](02_evaluation_rubrics.md) · [Acceptance Matrix](03_acceptance_criteria.md) · [Security/Data Policy](04_security_and_data_policy.md) · this file (Decision Log/Tracker). The Stage 01 validation report must distinguish structural document tests from product test execution. Stage 01 is **not DONE**.
+**Stage 01 technical deliverables:** [Product FR/NFR](01_product_requirements.md) · [Candidate Rubrics](02_evaluation_rubrics.md) · [Acceptance Matrix](03_acceptance_criteria.md) · [Security/Data Policy](04_security_and_data_policy.md) · this file (Decision Log/Tracker). The Stage 01 validation report distinguishes documentation tests from product tests. **Stage 01 is DONE under the revised internal gate (`D-015`); no formal employer sign-off or operational model validation is implied.**
 
-**Acceptance Gate:** Stage 01 requires internally reviewed, testable, traceable specification artifacts and explicit tracking of unresolved decisions and risks. Missing employer/SME signatures alone **must not** yield `BLOCKED_FOR_APPROVAL`. Current status is `IN_PROGRESS` because specified document-quality gaps remain. Stage 02 has not started; it requires the user's explicit instruction and a satisfied internal gate (or explicitly authorized conditional continuation). Final formal acceptance occurs at Stage 12.
+**Acceptance Gate: `PASS` — Stage 01 `DONE`.** All five mandatory artifacts exist; requirements/AC linkage, three rubric catalogs, proposed input/report contracts, calibration/evidence boundaries, security/no-egress constraints, OPEN decisions and risks have been documented; 25/25 focused verification checks passed on stored files. Formal Product Owner/SME acceptance is **Stage 12** only (`D-015`); unapproved Rubric/quality/SLO/settings remain non-official. **Stage 02 is authorized for entry but is `NOT_STARTED`** until the user's explicit request.
 
-## 6. Stage 01 tracking record (validated structure; internal completeness pending)
+## 6. Stage 01 tracking record (internally verified; stage completed)
 
 - Date: 2026-10-21
 - Source documents reviewed: `Service_Architecture_Guide_FA.md`, `Text_Evaluation_Service_Implementation_Plan_FA.md` v1.0.0 (provided in Project Sources; not edited there).
 - GitHub repository at start: public, empty, `main` without initial commit; confirmed via GitHub API 409. Documentation-only initialization performed as separate Conventional Commits.
 - Files: five `docs/requirements/*.md` Stage 01 artifacts; no application code, migration, secrets or production changes.
-- Tests: **2026-10-21 GitHub-stored-file automated validation executed: 18/18 PASS**, checking five file existence, FR-01..12, 28 unique FR ACs, 18 distinct Rubric criteria and 0..5 anchors, required rubric attributes, candidate weight declaration, 14 NFR ACs, internal-AI security clauses, D/OD statuses, Stage gate, all relative Markdown links, no conflict markers, high-confidence secret-token heuristics, Markdown table column consistency and code-fence balance. This is documentation QA only. Product/API/DB/migration tests `NOT_RUN`; internal GPU/no-egress/load/recovery/AI benchmark `PENDING_SERVER`. No security audit or DLP certification is implied.
+- Tests: **2026-10-21**, initial GitHub-stored-file validation `18/18 PASS`; after remediating documentation gaps, an **independent 25/25 PASS** verification of GitHub-stored Markdown/JSON was executed. The latter checked five file paths, FR/AC links, 28 unique FR cases, 14 NFR/AC links, 18 Rubric criteria with 9 required fields and anchors 0..5, domain weights/flags, provisional input matrix, calibration/abstention policy, research source provenance, valid synthetic JSON, deterministic score 71.25 and coverage 0.80, quote/offset exactness, unapproved/Stage 12 policy, 16 decision requests, relative links, tables, code fences, escaped backticks and high-confidence secret patterns. **This is documentation-only QA**, not executed application/model/security testing. Product/API/DB/migrations `NOT_RUN`; real GPU/no-egress/load/recovery/AI benchmark `PENDING_SERVER`. No full DLP or security certification is implied.
 - Formal customer sign-off: **DEFERRED_TO_STAGE_12** under confirmed process decision `D-015` (approver `OD-16` remains OPEN). Other proposed settings remain unapproved, and official rubrics are not yet Published.
 - Project Sources synchronization: Source document's original Progress Tracker remains `NOT_STARTED` unless independently updated; GitHub file here is the evidence-backed Stage 01 update. **Manual synchronization or authoritative pointer change is needed.**
-- Next stage: only upon explicit user request and internal technical gate clearance (or user-authorized conditional continuation); no per-stage employer signature.
+- Next stage: **Stage 02 entry approved by internal Stage 01 gate**; still `NOT_STARTED` until the user explicitly requests Stage 02. No per-stage external signature is required.
 
 ### Verified Stage 01 validation evidence (2026-10-21)
 
 | Evidence | Real result | Interpretation |
 |---|---|---|
 | GitHub repository/file tree | `main` contains only five `docs/requirements/*.md` artifacts | Stage 01 documentation-only change scope verified |
-| Document structural check | `18 PASS / 0 FAIL` | All FRs/ACs, three Rubrics, 18 Criteria, anchors, decisions, links, table/fence syntax checked on fetched `main` |
+| Document structural check | Initial `18 PASS / 0 FAIL`; remediation review `25 PASS / 0 FAIL` | Five docs, coverage/traceability, rubric field+anchor structure, synthetic JSON arithmetic/span checks, security/decisions and markdown hygiene verified on fetched `main` |
 | Rubric validation | 18 unique candidate Criteria; all have 9 required fields and score anchors 0–5 | Syntactic/structural, **not** expert approval |
 | Traceability | 12 FRs, 28 unique FR ACs; 14 NFR ACs | Test plans specified; **not** product-test execution |
 | Security scan (heuristic) | No high-confidence private-key/API-token patterns detected | Does **not** replace human DLP/security review |
 | Product/API/DB/Migrations/Model tests | `NOT_RUN` | No Application source existed at Stage 01; not claims of software quality |
 | GPU/Inference/AI quality/Load/No-Egress/Backup restore | `PENDING_SERVER` | Requires authorized organizational infrastructure in Stage 03/04/11 |
-| Business/SME formal acceptance | `DEFERRED_TO_STAGE_12` | Not a Stage 01 gate; Stage 01 is `IN_PROGRESS` for independent documentation QA issues |
+| Business/SME formal acceptance | `DEFERRED_TO_STAGE_12` | Not a Stage 01 gate; candidate requirements/rubrics remain unapproved for official business scoring, but internal Stage 01 = `DONE` |
 
-**GitHub change history at validation:** `7569472451bfcb00a54cab8b61c63734dd8227fd` (initial product requirements), `92f4339a8f59cf8b0f09d199f31e43cd11e83cfb` (Rubrics), `98093a3114d6d503ac64151594b74f37be26f7c3` (AC), `fa09e40093e7f89df6a0ae9e331370444982222c` (Security), `fb3a15700302d305668c2f287807ad0958c72a48` (Decisions). This validation record is an additional documentation-only Conventional Commit.
+**GitHub validation evidence:** Original Stage 01 document commits are preserved in Git history; later `docs:` commits implement external-signoff deferral (`D-015`) and documentation QA remediation. All Stage 01 writes are confined to the five files under `docs/requirements/`. The final Stage 01 gate commit and HEAD SHA are verified in GitHub separately before reporting to the user.
 
 ## 7. Questions to resolve as evidence becomes available (formal acceptance at Stage 12)
 
