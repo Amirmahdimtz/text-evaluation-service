@@ -15,7 +15,7 @@
 | Model Card و License Metadata عمومی | بررسی Read-only دو Model ID از منابع رسمی | `PASS_DESK_REVIEW_ONLY`، نه تأیید قانونی |
 | GPU Benchmark، No-Egress و Inference واقعی | محیط مجاز سازمان در دسترس نیست | `PENDING_SERVER` |
 
-گزارش `19/19 PASS` برای QA اسناد Stage 02 مطابق اعلام کاربر ثبت شده است؛ این شواهد **User Local** است، نه اجرای دستیار یا مدل زبانی، و Gate اجرایی Stage 02 همچنان `BLOCKED` می‌ماند.
+خروجی جدید ارائه‌شده توسط کاربر روی Commit `88d56fd`، نتیجه QA مستندات Stage 02 را **`18/19 PASS`** نشان می‌دهد؛ تنها شکست مربوط به شرط منسوخ `stage tracker preserved` بود. اصلاح شرط در Commit بعدی اعمال شد و اجرای کامل مجدد آن هنوز `PENDING_USER_LOCAL` است. Gate اجرایی Stage 02 همچنان `BLOCKED` می‌ماند.
 
 ## ۲. Quality Metrics واقعی
 
@@ -54,7 +54,7 @@ Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، 
 
 - در 2026-10-21 دستیار روی Sandbox خودش دستور `python -m py_compile` برای دو فایل Python مربوط به Benchmark Validator و دستور `python -m unittest -v test_validate_stage03_outputs.py` را اجرا کرده است: **۱۱ تست از ۱۱ تست PASS** با ورودی‌های صرفاً Synthetic.
 - پوشش تست: Strict Schema، امتیاز Bool نامعتبر، Quote/Unicode/Offset، `not_assessed` و `score=null`، Criterion اشتباه یا Unhashable، Corpus بدون تأیید، JSON مخدوش، Attempt تکراری و فایل خالی.
-- این نتیجه تنها Unit Test ابزار مستقل است، **نه** آزمایش روی مدل، تأیید Accuracy، Relevance، No-Egress، GPU Capacity یا License. اجرای مجدد روی Clone واقعی کاربر باید جداگانه گزارش شود و فعلاً `PENDING_USER_LOCAL` است.
+- این نتیجه تنها Unit Test ابزار مستقل است، **نه** آزمایش روی مدل، تأیید Accuracy، Relevance، No-Egress، GPU Capacity یا License. اجرای همان ۱۱ تست روی Clone واقعی کاربر نیز با شواهد PowerShell ثبت شده و `11/11 PASS` بوده است؛ آزمایش مدل واقعی همچنان `PENDING_SERVER` است.
 
 ## ۶. نتیجه و محدودیت تصمیم
 
