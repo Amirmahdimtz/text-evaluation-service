@@ -115,7 +115,7 @@ Stage 01 D-005 remains PROPOSED and D-006/007 remain CANDIDATE. D-008 weights re
 | Transaction/session/worker/fencing contract | PASS_DESIGN_ONLY | explicit boundaries/alternatives; no integration execution |
 | API/DTO/error/auth and evidence contract | PASS_DESIGN_ONLY | proposed, not OpenAPI runtime |
 | On-prem/no external AI and scope isolation | PASS_DESIGN_ONLY | no deployed network proof |
-| Five architecture docs and FR/NFR matrix | verify after Git commit | static artifact validation planned |
+| Five architecture docs and FR/NFR matrix | PASS_DOCUMENTATION_QA | GitHub-stored documents: 31/31 focused static checks PASS on 2026-10-21; NOT runtime source verification |
 | Import/discovery/bootstrap runtime | BLOCKED / NOT_RUN | no source/dependency manifests |
 | PostgreSQL/Migration/Worker/API runtime tests | NOT_RUN | not implemented |
 | GPU/model, no-egress, load, restore, internal E2E | PENDING_SERVER | authorized environment unavailable |
@@ -130,3 +130,7 @@ Stage 01 D-005 remains PROPOSED and D-006/007 remain CANDIDATE. D-008 weights re
 - Public repository documentation must be screened for secrets, sensitive organization data, internal infrastructure addresses and user content before commit.
 - Reference links: [Review](01_existing_repository_review.md) · [Design](02_detailed_design.md) · [API](03_api_and_contracts.md) · [Matrix](04_file_change_matrix.md) · [Stage 01 Decisions](../requirements/05_open_decisions.md).
 
+
+### Recorded Stage 02 static validation (2026-10-21)
+
+After all five architecture files were committed on main, a 31-check validation of the actual GitHub-stored content passed: file paths, documentation references, four-layer/DI constraints, atomic session/lease/fencing design, proposed HTTP/auth/idempotency contracts, synthetic JSON parsing, exact Unicode evidence offset, 56-row ten-column future-stage matrix with FR/NFR coverage, ADR states, Markdown links and code-fence balance, and high-confidence secret-pattern heuristics. GitHub compare against baseline showed only these five added files plus the Stage 01 Decision Log/Tracker update. These results are documentation QA, never unit/integration/import/network proof; runtime verification stays BLOCKED/NOT_RUN and protected-server tests PENDING_SERVER.
