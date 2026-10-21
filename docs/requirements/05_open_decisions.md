@@ -82,7 +82,7 @@ For every future approval, record **ID, decision value, scope, approver/role, da
 | Stage | Name | Status | Evidence |
 |---:|---|---|---|
 | 01 | Requirements & Acceptance | `DONE` | Five candidate baseline specifications, domain input matrix, validated synthetic business-report JSON, rubric calibration and evidence provenance added. **25/25 latest GitHub-stored-file documentation checks PASS**. Formal customer sign-off deferred to Stage 12 (`D-015`); **Stage 02 executed as a documentation/inspection stage; technical runtime verification BLOCKED.** |
-| 02 | Repository & Detailed Architecture | `BLOCKED` | Five architecture documents committed and 31/31 GitHub-stored documentation QA checks PASS; source for DI/discovery/bootstrap, database, API and worker missing, so real runtime smoke/transaction verification NOT_RUN; no Stage 03 authorization inferred. |
+| 02 | Repository & Detailed Architecture | `BLOCKED` | Five required design documents exist; API outcome vs job state and Stage 01 synthetic example corrected. Previous 31/31 documentation checks and 18/18 independent post-remediation GitHub-read QA checks PASS. Reproducible offline QA script added (not yet executed against a full local clone). Runtime compatibility NOT_RUN/BLOCKED; complete recursive tree audit NOT_VERIFIED. No conditional Stage 03 entry authorized. |
 | 03 | Local Model Benchmark | `NOT_STARTED` | `PENDING_SERVER` for real model/GPU tests; no benchmark claim |
 | 04 | Infrastructure & Security | `NOT_STARTED` | No egress/recovery tests performed |
 | 05 | Database & Migration | `NOT_STARTED` | No DB/migration changes |
@@ -150,3 +150,29 @@ Further detail and rationale: [01_product_requirements.md](01_product_requiremen
 - **External acceptance:** Stage 12 only under D-015. Authorization for real confidential data, secrets and Production remains independently mandatory.
 - **GitHub commit sequence for Stage 02 architecture files (as confirmed on main):** d0a82987e1da2f0dd032867ae5cbb988499190fd; 0520c5f071d2f9f1a53fdbbc14ef1f092bd81537; e76199447dd7030fc05b1e7b6d3480ff1c0eaaf3; 5bf4b12d06f7980328a4d3b36e002da004b20fc0; 1f5d2f03f8be319b250cf591be3c9dae6cee10ce. Tracker update commit SHA to be independently verified in GitHub history.
 - **Next stage:** Stage 03 NOT_STARTED. Proceed only by separate user instruction and technically satisfied Stage 02 gate, or an explicit user-authorized conditional continuation with documented risks; GPU/approved dataset and relevant operational permissions remain prerequisites.
+
+## 9. Stage 02 targeted defect remediation (2026-10-21)
+
+**Scope:** Stage 02 design/docs correction only. There was no Runtime, DB, inference or Stage 03 implementation. Stage 01 remains `DONE`; Stage 03 remains `NOT_STARTED`. This is not approval of unpublished rubric settings or formal business acceptance.
+
+| Defect / risk | Corrective artifact | Verification and remaining status |
+|---|---|---|
+| P1: `processing_status` conflated with business result | [API contract](../architecture/03_api_and_contracts.md) and [Stage 01 synthetic report](03_acceptance_criteria.md) | Corrected independent `processing_status`, `result_status`, `needs_human_review`; both stored JSON fixtures parsed and validated. `PASS_DOCUMENTATION_ONLY`; OD-04/09/15 official vocabulary remains `OPEN` |
+| P1: Stage 02 test evidence cyclically depended on Stage 04/05/10 runtime | [Architecture ADRs / STAGE02_GATE_DECOMPOSITION](../architecture/05_architecture_decisions.md) | Disclosure alternative to Stage 02 smoke-test checklist is documented, **not** an actual import/DI PASS. Executable compatibility still `BLOCKED`; Stage 04 owns DI/bootstrap, Stage 05 database transactions and Stage 10 route discovery. Conditional entry exception `NOT_APPROVED` |
+| P2: incomplete recursive repository tree enumeration | [Repository review](../architecture/01_existing_repository_review.md) | Exact-path probes and clean local Git checkout were observed; full tracked tree `NOT_VERIFIED` until real `git ls-tree -r --name-only HEAD` output is inspected and compared |
+| P2: Candidate Rubric mistaken for Published snapshot | [Detailed design](../architecture/02_detailed_design.md), [API contract](../architecture/03_api_and_contracts.md) | Clearly isolated internal Stage 03 benchmark/Stage 06–11 tests; official API requires authorized Published snapshot; final release policy still `OPEN` |
+| P3: documentation checks not reproducible | [Standalone Python QA](../../scripts/verification/check_stage02_docs.py) | Python standard-library read-only checks added; independent 18/18 live GitHub stored-document assertions `PASS`. Full execution of newly committed Python script inside the user's actual local Git clone `NOT_RUN` here; run command below. Earlier separate draft checker `py_compile` PASS and missing-fixture negative-path test PASS locally; these are **not** a claim that the committed script completed an end-to-end run |
+
+**Post-remediation QA evidence:** On 2026-10-21 the GitHub connector fetched the committed architecture, Stage 01 acceptance and Progress Tracker files plus the new checker. Independent read-only validation returned **18 PASS / 0 FAIL** for expected files, DI/four-layer terms, recorded blocker and owners, test-only rubric policy, status field taxonomy, both valid JSON fixtures and numeric/null consistency, six exact Persian source quotes, Unicode offsets, 56-row ten-column future-stage matrix, full FR/NFR names, Stage 02/03 status, balanced Markdown code fences, matching relative links and high-confidence key-pattern heuristics. These are **documentation checks only**, not evidence of passing Python runtime, real model, GPU, security/no-egress or DB tests. The Python script itself requires execution in a real clone to produce its own independent report.
+
+**Local verification on Windows PowerShell, after `git pull --ff-only origin main`:**
+
+```powershell
+git status --short
+git log -1 --format="%H %s"
+git ls-tree -r --name-only HEAD
+git ls-files "src/**" "tests/**" ".github/**" "pyproject.toml" "requirements.txt" "Dockerfile"
+python scripts/verification/check_stage02_docs.py
+```
+
+**Retained acceptance boundary:** Stage 02 `BLOCKED` until the actual DI/WebService compatibility Gate has valid executable evidence, or a separately explicit user-approved conditional progression is recorded without changing failed/unexecuted Gate states to `PASS`. No permission to use real confidential text, GPU/network, secrets or Production is implied. Stage 03 `NOT_STARTED`; server benchmarks `PENDING_SERVER`. Git recursive tree inspection and local checker execution require real outputs to be marked verified.
