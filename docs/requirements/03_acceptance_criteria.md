@@ -1,12 +1,12 @@
 # Acceptance Criteria and Verification Matrix — Stage 01
 
-> **Status: DRAFT_FOR_APPROVAL** · 2026-10-21. These are **test specifications**, not executed product tests. Numeric performance/quality gates and employer sign-offs remain OPEN. Baseline: Implementation Plan §§1.3,4,6,7,10/Stage 01,11,13.
+> **Status: DRAFT_FOR_INTERNAL_VERIFICATION** · 2026-10-21. These are **test specifications**, not executed product tests. Numeric performance/AI quality thresholds remain OPEN. Under `D-015`, formal employer/SME acceptance is sought at Stage 12 only. Baseline: Implementation Plan §§1.3,4,6,7,10/Stage 01,11,13, amended by [Decision Log](05_open_decisions.md).
 
 ## 1. Acceptance contract
 
 Each criterion uses stable ID `AC-FR-NN-X` or `AC-NFR-NN`, scenario/fixture, observable outcome, proposed implementation/verification stages and accountable **approval role**. No organizational individual is assigned. `DRAFT` means specified but not approved; execution state of all future software/model/server tests is `NOT_RUN` or `PENDING_SERVER`, never PASSED. Tests in this Stage validate Markdown/document coverage only.
 
-**Definition of acceptance:** Product Owner and responsible Domain/Security/Infrastructure specialists approve requirements, rubric scoring and open-decision ownership. Release claims require Stage 11+12 real evidence, separate from Stage 01 document QA.
+**Definition of stage verification vs final acceptance:** Internal technical review, executed tests, security controls and recorded decisions determine each engineering stage's gate. Employer/SME **formal sign-off is not a prerequisite for Stage 01–11 completion**; consolidated external acceptance occurs at Stage 12 (`D-015`). Unresolved business limits remain OPEN, and candidate Rubrics must never be presented as officially approved. Release claims require Stage 11+12 real evidence. Authorization for real confidential data, destructive changes and Production operations remains mandatory before those particular actions.
 
 ### FR-01..FR-12 verification
 
@@ -90,11 +90,11 @@ When the denominator is zero, show metric as `undefined` with sample size; never
 
 | Gate | Check | Current approval state |
 |---|---|---|
-| S1-G01 | All FR-01..FR-12 explicitly defined, success/error/constraints and AC cross-referenced | Verify automated document check |
-| S1-G02 | Three independent rubric catalogs with 0..5 anchors, proposed weights and epistemic limits | Verify automated document check |
-| S1-G03 | No external inference, security classification and explicit IAM/data governance requirements | Verify document review |
-| S1-G04 | Traceable FR/NFR → AC → responsible role → future stage | Verify document review |
-| S1-G05 | All uncertain numerical values/policies recorded OPEN, no proposed rule marked CONFIRMED | Verify document review |
-| S1-G06 | Formal written Product Owner + Domain SME + Security sign-off and decision ownership | **BLOCKED_FOR_APPROVAL** |
+| S1-G01 | All FR-01..FR-12 explicitly defined, success/error/constraints and AC cross-referenced | PASS — initial structural verification (2026-10-21); content QA still ongoing |
+| S1-G02 | Three independent rubric catalogs with 0..5 anchors, proposed weights and epistemic limits | PASS — structural/candidate-only; no SME sign-off |
+| S1-G03 | No external inference, security classification and explicit IAM/data governance requirements | PASS — documented controls only, not operationally tested |
+| S1-G04 | Traceable FR/NFR → AC → responsible role → future stage | PASS — initial traceability check; subject to review on changes |
+| S1-G05 | All uncertain numerical values/policies recorded OPEN, no proposed rule marked CONFIRMED | PASS — decision status review; `D-015` is only a confirmed process change |
+| S1-G06 | Internal completeness review: business report/JSON sample, per-domain input validation matrix, rubric anchoring/calibration and evidence-source clarity | **IN_PROGRESS** — documented Stage 01 QA gaps, not external approval gate |
 
-**Stage 01 does not include:** execution of HTTP/API/DB/migration/GPU/load/recovery tests; if run later report evidence and exact commands. The documents are adequate input for employer review, not proof of product correctness. Refer to [product requirements](01_product_requirements.md), [rubrics](02_evaluation_rubrics.md), [security](04_security_and_data_policy.md), [decisions](05_open_decisions.md).
+**External acceptance policy (`D-015`):** Formal employer/SME approval belongs to **Stage 12**, and its owner remains OPEN (`OD-16`). This is not Stage 01 Gate `S1-G06`; internal technical verification remains obligatory. Stage 01 is currently `IN_PROGRESS` because documentation completeness still needs correction, **not** because an employer has not signed. Stage 01 does not include execution of HTTP/API/DB/migration/GPU/load/recovery tests; if run later report evidence and exact commands. Refer to [product requirements](01_product_requirements.md), [rubrics](02_evaluation_rubrics.md), [security](04_security_and_data_policy.md), [decisions](05_open_decisions.md).
