@@ -1,6 +1,6 @@
 # Evaluation Rubrics — Stage 01
 
-> **Status: DRAFT_FOR_SME_APPROVAL** · 2026-10-21 · Baseline: Implementation Plan §§1.2,4,6,7,10/Stage 01. Weights and anchors are NOT CONFIRMED. Candidate rubric identifier: `candidate-0.1` (never Published).
+> **Status: PROVISIONAL_FOR_INTERNAL_TESTING** · 2026-10-21 · Baseline: Implementation Plan §§1.2,4,6,7,10/Stage 01; execution override `D-015`. Weights and anchors are NOT business-approved. Candidate rubric identifier: `candidate-0.1` (not an officially Published rubric). **Formal SME/employer acceptance is deferred to Stage 12**, not required to mark each engineering stage complete.
 
 ## Common contract and interpretation
 
@@ -434,4 +434,4 @@ Each `rubric_version` must ultimately store `code`, `version`, `status`, `criter
 
 ## Approval and traceability
 
-**SME sign-offs pending:** all weights, anchors, scope, required flags, applicability, acceptable evidence examples and thresholds (`OD-03/04/11/14`); no Published version is authorized. FR-02..06, FR-11; Stage 03 benchmark, Stage 06 version management, Stage 08 engine, Stage 11 AI regression. See [product](01_product_requirements.md), [acceptance](03_acceptance_criteria.md), [decisions](05_open_decisions.md).
+**Business acceptance is deferred, not waived:** all weights, anchors, scope, required flags, applicability, acceptable evidence examples and thresholds remain OPEN (`OD-03/04/11/14`) for formal final Stage 12 acceptance under `D-015`. Internal Stage 03/06/08/11 engineering and benchmarking may use identified, frozen **candidate versions** and permitted synthetic data, explicitly labeled non-official. No unapproved rubric may generate a purportedly official enterprise score; no final Production release without real domain expert review and quality gates. FR-02..06, FR-11; Stage 03 benchmark, Stage 06 version management, Stage 08 engine, Stage 11 AI regression. See [product](01_product_requirements.md), [acceptance](03_acceptance_criteria.md), [decisions](05_open_decisions.md).
