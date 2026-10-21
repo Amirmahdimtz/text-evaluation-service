@@ -208,3 +208,8 @@ python scripts/verification/check_stage02_docs.py
 - **Next authorized stage:** none beyond Stage 03. Stage 04 requires a separate explicit user request and applicable gates/approvals.
 
 - **Stage 03 offline validator:** The two `scripts/benchmark/*.py` files were tested in assistant sandbox with `py_compile` and 11/11 synthetic `unittest` cases PASS; this is NOT a benchmark, security/no-egress certification or real model compatibility test. See [Benchmark Protocol](../ai/02_benchmark_protocol.md) and [Result Ledger](../ai/03_benchmark_results.md).
+
+### Stage 03 post-push evidence (2026-10-21)
+
+- Post-push GitHub inspection and scope diff: **40/40** static/document checks PASS; baseline-to-head comparison reviewed **8 Stage 03 paths** (4 AI docs, 2 benchmark scripts, Decision Log/Tracker and Stage 02 ADR addendum). No `src/`, API, DB or production changes. This is documentation/source review, not integration or performance proof.
+- Assistant isolated sandbox: `python -m py_compile` PASS; `unittest discover` 11/11 PASS (synthetic), validator CLI one synthetic record PASS with zero invalid. Committed GitHub source re-execution on user machine is `PENDING_USER_LOCAL`; server model benchmark remains `PENDING_SERVER`.

@@ -61,3 +61,10 @@ Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، 
 **Model Selection: `BLOCKED`؛ Stage 03: `IN_PROGRESS`.** تا فراهم‌شدن GPU مجاز، Artifactهای نسخه‌دار، Dataset و Expert Labels، اجرای حداقل دو مدل و ثبت Latency/VRAM/Quality/Evidence هیچ برنده یا Capacity Baseline علمی قابل دفاعی وجود ندارد. Qwen3-14B + vLLM همچنان فقط Candidate است. Stage 02 نیز `BLOCKED` می‌ماند؛ این سند مجوز ورود به Stage 04 نیست.
 
 ارجاع: [انتخاب مدل](01_model_selection.md) · [پروتکل](02_benchmark_protocol.md) · [منابع](04_inference_resource_plan.md) · [Decision Log](../requirements/05_open_decisions.md).
+
+## ۷. QA پس از Push و کنترل محدوده Diff
+
+- پس از انتشار چهار سند فارسی و دو Script، دستیار **GitHub HEAD** را با Commit `b2e52c7f03f3300acdb3aaad050b99cfc833c46d` تطبیق داد؛ Recursive Tree کامل و ۱۷ فایل Track‌شده بررسی شدند. مقایسه با Baseline `6f650728e80849f65f46b50c81ab2da500ac6d53` دقیقاً ۸ مسیر مرتبط با Stage 03 را نشان داد (۴ سند AI جدید، ۲ Script جدید، ۲ سند Decision/Tracker اصلاح‌شده). تغییری در `src/`، DB، API یا Production رخ نداد.
+- کنترل محتوای واقعی GitHub پس از Push: **40/40 static/documentation checks PASS** شامل وجود مسیرها، ارجاع Markdown، بسته‌شدن Code Fenceها، زبان فارسی اسناد، پوشش سه حوزه، وضعیت‌های صادقانه Gate، کدهای Benchmark Validator و الگوهای آشکار Secret. این بررسی Security Certification یا Runtime Test نیست.
+- دستورهای اجراشده در Sandbox دستیار: `python -m py_compile scripts/benchmark/validate_stage03_outputs.py scripts/benchmark/test_validate_stage03_outputs.py` → PASS؛ `python -m unittest discover -s scripts/benchmark -p 'test_*.py' -v` → **11/11 PASS**؛ اجرای `python scripts/benchmark/validate_stage03_outputs.py --input <synthetic-test-jsonl>` با یک رکورد Synthetic → `PASS`, `valid=1`, `invalid=0`. Validator فقط Schema و Exact Offset را می‌سنجد.
+- دستور `nvidia-smi` در Sandbox دستیار موجود نبود؛ این مشاهده **هیچ اطلاعاتی درباره GPU سازمانی اثبات نمی‌کند**. Inventory سازمان `UNVERIFIED` است. مدل، vLLM، GPU Benchmark، Dataset کارشناسی، Quality و No-Egress همچنان `PENDING_SERVER`/`NOT_MEASURABLE` هستند.
