@@ -109,3 +109,10 @@ For every ratio disclose **numerator, denominator, units, split and exclusions**
 Security: reject prompt injection as text; no outbound inference/network/tool calls; redact protected text, quotes, auth tokens, file paths revealing internal topology, and model responses in CI/GitHub. Do not use mocked model output as a quality benchmark.
 
 Traceability: [Model options](01_model_selection.md) · [Results](03_benchmark_results.md) · [Capacity](04_inference_resource_plan.md).
+
+## 7. Offline benchmark-response validation utility
+
+- `scripts/benchmark/validate_stage03_outputs.py` verifies JSONL response structure, the 18 fixed `candidate-0.1` domain criterion codes, score/null discipline, exact original-text Unicode quote offsets and duplicate attempt IDs. It emits **only aggregate error codes**, never quoted raw text. It intentionally fails closed on reference-corpus evidence: a separate approved corpus provenance validator is required.
+- One JSONL line carries `run_id`, `attempt_id`, `case_id`, `model_id`, `domain`, `rubric_version`, `original_text` and one `output` object matching the criterion schema above. Keep such JSONL **inside approved secure storage**, not GitHub or personal devices.
+- Run `python scripts/benchmark/validate_stage03_outputs.py --input /approved/local/results.jsonl` in the approved environment. `PASS` means schema and offsets only, **never expert agreement, relevance, hallucination freedom or inference correctness**.
+- Safe offline synthetic unit checks: `python -m unittest discover -s scripts/benchmark -p 'test_*.py' -v` (PowerShell accepts the same command). The tests use no private data or model server.

@@ -57,3 +57,7 @@ Required failure case labels: `INVALID_JSON`, `INVALID_SCORE`, `QUOTE_MISMATCH`,
 Acceptance of this documentation **does not** pass Stage 03's mandatory empirical gate. Stage 03 remains `IN_PROGRESS` (environment/decision dependent); Stage 02 remains `BLOCKED`. No Stage 04 work is authorized by this record.
 
 Traceability: [Model decision](01_model_selection.md) · [Benchmark protocol](02_benchmark_protocol.md) · [Resource estimates](04_inference_resource_plan.md) · [Decisions](../requirements/05_open_decisions.md).
+
+## 6. Standalone validator QA (not a model benchmark)
+
+- On 2026-10-21, the assistant ran `python -m py_compile` for the two Stage 03 validator/test Python files and `python -m unittest -v test_validate_stage03_outputs.py` in its isolated sandbox, with **11/11 tests PASS** using only synthetic strings. These validate schema/offset control logic; no actual model response, licensed artifact, GPU, expert labels, or organizational network was accessed. Re-execution of the committed files on user local checkout remains a separate `PENDING_USER_LOCAL` check.

@@ -206,3 +206,5 @@ python scripts/verification/check_stage02_docs.py
 - **Stage 02 owners unchanged:** DI/Bootstrap tests Stage 04 NOT_RUN; PostgreSQL/transaction Stage 05 NOT_RUN; WebService discovery Stage 10 NOT_RUN. Stage 03 cannot use unverified runtime as a passing dependency.
 - **Stage 03 acceptance:** BLOCKED until permitted internal execution has measured two model candidates in speech/media/research, quality, evidence, abstention, schema and VRAM/throughput/latency with reproducible manifests and approved decisions. Documentation QA alone is not empirical proof.
 - **Next authorized stage:** none beyond Stage 03. Stage 04 requires a separate explicit user request and applicable gates/approvals.
+
+- **Stage 03 offline validator:** The two `scripts/benchmark/*.py` files were tested in assistant sandbox with `py_compile` and 11/11 synthetic `unittest` cases PASS; this is NOT a benchmark, security/no-egress certification or real model compatibility test. See [Benchmark Protocol](../ai/02_benchmark_protocol.md) and [Result Ledger](../ai/03_benchmark_results.md).
