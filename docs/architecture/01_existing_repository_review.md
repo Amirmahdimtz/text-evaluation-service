@@ -91,4 +91,20 @@
 | API, unit, DB, migrations, worker tests | NOT_RUN | Implementation absent |
 | Real GPU, vLLM, no-egress, load, recovery/E2E | PENDING_SERVER | Requires authorized internal infrastructure |
 
+## 7. Reproducible source-tree inspection and evidence boundary (Stage 02 remediation)
+
+The GitHub connector checked the individual paths listed above (404 for missing exact paths), but does not provide a complete recursive tree enumeration. The user's clean PowerShell `git status --short` and verified `git log -1` prove checkout cleanliness and a matching HEAD, **not** exhaustive tree review. This distinction is retained; the recursive-tree item remains `NOT_VERIFIED` until its output is inspected, with no invented file inventory.
+
+Run in the local cloned repository on `main` (read-only; no package installation or secrets):
+
+```powershell
+git status --short
+git rev-parse HEAD
+git ls-tree -r --name-only HEAD
+git ls-files "src/**" "tests/**" ".github/**" "pyproject.toml" "requirements.txt" "Dockerfile"
+python scripts/verification/check_stage02_docs.py
+```
+
+Compare the complete `git ls-tree` output with the inventory above: log any additional source/CI/dependency paths, then inspect actual file contents before reclassifying `UNVERIFIABLE` as `EXISTS_AND_REVIEWED` or `MISSING`. Only commit observed evidence; a zero-row `src/**` grep is not proof about unsearched alternative names. The standalone QA script checks documentation/contracts and reports a Git-tree listing count if local Git is available; it **cannot** prove import/DI/DB behavior. No exhaustive-tree result is asserted as executed in this document.
+
 Related design artifacts: [Detailed Design](02_detailed_design.md), [API Contracts](03_api_and_contracts.md), [File Matrix](04_file_change_matrix.md), [Architecture Decisions](05_architecture_decisions.md). Source of Stage 01 tracking: [Open Decisions](../requirements/05_open_decisions.md).
