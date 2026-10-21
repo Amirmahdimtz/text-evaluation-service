@@ -1,10 +1,10 @@
 # Open Decisions, Decision Log and Stage 01 Progress
 
-> **Date:** 2026-10-21 · **Status:** `BLOCKED_FOR_APPROVAL` (Stage Progress Tracker equivalent `BLOCKED` after draft preparation).  
+> **Date:** 2026-10-21 · **Status:** `IN_PROGRESS` (outstanding internal documentation QA; employer approval is deferred to Stage 12 under `D-015`, not a Stage 01 blocker).  
 > **No invented approvals:** OPEN/PROPOSED/CANDIDATE are not CONFIRMED. Generic roles below are proposed approval responsibilities, not verified employer identities.  
 > **Sources:** Implementation Plan §§0,3,4,6,7,10/Stage 01,13–14; Architecture Guide; explicit project instructions.
 
-## 1. Decisions inherited from approved/proposed baseline (D-001..D-014)
+## 1. Decision Log (D-001..D-015)
 
 | Decision ID | Topic | Status | Grounded source/reason |
 |---|---|---|---|
@@ -22,8 +22,18 @@
 | `D-012` | Admin/Export/Cancel feature scope | `OPEN` | OD-05/06 |
 | `D-013` | Production platform Docker/K8s/VM | `OPEN` | OD-13 |
 | `D-014` | AI quantitative acceptance metrics | `OPEN` | OD-14 |
+| `D-015` | Employer/customer and formal domain sign-off occurs at **final project acceptance (Stage 12)**, not after each implementation stage | `CONFIRMED` (project execution instruction from user, 2026-10-21) | Supersedes the Implementation Plan's intermediate external-approval gates; keeps internal technical/security gates and controlled-access prerequisites |
 
-**Important:** D-004 is a confirmed **process rule**, not business approval of proposed rubric or topology. This catalog makes no further D-XXX item CONFIRMED.
+**Important:** D-004 and D-015 are confirmed **project execution rules**, not business approval of any rubric, policy, topology or numerical target. All other previously unconfirmed choices remain OPEN/PROPOSED/CANDIDATE.
+
+### Approval timing — binding project execution amendment (`D-015`)
+
+- **Stages 01–11:** No employer/customer signature or formal SME approval is required merely to close a *stage*. Close a stage only when its applicable **internal technical deliverables, executable verification, security gates and known-risk records** are complete. Unimplemented or untested work must not be marked `PASSED` or `DONE`.
+- **Stage 12 (final delivery):** Seek consolidated formal employer/authorized SME acceptance of business scope, Rubrics, measurable quality, security/privacy documentation and the final product, after real evidence from prior stages is available. Do not call the product `Production-Ready` without final Gates and sign-off.
+- **Unresolved business settings:** Keep each OPEN with a proposed, versioned, clearly non-final design path. Implement/test candidates using permitted synthetic data where feasible; do not represent provisional weights, thresholds, scope or decisions as approved, or publish official enterprise grades before final acceptance.
+- **Irreducible safety/permission prerequisites:** Authorization to use real confidential data, security controls, use of protected infrastructure, secret changes, destructive operations and Production deployment remain mandatory **before those specific actions**. These are not customer acceptance sign-offs for ordinary stage completion.
+- **Progression:** Each next stage still requires a **new explicit request from the user**, and a technically satisfied prior-stage gate or documented, user-authorized conditional continuation. Stage 01 remains `IN_PROGRESS` for separately identified document completeness issues; **not** due to missing employer signature.
+- **Source precedence:** This user-confirmed amendment supersedes the *intermediate formal sign-off timing* in `Text_Evaluation_Service_Implementation_Plan_FA.md` (§§0, 4.2, 10/Stage 01, Stage 06, 12). All other baseline engineering/security requirements continue to apply. Original Project Sources remain unchanged and need synchronization with this decision.
 
 ## 2. Employer decision requests (ALL OPEN)
 
@@ -44,15 +54,15 @@
 | `OD-13` | P0 | محیط AI داخلی | GPU count/VRAM و Datacenter، network/egress isolation، artifact transfer/legal license، approved identity/TLS؛ vLLM/Qwen candidates؟ | Infrastructure Owner + Security Officer + AI Lead | FR-10/11; Stage 03/04/07 | `OPEN` |
 | `OD-14` | P0 | AI Quality & Golden Dataset | dataset قانونی، نمونه هر حوزه، SME raters، adjudicator، calibration/holdout split، MAE/evidence/stability/coverage/abstention thresholds، neutrality review؟ | AI Quality Lead + Domain SMEs + Product Owner + Data Steward | FR-04/06/11/12; Stage 03/08/11 | `OPEN` |
 | `OD-15` | P1 | Business result contract | Business JSON/report example، status naming (completed/partial/review)، exportable fields، explainability policy و version display؟ | Product Owner + Domain SMEs + Security | FR-04/05/06/08/12; Stage 02/10 | `OPEN` |
-| `OD-16` | P1 | Stage 01 formal sign-off | چه فرد/گروهی اسناد Requirements، هر Rubric، سیاست محرمانگی، AC و decision ownership را به‌صورت رسمی امضا می‌کند؟ | Employer/Product Owner + SMEs + Security Officer | Stage 01 Gate; Stage 02 not authorized until written approval | `OPEN` |
+| `OD-16` | P0 | Final product acceptance/sign-off ownership | چه شخص/گروهی در **Stage 12** خروجی نهایی، Rubricها، سیاست محرمانگی، کیفیت AI، معیارهای پذیرش و Release را رسماً می‌پذیرد؟ | Employer/Product Owner + SMEs + Security Officer | Stage 12 formal external gate; **not a Stage 01/02 blocker** | `OPEN` |
 
-Priority definitions: **P0** gates a reliable/secure specification or official scoring; **P1** impacts optional scope or implementation specifics and must be resolved before implementing the affected capability. P0 does not mean all draft-writing work must halt. The actual employer sign-off gate is `OD-16`.
+Priority definitions: **P0** requires a decision before the **relevant action/gate** (e.g., official scoring, sensitive-data access or final release), not automatically before Stage 02; **P1** impacts optional scope or implementation specifics. `OD-16` is the **Stage 12 external-acceptance gate**, while routine stages use internal technical gates.
 
 ## 3. Required approval package and decision recording
 
-**Product Owner:** sign exact input/business scope (`OD-01/02/05/06/15`), workload targets (`OD-12`) and final baseline (`OD-16`).  
-**Three domain SMEs:** review all 18 rubric definitions/weights/anchors and `required` statuses, applicability and abstention (`OD-03/04/09`).  
-**Security/IAM/Data Steward:** approve roles/scope, data classification, retention/deletion/encryption, no-egress architecture and dataset access (`OD-07/08/13/14`).  
+**Product Owner:** provide available scope/workload information if obtainable, but record unresolved details as OPEN; consolidated **formal sign-off is due at Stage 12** (`OD-16`), not each earlier stage.  
+**Three domain SMEs:** supply consultation/calibration when available; retain provisional rubric weights/anchors and `required` statuses as NOT APPROVED until the **final acceptance** (`OD-03/04/09/16`).  
+**Security/IAM/Data Steward:** define safeguards and provide any **mandatory operational authorization** before real confidential data access, credential changes or production activity; formal customer acceptance of the final security policy is at Stage 12 (`OD-07/08/13/14/16`).  
 **AI Quality Lead:** approve annotation protocol, evidence offsets, benchmark metrics and quality thresholds (`OD-11/14`).  
 **SRE/Infrastructure:** approve hardware, latency/capacity/recovery and operating controls (`OD-10/12/13`).
 
@@ -71,7 +81,7 @@ For every future approval, record **ID, decision value, scope, approver/role, da
 
 | Stage | Name | Status | Evidence |
 |---:|---|---|---|
-| 01 | Requirements & Acceptance | `BLOCKED` / `BLOCKED_FOR_APPROVAL` | Draft specifications in `docs/requirements/01_..05_`; formal employer/SME/Security sign-off missing. Technical document checks are recorded in Stage report, not implied by file existence. |
+| 01 | Requirements & Acceptance | `IN_PROGRESS` | Five draft specifications produced and initial structural checks passed; documentation audit found outstanding business report/JSON example, domain input matrix and rubric calibration/evidence details. **External customer sign-off deferred to Stage 12 and does not block Stage 01.** |
 | 02 | Repository & Detailed Architecture | `NOT_STARTED` | Not authorized as a stage |
 | 03 | Local Model Benchmark | `NOT_STARTED` | `PENDING_SERVER` for real model/GPU tests; no benchmark claim |
 | 04 | Infrastructure & Security | `NOT_STARTED` | No egress/recovery tests performed |
@@ -86,18 +96,18 @@ For every future approval, record **ID, decision value, scope, approver/role, da
 
 **Stage 01 technical deliverables:** [Product FR/NFR](01_product_requirements.md) · [Candidate Rubrics](02_evaluation_rubrics.md) · [Acceptance Matrix](03_acceptance_criteria.md) · [Security/Data Policy](04_security_and_data_policy.md) · this file (Decision Log/Tracker). The Stage 01 validation report must distinguish structural document tests from product test execution. Stage 01 is **not DONE**.
 
-**Acceptance Gate:** Written sign-off of Requirements Baseline + approval responsibility for all Open Decisions is still outstanding. No Stage 02 implementation is authorized merely by writing these documents. If official approval is missing, report `BLOCKED_FOR_APPROVAL`.
+**Acceptance Gate:** Stage 01 requires internally reviewed, testable, traceable specification artifacts and explicit tracking of unresolved decisions and risks. Missing employer/SME signatures alone **must not** yield `BLOCKED_FOR_APPROVAL`. Current status is `IN_PROGRESS` because specified document-quality gaps remain. Stage 02 has not started; it requires the user's explicit instruction and a satisfied internal gate (or explicitly authorized conditional continuation). Final formal acceptance occurs at Stage 12.
 
-## 6. Stage 01 tracking record (validated documentation; business approval pending)
+## 6. Stage 01 tracking record (validated structure; internal completeness pending)
 
 - Date: 2026-10-21
 - Source documents reviewed: `Service_Architecture_Guide_FA.md`, `Text_Evaluation_Service_Implementation_Plan_FA.md` v1.0.0 (provided in Project Sources; not edited there).
 - GitHub repository at start: public, empty, `main` without initial commit; confirmed via GitHub API 409. Documentation-only initialization performed as separate Conventional Commits.
 - Files: five `docs/requirements/*.md` Stage 01 artifacts; no application code, migration, secrets or production changes.
 - Tests: **2026-10-21 GitHub-stored-file automated validation executed: 18/18 PASS**, checking five file existence, FR-01..12, 28 unique FR ACs, 18 distinct Rubric criteria and 0..5 anchors, required rubric attributes, candidate weight declaration, 14 NFR ACs, internal-AI security clauses, D/OD statuses, Stage gate, all relative Markdown links, no conflict markers, high-confidence secret-token heuristics, Markdown table column consistency and code-fence balance. This is documentation QA only. Product/API/DB/migration tests `NOT_RUN`; internal GPU/no-egress/load/recovery/AI benchmark `PENDING_SERVER`. No security audit or DLP certification is implied.
-- Approval: `OD-16 OPEN`. Remaining values OPEN and candidates not Published.
+- Formal customer sign-off: **DEFERRED_TO_STAGE_12** under confirmed process decision `D-015` (approver `OD-16` remains OPEN). Other proposed settings remain unapproved, and official rubrics are not yet Published.
 - Project Sources synchronization: Source document's original Progress Tracker remains `NOT_STARTED` unless independently updated; GitHub file here is the evidence-backed Stage 01 update. **Manual synchronization or authoritative pointer change is needed.**
-- Next stage: none without explicit user request and stage gate sign-off.
+- Next stage: only upon explicit user request and internal technical gate clearance (or user-authorized conditional continuation); no per-stage employer signature.
 
 ### Verified Stage 01 validation evidence (2026-10-21)
 
@@ -110,14 +120,14 @@ For every future approval, record **ID, decision value, scope, approver/role, da
 | Security scan (heuristic) | No high-confidence private-key/API-token patterns detected | Does **not** replace human DLP/security review |
 | Product/API/DB/Migrations/Model tests | `NOT_RUN` | No Application source existed at Stage 01; not claims of software quality |
 | GPU/Inference/AI quality/Load/No-Egress/Backup restore | `PENDING_SERVER` | Requires authorized organizational infrastructure in Stage 03/04/11 |
-| Business/SME/Security sign-offs | `BLOCKED_FOR_APPROVAL` | **Stage 01 is not DONE** |
+| Business/SME formal acceptance | `DEFERRED_TO_STAGE_12` | Not a Stage 01 gate; Stage 01 is `IN_PROGRESS` for independent documentation QA issues |
 
 **GitHub change history at validation:** `7569472451bfcb00a54cab8b61c63734dd8227fd` (initial product requirements), `92f4339a8f59cf8b0f09d199f31e43cd11e83cfb` (Rubrics), `98093a3114d6d503ac64151594b74f37be26f7c3` (AC), `fa09e40093e7f89df6a0ae9e331370444982222c` (Security), `fb3a15700302d305668c2f287807ad0958c72a48` (Decisions). This validation record is an additional documentation-only Conventional Commit.
 
-## 7. Approval questions for the employer (prioritized)
+## 7. Questions to resolve as evidence becomes available (formal acceptance at Stage 12)
 
-1. Who formally approves Product Requirements, the three domain Rubrics and Security/Privacy rules (`OD-16`)?
-2. Will the three SME representatives approve each criterion/weight/anchor/`required`, or provide annotated changes (`OD-03`)?
+1. Who will formally accept Product Requirements, the three domain Rubrics and Security/Privacy rules at final Stage 12 delivery (`OD-16`)?
+2. What evidence or expert feedback can be collected to calibrate each criterion/weight/anchor/`required` before the final business acceptance (`OD-03`)?
 3. What threshold/rounding/abstention and human-review policy must govern official scores (`OD-04/09`)?
 4. Which organization IAM, org boundary, classification/retention/deletion and encryption policy is authoritative (`OD-07/08`)?
 5. Which text/file/language scope, volume, SLO/RPO/RTO and hardware/inference boundary can be approved (`OD-01/02/12/13`)?
