@@ -1,9 +1,9 @@
 # Text Evaluation Service — Product Requirements (Stage 01)
 
-> **Document status:** DRAFT_FOR_APPROVAL  
+> **Document status:** DRAFT_FOR_INTERNAL_REVIEW · external employer acceptance deferred to Stage 12 (`D-015`)  
 > **Date:** 2026-10-21  
 > **Baseline:** `Text_Evaluation_Service_Implementation_Plan_FA.md` v1.0.0, §§1, 4–7, 10/Stage 01, 11, 13–14; `Service_Architecture_Guide_FA.md`.  
-> **Change control:** This specification is not employer-approved. Any `PROPOSED` behavior or numerical limit requires a recorded decision before implementation.
+> **Change control:** This specification is NOT employer-approved. Under confirmed execution policy `D-015`, formal external acceptance occurs at Stage 12. Prior stages may document and technically test versioned **provisional** decisions with permitted synthetic data; no unknown numeric requirement becomes approved or an official score. Specific permissions/security prerequisites remain mandatory before protected-data or Production operations. See [Decision Log](05_open_decisions.md).
 
 ## 1. Purpose, stakeholders and hard constraints
 
@@ -52,7 +52,7 @@ Permission Matrix نهایی و نحوه تخصیص نقش‌ها `OPEN` است 
 - **Expected:** هر `evaluation_type` دقیقاً به Rubric معتبر همان حوزه Resolve شود.
 - **Success:** `research` فقط Criteria مصوب Research را به کار می‌برد.
 - **Error:** نبود نسخه Published یا Type mismatch منجر به خطای کنترل‌شده/عدم شروع ارزیابی می‌شود.
-- **Constraints:** Rubricهای سند 02 هنوز پیشنهادی‌اند؛ انتشار نیازمند تصویب SME است (`OD-03`).
+- **Constraints:** Rubricهای سند 02 هنوز پیشنهادی‌اند؛ توسعه و تست داخلی با Rubric کاندید و داده مجاز ممکن است؛ **انتشار به‌عنوان معیار رسمی سازمانی** نیازمند پذیرش نهایی در Stage 12 است (`D-015`, `OD-03`).
 - **Acceptance:** `AC-FR-02-A/B`.
 
 ### FR-03 — Immutable versioned rubric
@@ -171,7 +171,7 @@ Permission Matrix نهایی و نحوه تخصیص نقش‌ها `OPEN` است 
 
 1. Data Steward legal/classification review; create authorized synthetic/de-identified sample pool **without putting confidential texts in Git**.
 2. Stratify all three domains by quality bands, length, style, formality, difficulty, ambiguous applicability and controversial topics; sample counts `OPEN` (`OD-14`).
-3. Develop annotation guide from approved Rubrics; multiple independent domain experts score each criterion and mark `not_assessed`, evidence quote/span and reasons.
+3. Develop a provisional annotation guide from versioned candidate Rubrics; expert feedback is used when available, and missing expert labels are recorded as a quality limitation. Formal rubric approval remains a Stage 12 acceptance condition; multiple independent domain experts must eventually rate criteria and mark `not_assessed`, evidence quote/span and reasons before accuracy can be claimed.
 4. Measure inter-rater agreement, resolve differences with designated adjudicator, preserve dissent and label provenance without unnecessary identity disclosure.
 5. Freeze calibration/development data and isolated untouched holdout, with leakage checks and versioned hashes. No repeated prompt tuning on holdout.
 6. Benchmark per domain and criterion: MAE, expert agreement, evidence validity/relevance, Stability across repeated runs, abstention correctness, coverage, unsupported claims, schema validity, latency P50/P95 and throughput.
@@ -182,4 +182,4 @@ Permission Matrix نهایی و نحوه تخصیص نقش‌ها `OPEN` است 
 - Detailed AC IDs: [03_acceptance_criteria.md](03_acceptance_criteria.md); rubric candidates: [02_evaluation_rubrics.md](02_evaluation_rubrics.md); security: [04_security_and_data_policy.md](04_security_and_data_policy.md); decisions/tracker: [05_open_decisions.md](05_open_decisions.md).
 - Initial cross-stage mapping: FR-01 → Stage 02/10; FR-02 → 06/08; FR-03 → 05/06; FR-04 → 03/07/08; FR-05 → 06/08; FR-06 → 06/08/10; FR-07 → 05/09; FR-08 → 04/05/10; FR-09 → 05/10; FR-10 → 03/04/07; FR-11 → 03/08/09; FR-12 → 05/06/07/08/12; all → Stage 11 verification.
 - Tracked risks from baseline: R-01..R-12. Highest current documentation risks: R-01 (AI quality), R-03 (egress), R-07 (IDOR), R-08 (unsupported novelty), R-11 (dataset permission); mitigations require actual Stage 03–11 evidence.
-- **Gate:** authoring these requirements does not imply business acceptance. Formal Product Owner + domain SMEs + Security approval remains BLOCKED_FOR_APPROVAL.
+- **Gate:** writing these requirements does not constitute business acceptance. Formal Product Owner/domain SME/Security **final acceptance is deferred to Stage 12** (`D-015`); it does not block Stage 01 or Stage 02 by itself. Stage 01 remains `IN_PROGRESS` for outstanding internal document-completeness findings listed in [Decision Log](05_open_decisions.md), not for lack of external signature. Proceeding to a later stage still requires an explicit user request and applicable technical/security gates.
