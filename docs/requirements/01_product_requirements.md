@@ -30,21 +30,21 @@
 
 The following is a **design input to Stage 02**, not a statement that employer-provided constraints are confirmed. Fields marked OPEN MUST remain configurable/versioned or blocked from official production use until their actual policy is known. Domain/type must be explicit; a model may not silently choose the business domain.
 
-| Field / policy | \`speech\` | \`media\` | \`research\` | Candidate validation, unresolved policy and decision |
+| Field / policy | `speech` | `media` | `research` | Candidate validation, unresolved policy and decision |
 |---|---|---|---|---|
-| \`evaluation_type\` | \`speech\` | \`media\` | \`research\` | Required, exact allowed enum; invalid/mismatch rejected, FR-01/02 |
-| \`text\` | Prepared or transcribed speech text | PR/news/social media written text | Article or research report text | Required, nonempty Unicode text; allowed MIME/encoding, byte/token/character min/max all OPEN (\`OD-01/02\`); never silently truncate |
-| \`source_format\` | Plain text candidate; transcript provenance is context | Plain text candidate; channel is context | Plain text candidate; long document sections possible | Direct PDF/DOCX, STT, OCR and other ingest **not in approved scope**; \`OD-01/05\` for future capability |
-| \`purpose\` | Speech objective (optional candidate) | Message objective (optional candidate) | Research objective (optional candidate) | Optional candidate, structured allowlist, max length/content policy OPEN (\`OD-01/02\`) |
-| \`target_audience\` | Needed for audience-fit assessment if available | Needed for audience-focus assessment if available | Intended scholarly audience (optional candidate) | Optional input candidate; missing context must not cause invented audience claims; mark affected criteria \`not_assessed\` if appropriate |
-| \`source_is_transcript\` / \`transcript_quality\` | Optional candidate provenance and input-quality indicator | N/A | N/A | Source transcription uncertainty is separate from speaking performance; no scoring audio delivery |
-| \`channel\` / \`brand_style_guide_reference\` | N/A | Optional candidate media channel / authorized internal style-guide ID | N/A | No unrestricted URL fetching; reference existence/authorization require validation (\`OD-01/08/11\`) |
-| \`discipline\` / \`document_type\` / \`citation_style\` | N/A | N/A | Optional candidate research context | Accepted values / requiredness OPEN (\`OD-01/03/11\`); citation formatting ≠ reference authenticity |
-| \`approved_reference_corpus\` | N/A | N/A | Authorized corpus identifier only, **not arbitrary path/URL** | Corpus selection/access/provenance OPEN (\`OD-08/11/14\`); absent trusted corpus ⇒ real novelty \`not_assessed\` |
-| Language / mixed scripts | Persian written text required by product brief | Persian written text required by product brief | Persian written text required by product brief | Support/rejection of Arabic script variants, English segments, mixed-language, Unicode normalization, ZWNJ and RTL metadata OPEN (\`OD-01/11\`) |
-| Length and sections | Limits OPEN | Limits OPEN | Higher long-document/context need; exact limits OPEN | Record chars/UTF-8 bytes/token estimates; no assumed cap, no unconditional acceptance of arbitrarily long text (\`OD-02/12\`) |
-| Ownership / tenant / identity | Derived server-side | Derived server-side | Derived server-side | Never accept authenticated owner/org from client metadata; SSO, Role Matrix and cross-unit access OPEN (\`OD-07\`) |
-| Idempotency / reuse | Candidate per-scope idempotency key | Same | Same | Window, collision response, deduplication semantics OPEN (\`OD-10\`); never deduplicate across organizational scopes |
+| `evaluation_type` | `speech` | `media` | `research` | Required, exact allowed enum; invalid/mismatch rejected, FR-01/02 |
+| `text` | Prepared or transcribed speech text | PR/news/social media written text | Article or research report text | Required, nonempty Unicode text; allowed MIME/encoding, byte/token/character min/max all OPEN (`OD-01/02`); never silently truncate |
+| `source_format` | Plain text candidate; transcript provenance is context | Plain text candidate; channel is context | Plain text candidate; long document sections possible | Direct PDF/DOCX, STT, OCR and other ingest **not in approved scope**; `OD-01/05` for future capability |
+| `purpose` | Speech objective (optional candidate) | Message objective (optional candidate) | Research objective (optional candidate) | Optional candidate, structured allowlist, max length/content policy OPEN (`OD-01/02`) |
+| `target_audience` | Needed for audience-fit assessment if available | Needed for audience-focus assessment if available | Intended scholarly audience (optional candidate) | Optional input candidate; missing context must not cause invented audience claims; mark affected criteria `not_assessed` if appropriate |
+| `source_is_transcript` / `transcript_quality` | Optional candidate provenance and input-quality indicator | N/A | N/A | Source transcription uncertainty is separate from speaking performance; no scoring audio delivery |
+| `channel` / `brand_style_guide_reference` | N/A | Optional candidate media channel / authorized internal style-guide ID | N/A | No unrestricted URL fetching; reference existence/authorization require validation (`OD-01/08/11`) |
+| `discipline` / `document_type` / `citation_style` | N/A | N/A | Optional candidate research context | Accepted values / requiredness OPEN (`OD-01/03/11`); citation formatting ≠ reference authenticity |
+| `approved_reference_corpus` | N/A | N/A | Authorized corpus identifier only, **not arbitrary path/URL** | Corpus selection/access/provenance OPEN (`OD-08/11/14`); absent trusted corpus ⇒ real novelty `not_assessed` |
+| Language / mixed scripts | Persian written text required by product brief | Persian written text required by product brief | Persian written text required by product brief | Support/rejection of Arabic script variants, English segments, mixed-language, Unicode normalization, ZWNJ and RTL metadata OPEN (`OD-01/11`) |
+| Length and sections | Limits OPEN | Limits OPEN | Higher long-document/context need; exact limits OPEN | Record chars/UTF-8 bytes/token estimates; no assumed cap, no unconditional acceptance of arbitrarily long text (`OD-02/12`) |
+| Ownership / tenant / identity | Derived server-side | Derived server-side | Derived server-side | Never accept authenticated owner/org from client metadata; SSO, Role Matrix and cross-unit access OPEN (`OD-07`) |
+| Idempotency / reuse | Candidate per-scope idempotency key | Same | Same | Window, collision response, deduplication semantics OPEN (`OD-10`); never deduplicate across organizational scopes |
 
 **Stage 02 design boundary:** DTO and API examples may use clearly labeled synthetic, versioned provisional allowlists. They must not silently hardcode unapproved size/retention/role policies or treat candidate domain metadata as universally mandatory. For final delivery, each OPEN policy must be resolved, explicitly rejected as out-of-scope, or represented by a justified protective behavior without pretending it has employer approval.
 
