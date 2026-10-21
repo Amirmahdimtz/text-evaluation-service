@@ -133,6 +133,12 @@ D-005 queue is PROPOSED; design adapter is the existing EvaluationJobRepository,
 - Compute final_score = 100 * sum(weight * score / 5 for assessed applicable) / sum(weight for assessed applicable); coverage = sum(assessed applicable weights) / sum(all applicable weights). Python Decimal, explicit recorded formula/rounding policy (OD-04). No assessed criteria => numeric final_score null; missing required evidence or inadequate coverage => partial/review according to versioned policy, never silent full grade.
 - Preserve model artifact checksum/revision, runtime, prompt version/hash, parameter set, schema version, preprocessing/offset mapping version, rubric checksum, corpus version where used, timestamp, policy version and scores for reproducibility. Exact bitwise reproducibility of stochastic model runs is NOT claimed without tests.
 
+### Assessment state and experimental rubric boundary
+
+The Job transport lifecycle `processing_status` (`pending`, `processing`, `completed`, `failed_retryable`, `failed_terminal`) is distinct from the evaluation `result_status` (`assessed`, `partial`, `not_assessed`, all candidate labels) and the independent `needs_human_review` flag. A transport-completed job may have `result_status=not_assessed` with null numeric score; it must never be stored as `processing_status=needs_human_review` or `processing_status=partial`. Pin all three consistently across API DTO, domain service and persistence implementation when their owning stages begin; official enum policy remains OD-04/09/15 OPEN.
+
+`candidate-0.1` is valid only as a version-pinned **internal non-production fixture** for Stage 03 benchmark or isolated Stage 06–11 tests with authorized synthetic data. It is **not** a Published rubric, must not be discoverable through the Published-rubric API, and cannot be used for organizational official scoring. Release requires an authorized immutable Published snapshot and a separately approved policy (OD-03/06/07/15); fail closed if missing. Inferred model or SME approval is prohibited.
+
 ## 8. Error, observability, security and testability
 
 | Boundary | Policy |
