@@ -83,7 +83,7 @@ When the denominator is zero, show metric as `undefined` with sample size; never
 2. Domain SMEs define diversity strata: speech prepared vs STT transcript, media format/channel, research discipline/methodology, length, quality bands, uncertainty, contradictory and sensitive-topic cases.
 3. Multiple independent SME raters score all rubric criteria with evidence; adjudication protocol preserves disagreement; calibration vs frozen independent holdout, no leakage.
 4. Record dataset lineage/license, rubric/model/prompt revisions and split hashes in authorized storage; never store raw confidential samples in public Git.
-5. Establish approved sample sizes, inter-rater reliability, MAE/Evidence Accuracy/Stability/Coverage/Abstention/Hallucination limits and owner signatures **before** formal Stage 03/11 Gate.
+5. Define and version **provisional** sample sizes, inter-rater reliability protocol and MAE/Evidence Accuracy/Stability/Coverage/Abstention/Hallucination targets for Stage 03/11 diagnostic work. Record unknown/unverifiable targets as OPEN; no unsupported quality PASS is allowed. Formal employer/SME approval of the final acceptance thresholds is deferred to **Stage 12** (`D-015`).
 6. Perform actual internal GPU/inference/benchmark tests at Stage 03/11; current status: `PENDING_SERVER`, not PASSED.
 
 ## 5. Stage 01 documentation gates
