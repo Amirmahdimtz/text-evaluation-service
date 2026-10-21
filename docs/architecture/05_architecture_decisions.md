@@ -110,7 +110,7 @@ Stage 01 D-005 remains PROPOSED and D-006/007 remain CANDIDATE. D-008 weights re
 | Gate | Design assessment | Evidence status |
 |---|---|---|
 | Latest main/review requirements | PASS | connector HEAD and five blobs inspected |
-| Existing vs missing APIs/dependencies | PASS with enumeration limit | file-path probes recorded; complete recursive Git tree unavailable |
+| Existing vs missing APIs/dependencies | PASS_REVIEW | Original path probes + complete 11-entry tracked-tree enumeration supplied from the user's clean local Git checkout (snapshot `84b5d557`); runtime absent |
 | Four-layer/DI conventions documented | PASS_DESIGN_ONLY | Guide aligned; runtime not available |
 | Transaction/session/worker/fencing contract | PASS_DESIGN_ONLY | explicit boundaries/alternatives; no integration execution |
 | API/DTO/error/auth and evidence contract | PASS_DESIGN_ONLY | proposed, not OpenAPI runtime |
@@ -134,8 +134,10 @@ The Implementation Plan Stage 02 check says **"Import/Discovery/Bootstrap smoke 
 | Matches real @inject/bootstrap/provider scanning | Guide design only, no actual modules | BLOCKED / NOT_VERIFIED | Stage 04 |
 | AsyncSession/atomic multi-entity transaction compatibility | Proposed repository methods only | NOT_RUN / NOT_VERIFIED | Stage 05 |
 | Feature HTTP route discovery and DTO runtime | Proposed paths only | NOT_RUN / NOT_VERIFIED | Stage 10 |
-| Exhaustive tracked Git tree review | Path probes only, no full recursive listing verified | NOT_VERIFIED | Stage 02; read-only local command in repository review |
+| Exhaustive tracked Git tree review | User-supplied full `git ls-tree -r --name-only HEAD` for `84b5d557`, 11 entries; local `18/18` documentation QA and clean tree | VERIFIED_USER_LOCAL (tracked files only) | Stage 02; re-run on changes |
 | Stage 03 model benchmark preconditions | On-prem GPU and authorized synthetic/data not yet observed | PENDING_SERVER | Stage 03, before protected execution |
+
+**2026-10-21 evidence update:** The user provided the full local 11-path tracked Git tree and an executed `18/18 PASS` report from `scripts/verification/check_stage02_docs.py` on commit `84b5d5575a29024fa8a1858526c4e6f78c0f870f`, plus empty `git status --short`. These close the tree-enumeration and local documentation-QA evidence gaps for that snapshot. They do not alter the `BLOCKED` DI/WebService compatibility gate, and are not import, DB, GPU or inference tests. See [Repository Review](01_existing_repository_review.md). This update records received user evidence; new follow-up modifications should be checked separately.
 
 **Gate interpretation (proposal, not an approval):** Keep Stage 02 `BLOCKED` while mandatory actual-compatibility evidence is missing. A user-authorized conditional exception could permit beginning Stage 03's **independent** benchmark activities without claiming that Stage 02 tests passed; it must explicitly preserve deferred test owners, infrastructure/data permissions, risk acceptance, and Stage 03's own gate. This exception is **NOT_APPROVED** by this document or by a generic request to repair Stage 02 docs. Formal business acceptance remains Stage 12 per D-015. Never relabel `NOT_RUN` or `PENDING_SERVER` as `PASS`.
 
