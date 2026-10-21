@@ -1,6 +1,6 @@
 # Security, Privacy and Data Policy — Stage 01
 
-> **Status: DRAFT_FOR_SECURITY_APPROVAL** · Date: 2026-10-21  
+> **Status: PROVISIONAL_SECURITY_SPECIFICATION** · Date: 2026-10-21 · Formal employer/SME acceptance is deferred to Stage 12 (`D-015`); mandatory authorization for protected operations remains in force.  
 > Baseline: Implementation Plan §§1.4,3,4,6,7,10/Stage 01 and Architecture Guide. This is a **control requirements specification**, not evidence that controls already exist. Organization-specific IAM, cryptography, retention, topology and RTO remain OPEN.
 
 ## 1. Binding confidentiality commitments and trust boundaries
@@ -120,6 +120,6 @@ Roles, cross-unit delegation, break-glass access and tenancy hierarchy require B
 | `OD-13` | Approved Datacenter/GPU/network trust boundary, artifact import, outbound policy, runtime | Infrastructure + Security |
 | `OD-14` | Golden Dataset access/label privacy, scientific claim constraints, metrics thresholds | SMEs + Data Steward + AI Lead |
 
-**Gate now:** Design controls documented; **NOT** evidence of configured protection. `S1-G03` documental check pending automated verification; formal Security/Privacy approval `S1-G06` BLOCKED_FOR_APPROVAL. Operational No-Egress, restore, encryption, model logging and IDOR tests = **PENDING_SERVER** in Stages 04/10/11.
+**Gate now:** Required security controls are **documented only**, not configured or proven. Stage 01 documental gate `S1-G03` has passed documentation review; formal employer acceptance is **DEFERRED_TO_STAGE_12**, not `S1-G06` or a Stage 01 blocker (`D-015`). **Operational prerequisite:** authorization and enforced safeguards must exist *before* access to real confidential data, credential changes, destructive operations or Production deployment. Operational No-Egress, restore, encryption, model logging and IDOR tests are `PENDING_SERVER` in Stages 04/10/11; none are PASSED.
 
 Related requirements: FR-01/06/07/08/09/10/11/12; NFR-01..14. See [product](01_product_requirements.md), [acceptance](03_acceptance_criteria.md), [open decisions](05_open_decisions.md).
