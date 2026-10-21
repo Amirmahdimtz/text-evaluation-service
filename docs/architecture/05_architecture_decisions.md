@@ -123,6 +123,22 @@ Stage 01 D-005 remains PROPOSED and D-006/007 remain CANDIDATE. D-008 weights re
 
 **Stage 02 status: BLOCKED (technical verification gate), despite completed independent design output.** This is not an assertion that another stage has started. Resume verification when reference-compliant executable platform exists, or request explicit user-authorized conditional progression documented with remaining risks. No stage advancement authorized by this ADR itself.
 
+### STAGE02_GATE_DECOMPOSITION — test ownership without circular dependencies
+
+The Implementation Plan Stage 02 check says **"Import/Discovery/Bootstrap smoke test executed in an existing development environment OR blocker documented"**. The documented blocker fulfills only its **disclosure** alternative, not a PASS for import execution. A distinct Stage 02 criterion, compatibility with the **actual** WebService/@inject, is not provable when no implementation exists. The subsequent plan explicitly assigns the runtime source and its tests to Stage 04 (DI/bootstrap), Stage 05 (DB/transaction) and Stage 10 (HTTP discovery). Building mock runtime in Stage 02 would be a false gate pass and violate the stage scope.
+
+| Stage 02 acceptance question | Current evidence | Status | Owner of executable re-test |
+|---|---|---|---|
+| Required architecture docs and static contract checks | Five docs and traceable candidate contracts | PASS_DOCUMENTATION_ONLY | Stage 02 |
+| Missing runtime and import smoke disclosed | Missing exact source paths with HTTP 404; reason documented | PASS_BLOCKER_DISCLOSURE, NOT_RUN_EXECUTION | Stage 02 records; Stage 04 executes |
+| Matches real @inject/bootstrap/provider scanning | Guide design only, no actual modules | BLOCKED / NOT_VERIFIED | Stage 04 |
+| AsyncSession/atomic multi-entity transaction compatibility | Proposed repository methods only | NOT_RUN / NOT_VERIFIED | Stage 05 |
+| Feature HTTP route discovery and DTO runtime | Proposed paths only | NOT_RUN / NOT_VERIFIED | Stage 10 |
+| Exhaustive tracked Git tree review | Path probes only, no full recursive listing verified | NOT_VERIFIED | Stage 02; read-only local command in repository review |
+| Stage 03 model benchmark preconditions | On-prem GPU and authorized synthetic/data not yet observed | PENDING_SERVER | Stage 03, before protected execution |
+
+**Gate interpretation (proposal, not an approval):** Keep Stage 02 `BLOCKED` while mandatory actual-compatibility evidence is missing. A user-authorized conditional exception could permit beginning Stage 03's **independent** benchmark activities without claiming that Stage 02 tests passed; it must explicitly preserve deferred test owners, infrastructure/data permissions, risk acceptance, and Stage 03's own gate. This exception is **NOT_APPROVED** by this document or by a generic request to repair Stage 02 docs. Formal business acceptance remains Stage 12 per D-015. Never relabel `NOT_RUN` or `PENDING_SERVER` as `PASS`.
+
 ## 5. Stage progression and traceability
 
 - Stage 03 cannot be declared started or complete through this design; it needs a distinct user request, authorized GPU/data and a valid Stage 02 technical gate or explicit conditional exception.
