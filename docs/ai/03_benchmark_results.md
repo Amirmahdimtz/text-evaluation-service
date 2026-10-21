@@ -1,63 +1,63 @@
-# Stage 03 — Benchmark Results and Evidence Ledger
+# Stage 03 — نتایج Benchmark و دفتر شواهد
 
-> Status: `PENDING_SERVER / NO_MEASUREMENTS` · 2026-10-21. **No authorized internal model/GPU session or expert-scored benchmark was executed by the assistant.** The entries below are execution-state records only; no placeholders or estimated numbers are presented as measured outcomes.
+> وضعیت: `PENDING_SERVER / NO_MEASUREMENTS` · 2026-10-21. دستیار به هیچ سرور GPU/Inference سازمانی یا Golden Dataset کارشناسی دسترسی نداشته و هیچ Model Benchmark واقعی اجرا نکرده است. جدول‌ها صرفاً **وضعیت اندازه‌گیری** هستند، نه مقادیر صفر یا نتیجه تخمینی.
 
-## 1. Preflight evidence (actual, non-inference)
+## ۱. نتایج واقعی Preflight
 
-| Check | Observed evidence | Status |
+| بررسی | شواهد | وضعیت |
 |---|---|---|
-| GitHub `main` commit reviewed | `6f650728e80849f65f46b50c81ab2da500ac6d53`, 2026-10-21 | PASS (repository inspection only) |
-| Git tracked source tree | 11 files: Stage 01 + Stage 02 documents and Stage 02 docs checker; no `src/` runtime | PASS (repository tree inspection only) |
-| Stage 02 runtime DI, Bootstrap and WebService | No implementation to execute; Stage 04/10 owner | `NOT_RUN`; Stage 02 `BLOCKED` |
-| Actual internal GPU/VRAM/CPU/RAM/driver/network | Not connected, no inventory supplied | `UNVERIFIED` |
-| Approved model files and tokenizer hashes | Not imported or observed | `UNVERIFIED` |
-| Actual synthetic/authorized labeled three-domain dataset | Not provided or run on approved server | `UNVERIFIED` |
-| Public model cards/license metadata | Read-only upstream metadata review for two candidate IDs | PASS_DESK_REVIEW_ONLY; not legal clearance |
-| Internal inference and no-egress test | No approved organization environment access | `PENDING_SERVER` |
+| بررسی Repository و Commit مبنا | GitHub `main` در آغاز Stage 03: `6f650728e80849f65f46b50c81ab2da500ac6d53` | `PASS_REPOSITORY_INSPECTION` |
+| Tree واقعی Git | ۱۱ فایل مستندات Stage 01/02 و Checker مرحله ۰۲؛ بدون `src/`، مدل یا Server | `PASS_REPOSITORY_INSPECTION` |
+| آزمون DI/Bootstrap/WebService مرحله ۰۲ | سورس اجرایی وجود ندارد؛ Stage 04/10 مالک اجرا هستند | `NOT_RUN`، Stage 02 `BLOCKED` |
+| GPU، VRAM، Driver، RAM، Storage و Network سازمان | هیچ Inventory تأییدشده دریافت نشده است | `UNVERIFIED` |
+| Model Artifact/Tokenizer و Checksum | Artifact داخلی مشاهده یا Import نشده است | `UNVERIFIED` |
+| Dataset مجاز و برچسب کارشناسی سه حوزه | نمونه اجرایی/مرجع کارشناسی ارائه نشده است | `UNVERIFIED` |
+| Model Card و License Metadata عمومی | بررسی Read-only دو Model ID از منابع رسمی | `PASS_DESK_REVIEW_ONLY`، نه تأیید قانونی |
+| GPU Benchmark، No-Egress و Inference واقعی | محیط مجاز سازمان در دسترس نیست | `PENDING_SERVER` |
 
-User-reported Stage 02 local docs QA `19/19 PASS` is **user-provided evidence**, not an assistant rerun or AI benchmark. The Stage 02 technical gate remains BLOCKED.
+گزارش `19/19 PASS` برای QA اسناد Stage 02 مطابق اعلام کاربر ثبت شده است؛ این شواهد **User Local** است، نه اجرای دستیار یا مدل زبانی، و Gate اجرایی Stage 02 همچنان `BLOCKED` می‌ماند.
 
-## 2. Actual AI quality metrics
+## ۲. Quality Metrics واقعی
 
-| Metric | speech | media | research | Reason |
+| Metric | speech | media | research | علت |
 |---|---|---|---|---|
-| Expert MAE / inter-rater agreement | `NOT_MEASURABLE` | `NOT_MEASURABLE` | `NOT_MEASURABLE` | No scored expert references |
-| Evidence exactness and relevance | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | No model responses or authorized text |
-| Unsupported claims / hallucination | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | No expert-adjudicated responses |
-| Strict schema validity | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | No inference executions |
-| Correct abstention and coverage | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | No expert applicability judgments |
-| Stability / repeated generations | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | No pinned runtime |
-| Persian/long text/fairness | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | No stratified executed dataset |
+| MAE / Inter-rater Agreement | `NOT_MEASURABLE` | `NOT_MEASURABLE` | `NOT_MEASURABLE` | Expert Labels نداریم |
+| Evidence Accuracy / Relevance | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | خروجی مدل و متن مجاز نداریم |
+| Hallucination / Unsupported Claims | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | پاسخ داوری‌شده نداریم |
+| Schema Validity | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | Generation اجرا نشده است |
+| Correct Abstention / Coverage | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | ارزیابی کارشناسی اجرا نشده است |
+| Stability و تکرارپذیری | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | مدل و Runtime ثابت نداریم |
+| Persian / Long Text / Fairness | `PENDING_SERVER` | `PENDING_SERVER` | `PENDING_SERVER` | Dataset اجراشده نداریم |
 
-No numbers, confidence intervals, sample counts or model rankings are available. Explicitly **NO_MEASUREMENTS**; a zero percentage would be scientifically false.
+**هیچ مقدار عددی، Confidence Interval، حجم نمونه ارزیابی‌شده یا رتبه‌بندی مدل وجود ندارد.** مقدار صفر برای Metricهای بالا نیز غیرواقعی خواهد بود.
 
-## 3. Actual performance/capacity metrics
+## ۳. Resource Metrics واقعی
 
 | Metric | Qwen2.5-7B-Instruct | Qwen3-14B |
 |---|---|---|
-| P50/P95 latency | `PENDING_SERVER` | `PENDING_SERVER` |
-| Prompt/completion tokens and tokens/sec | `PENDING_SERVER` | `PENDING_SERVER` |
-| Concurrent throughput | `PENDING_SERVER` | `PENDING_SERVER` |
-| Peak VRAM/GPU utilization | `PENDING_SERVER` | `PENDING_SERVER` |
-| Actual context/OOM/failure rates | `PENDING_SERVER` | `PENDING_SERVER` |
-| Structured-output compatibility | `PENDING_SERVER` | `PENDING_SERVER` |
+| Latency P50/P95 | `PENDING_SERVER` | `PENDING_SERVER` |
+| Prompt/Completion Tokens و Tokens/s | `PENDING_SERVER` | `PENDING_SERVER` |
+| Throughput با Concurrency مشخص | `PENDING_SERVER` | `PENDING_SERVER` |
+| Peak VRAM / GPU Utilization | `PENDING_SERVER` | `PENDING_SERVER` |
+| Context Limit، OOM، Timeout و Failure Rate | `PENDING_SERVER` | `PENDING_SERVER` |
+| سازگاری Structured Output در Runtime واقعی | `PENDING_SERVER` | `PENDING_SERVER` |
 
-Resource **theoretical estimates** live separately in [resource plan](04_inference_resource_plan.md), never in this measurement ledger.
+محاسبات نظری Memory فقط در [Resource Plan](04_inference_resource_plan.md) قرار دارند؛ هیچ عدد تخمینی به‌عنوان VRAM یا Throughput اندازه‌گیری‌شده ثبت نشده است.
 
-## 4. Pending run evidence manifest
+## ۴. Manifest شواهد لازم برای Runهای بعدی
 
-Once internal execution is approved, capture one record per attempt: `run_id`, `timestamp_utc`, `model_id`, `model_revision`, `model_sha256_manifest`, `tokenizer_revision`, `runtime_version`, `hardware_inventory_id`, `dataset_id/version/split`, `sample_count`, `rubric_version/hash`, `prompt_version/hash`, `sampling_config`, `quantization`, `latency_ms`, `prompt_tokens`, `completion_tokens`, `gpu_vram_peak_bytes`, `error_class`, `schema_valid`, `evidence_valid` and authorized redacted aggregate report reference. Store source text and raw model responses only in protected internal storage.
+برای هر Attempt باید `run_id`، `timestamp_utc`، `model_id/revision`، `artifact_sha256_manifest`، `tokenizer_revision`، `runtime_version`، `hardware_inventory_id`، `dataset_version/split`، `sample_count`، `rubric/prompt/schema_revision`، `sampling_config`، `quantization`، `latency_ms`، `prompt_tokens`، `completion_tokens`، `gpu_vram_peak_bytes`، `error_class`، `schema_valid`، `evidence_valid` و مرجع محل امن Raw Result ثبت شود.
 
-Required failure case labels: `INVALID_JSON`, `INVALID_SCORE`, `QUOTE_MISMATCH`, `UNSUPPORTED_CLAIM`, `INCORRECT_ABSTENTION`, `PROMPT_INJECTION_FOLLOWED`, `LONG_CONTEXT_TRUNCATED`, `TIMEOUT`, `OOM`, `TRANSPORT_ERROR` and `ARTIFACT_OR_LICENSE_REJECTED`. All failure frequencies currently `NOT_MEASURABLE`.
+Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، `UNSUPPORTED_CLAIM`، `INCORRECT_ABSTENTION`، `PROMPT_INJECTION_FOLLOWED`، `LONG_CONTEXT_TRUNCATED`، `TIMEOUT`، `OOM`، `TRANSPORT_ERROR` و `ARTIFACT_OR_LICENSE_REJECTED`. نرخ واقعی این خطاها فعلاً `NOT_MEASURABLE` است.
 
-## 5. Current decision and limitations
+## ۵. تست‌های واقعی مستقل از مدل
 
-**Model Selection: `BLOCKED`.** No scientifically justified winner, capacity baseline or inference release authorization. Candidate pairing `Qwen3-14B + vLLM` remains an investigation option only. Required next evidence: approved environment inventory, pinned and admitted model artifacts, permitted balanced dataset, independent expert labels/threshold owners, and real reproducible GPU runs.
+- در 2026-10-21 دستیار روی Sandbox خودش دستور `python -m py_compile` برای دو فایل Python مربوط به Benchmark Validator و دستور `python -m unittest -v test_validate_stage03_outputs.py` را اجرا کرده است: **۱۱ تست از ۱۱ تست PASS** با ورودی‌های صرفاً Synthetic.
+- پوشش تست: Strict Schema، امتیاز Bool نامعتبر، Quote/Unicode/Offset، `not_assessed` و `score=null`، Criterion اشتباه یا Unhashable، Corpus بدون تأیید، JSON مخدوش، Attempt تکراری و فایل خالی.
+- این نتیجه تنها Unit Test ابزار مستقل است، **نه** آزمایش روی مدل، تأیید Accuracy، Relevance، No-Egress، GPU Capacity یا License. اجرای مجدد روی Clone واقعی کاربر باید جداگانه گزارش شود و فعلاً `PENDING_USER_LOCAL` است.
 
-Acceptance of this documentation **does not** pass Stage 03's mandatory empirical gate. Stage 03 remains `IN_PROGRESS` (environment/decision dependent); Stage 02 remains `BLOCKED`. No Stage 04 work is authorized by this record.
+## ۶. نتیجه و محدودیت تصمیم
 
-Traceability: [Model decision](01_model_selection.md) · [Benchmark protocol](02_benchmark_protocol.md) · [Resource estimates](04_inference_resource_plan.md) · [Decisions](../requirements/05_open_decisions.md).
+**Model Selection: `BLOCKED`؛ Stage 03: `IN_PROGRESS`.** تا فراهم‌شدن GPU مجاز، Artifactهای نسخه‌دار، Dataset و Expert Labels، اجرای حداقل دو مدل و ثبت Latency/VRAM/Quality/Evidence هیچ برنده یا Capacity Baseline علمی قابل دفاعی وجود ندارد. Qwen3-14B + vLLM همچنان فقط Candidate است. Stage 02 نیز `BLOCKED` می‌ماند؛ این سند مجوز ورود به Stage 04 نیست.
 
-## 6. Standalone validator QA (not a model benchmark)
-
-- On 2026-10-21, the assistant ran `python -m py_compile` for the two Stage 03 validator/test Python files and `python -m unittest -v test_validate_stage03_outputs.py` in its isolated sandbox, with **11/11 tests PASS** using only synthetic strings. These validate schema/offset control logic; no actual model response, licensed artifact, GPU, expert labels, or organizational network was accessed. Re-execution of the committed files on user local checkout remains a separate `PENDING_USER_LOCAL` check.
+ارجاع: [انتخاب مدل](01_model_selection.md) · [پروتکل](02_benchmark_protocol.md) · [منابع](04_inference_resource_plan.md) · [Decision Log](../requirements/05_open_decisions.md).
