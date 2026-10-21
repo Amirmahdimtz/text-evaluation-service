@@ -54,7 +54,12 @@ def check(root: Path) -> tuple[list[tuple[str, bool]], list[str]]:
     record("four-layer design and DI", all(x in design for x in
            ("Host (", "Application (", "Core/services", "Infrastructure (",
             "@inject", "bootstrap_di")))
-    record("uncertainty disclosed", "UNVERIFIABLE" in review and "NOT_VERIFIED" in review)
+    # Check current, distinct evidence states instead of requiring a stale marker.
+    # Repository tree audit is verified from user-local Git output; runtime is not.
+    record("uncertainty disclosed",
+           "UNVERIFIABLE" in review
+           and re.search(r"(?m)^\| Python import/discovery/bootstrap \| NOT_RUN \|", review) is not None
+           and re.search(r"(?m)^\| Actual Git recursive tree retrieval \| VERIFIED_USER_LOCAL\b", review) is not None)
     record("gate ownership recorded", "STAGE02_GATE_DECOMPOSITION" in adrs
            and "Stage 04" in adrs and "Stage 05" in adrs
            and "NOT_APPROVED" in adrs)
