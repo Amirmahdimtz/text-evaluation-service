@@ -86,14 +86,32 @@
 | Fetch GitHub repo metadata + main recent history | PASS | Live connector response; HEAD matched baseline |
 | Fetch five Stage 01 requirement documents | PASS | All five returned successfully |
 | Probe representative runtime/build/CI paths | PASS | Missing paths recorded by 404; no false existing claims |
-| Actual Git recursive tree retrieval | NOT_VERIFIED | Tree enumeration unavailable via connected operations |
+| Actual Git recursive tree retrieval | VERIFIED_USER_LOCAL at `84b5d5575a29024fa8a1858526c4e6f78c0f870f` | User-provided output of `git ls-tree -r --name-only HEAD` lists 11 tracked files, corroborated by `git log -1`, 18/18 local document QA and clean `git status --short`; source remains absent |
 | Python import/discovery/bootstrap | NOT_RUN | No source or project dependency environment |
 | API, unit, DB, migrations, worker tests | NOT_RUN | Implementation absent |
 | Real GPU, vLLM, no-egress, load, recovery/E2E | PENDING_SERVER | Requires authorized internal infrastructure |
 
 ## 7. Reproducible source-tree inspection and evidence boundary (Stage 02 remediation)
 
-The GitHub connector checked the individual paths listed above (404 for missing exact paths), but does not provide a complete recursive tree enumeration. The user's clean PowerShell `git status --short` and verified `git log -1` prove checkout cleanliness and a matching HEAD, **not** exhaustive tree review. This distinction is retained; the recursive-tree item remains `NOT_VERIFIED` until its output is inspected, with no invented file inventory.
+The initial GitHub-connector inspection probed specific paths but could not recursively enumerate the tree. **Subsequent evidence supplied directly by the user on 2026-10-21** closes that _tracked-tree enumeration_ gap for commit `84b5d5575a29024fa8a1858526c4e6f78c0f870f`: the user ran `git ls-tree -r --name-only HEAD` in a clean local checkout and supplied its complete 11-line output, a matching `git log -1`, and `python scripts/verification/check_stage02_docs.py` reporting **18 PASS / 18 total**. These are verified as user-shared local command outputs, **not** tests run independently inside the assistant's remote environment; no filesystem contents outside Git's tracked tree were inspected. This audit is snapshot-specific and does not establish runtime compatibility.
+
+Verified tracked-tree inventory at the user-checked HEAD (11 entries):
+
+```text
+docs/architecture/01_existing_repository_review.md
+docs/architecture/02_detailed_design.md
+docs/architecture/03_api_and_contracts.md
+docs/architecture/04_file_change_matrix.md
+docs/architecture/05_architecture_decisions.md
+docs/requirements/01_product_requirements.md
+docs/requirements/02_evaluation_rubrics.md
+docs/requirements/03_acceptance_criteria.md
+docs/requirements/04_security_and_data_policy.md
+docs/requirements/05_open_decisions.md
+scripts/verification/check_stage02_docs.py
+```
+
+No `src/`, dependency manifest, CI or Dockerfile was tracked in that snapshot; Python/FastAPI/SQLAlchemy/Pydantic installed versions and actual import/DI/DB behavior therefore remain **UNVERIFIABLE/NOT_RUN**, not `PASS`. Subsequent documentation commits may change blob SHA while retaining this inventory; re-check `git ls-tree` against the new HEAD when needed.
 
 Run in the local cloned repository on `main` (read-only; no package installation or secrets):
 
@@ -105,6 +123,6 @@ git ls-files "src/**" "tests/**" ".github/**" "pyproject.toml" "requirements.txt
 python scripts/verification/check_stage02_docs.py
 ```
 
-Compare the complete `git ls-tree` output with the inventory above: log any additional source/CI/dependency paths, then inspect actual file contents before reclassifying `UNVERIFIABLE` as `EXISTS_AND_REVIEWED` or `MISSING`. Only commit observed evidence; a zero-row `src/**` grep is not proof about unsearched alternative names. The standalone QA script checks documentation/contracts and reports a Git-tree listing count if local Git is available; it **cannot** prove import/DI/DB behavior. No exhaustive-tree result is asserted as executed in this document.
+For future revisions, compare the fresh `git ls-tree` output with this recorded snapshot, inspect any new executable sources and classify only paths actually observed. The standalone QA script checks documentation/contracts and counts tracked entries; it **cannot** prove import/DI/DB behavior. The 18/18 result above belongs to the pre-follow-up-fix user-run snapshot; any newly extended checks require another local execution.
 
 Related design artifacts: [Detailed Design](02_detailed_design.md), [API Contracts](03_api_and_contracts.md), [File Matrix](04_file_change_matrix.md), [Architecture Decisions](05_architecture_decisions.md). Source of Stage 01 tracking: [Open Decisions](../requirements/05_open_decisions.md).
