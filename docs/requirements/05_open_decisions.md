@@ -4,7 +4,7 @@
 > **No invented approvals:** OPEN/PROPOSED/CANDIDATE are not CONFIRMED. Generic roles below are proposed approval responsibilities, not verified employer identities.  
 > **Sources:** Implementation Plan §§0,3,4,6,7,10/Stage 01,13–14; Architecture Guide; explicit project instructions.
 
-## 1. Decision Log (D-001..D-015)
+## 1. Decision Log (D-001..D-016)
 
 | Decision ID | Topic | Status | Grounded source/reason |
 |---|---|---|---|
@@ -23,6 +23,7 @@
 | `D-013` | Production platform Docker/K8s/VM | `OPEN` | OD-13 |
 | `D-014` | AI quantitative acceptance metrics | `OPEN` | OD-14 |
 | `D-015` | Employer/customer and formal domain sign-off occurs at **final project acceptance (Stage 12)**, not after each implementation stage | `CONFIRMED` (project execution instruction from user, 2026-10-21) | Supersedes the Implementation Plan's intermediate external-approval gates; keeps internal technical/security gates and controlled-access prerequisites |
+| `D-016` | Conditional entry into Stage 03 with Stage 02 executable gates still open | `CONFIRMED` (explicit user Stage 03 instruction, 2026-10-21) | Allows independent Stage 03 preflight, offline documents and future **authorized** internal benchmark only; Stage 02 remains BLOCKED, DI/Bootstrap/DB/WebService NOT_RUN with 04/05/10 owners; does not approve protected data, model transfer, secret/network changes or Production |
 
 **Important:** D-004 and D-015 are confirmed **project execution rules**, not business approval of any rubric, policy, topology or numerical target. All other previously unconfirmed choices remain OPEN/PROPOSED/CANDIDATE.
 
@@ -82,8 +83,8 @@ For every future approval, record **ID, decision value, scope, approver/role, da
 | Stage | Name | Status | Evidence |
 |---:|---|---|---|
 | 01 | Requirements & Acceptance | `DONE` | Five candidate baseline specifications, domain input matrix, validated synthetic business-report JSON, rubric calibration and evidence provenance added. **25/25 latest GitHub-stored-file documentation checks PASS**. Formal customer sign-off deferred to Stage 12 (`D-015`); **Stage 02 executed as a documentation/inspection stage; technical runtime verification BLOCKED.** |
-| 02 | Repository & Detailed Architecture | `BLOCKED` | Five design documents and API contracts validated; tracked Git tree (11 entries) verified from user local output. Original docs QA 18/18 PASS; after adding DTO field test, user reported 18/19 with only `uncertainty disclosed` FAIL caused by obsolete `NOT_VERIFIED` string assertion. The checker has been fixed to distinguish `VERIFIED_USER_LOCAL` Git tree from `NOT_RUN` import/bootstrap and `UNVERIFIABLE` dependency versions. Full 19/19 rerun on the corrected commit PENDING_USER_LOCAL. Runtime DI/Bootstrap compatibility BLOCKED/NOT_RUN; Stage 03 not authorized. |
-| 03 | Local Model Benchmark | `NOT_STARTED` | `PENDING_SERVER` for real model/GPU tests; no benchmark claim |
+| 02 | Repository & Detailed Architecture | `BLOCKED` | Five design documents and static contract QA complete; local checker **19/19 PASS as reported by the user** for corrected Stage 02 documentation (user-provided evidence, not assistant runtime execution). DI/Bootstrap/WebService actual compatibility still BLOCKED; DI/Bootstrap Stage 04 NOT_RUN, DB/transactions Stage 05 NOT_RUN, route discovery Stage 10 NOT_RUN. Explicit conditional Stage 03 entry D-016 does not pass these gates. |
+| 03 | Local Model Benchmark | `IN_PROGRESS` | **D-016 conditional entry**. Four Stage 03 documents added for candidate desk review, reproducible protocol, PENDING_SERVER/NO_MEASUREMENTS result ledger and UNVERIFIED resource estimates. No GPU, authorized dataset, expert ground truth, internal model execution or capacity baseline; model selection BLOCKED. Stage 04 not authorized. |
 | 04 | Infrastructure & Security | `NOT_STARTED` | No egress/recovery tests performed |
 | 05 | Database & Migration | `NOT_STARTED` | No DB/migration changes |
 | 06 | Rubric Management | `NOT_STARTED` | No published rubric or code |
@@ -194,3 +195,14 @@ python scripts/verification/check_stage02_docs.py
 - **Tests actually run:** Isolated Python regex regression tests **PASS** for a valid disclosure fixture and for two negative cases (wrong runtime PASS label and regressed tree NOT_VERIFIED label). GitHub read-back verified the stored predicate. Full on-repository Python script re-execution after this commit has **not been performed here** because the GitHub checkout is not mounted in the assistant runtime; current full-suite status `PENDING_USER_LOCAL`, not PASS.
 - **Retest:** In the user local clone, `git pull --ff-only origin main` then `python scripts/verification/check_stage02_docs.py`. Expect 19 checks if the documented artifacts are unchanged; report actual output, not the expectation, as evidence.
 - **Unchanged Gate:** Stage 02 overall `BLOCKED`; DI/Discovery/Bootstrap, DB/API/Worker execution `NOT_RUN`; GPU/model/security checks `PENDING_SERVER`; Stage 03 `NOT_STARTED` and no conditional progression approved.
+
+## 12. Stage 03 conditional entry and open technical gate (2026-10-21)
+
+- **Explicit authorization:** D-016 allows independent Stage 03 preflight and static candidate/protocol work notwithstanding Stage 02 BLOCKED technical compatibility. It is not a waiver of Stage 02 executable tests, real benchmark acceptance, protected-network permissions or Stage 04 entry.
+- **Baseline:** GitHub main 6f650728e80849f65f46b50c81ab2da500ac6d53. Recursive source tree: no src/ implementation, model, benchmark dataset, lockfile or GPU evidence.
+- **Independent deliverables:** [Model Selection](../ai/01_model_selection.md), [Benchmark Protocol](../ai/02_benchmark_protocol.md), [Results ledger](../ai/03_benchmark_results.md), [Inference Resource Plan](../ai/04_inference_resource_plan.md).
+- **Candidate-only:** D-006 vLLM and D-007 Qwen3-14B stay CANDIDATE; Qwen2.5-7B-Instruct added as benchmark baseline. D-008 rubric remains PROPOSED and candidate-0.1 unpublished. No selected model, business score or approved numeric threshold.
+- **Pending gates:** GPU/driver/RAM/storage and air-gap inventory (OD-13, Infrastructure/Security), legal/artifact checksum manifest (Security/Legal/MLOps), three-domain synthetic/approved golden dataset and raters (OD-14, AI Lead/SMEs/Data Steward), throughput and latency SLO targets (OD-02/12, PO/SRE), actual vLLM/schema/quote/OOM/latency/quality measurements (PENDING_SERVER). Expert MAE currently NOT_MEASURABLE. Risk severity: critical for data egress/artifact integrity, high for missing hardware/quality baseline.
+- **Stage 02 owners unchanged:** DI/Bootstrap tests Stage 04 NOT_RUN; PostgreSQL/transaction Stage 05 NOT_RUN; WebService discovery Stage 10 NOT_RUN. Stage 03 cannot use unverified runtime as a passing dependency.
+- **Stage 03 acceptance:** BLOCKED until permitted internal execution has measured two model candidates in speech/media/research, quality, evidence, abstention, schema and VRAM/throughput/latency with reproducible manifests and approved decisions. Documentation QA alone is not empirical proof.
+- **Next authorized stage:** none beyond Stage 03. Stage 04 requires a separate explicit user request and applicable gates/approvals.
