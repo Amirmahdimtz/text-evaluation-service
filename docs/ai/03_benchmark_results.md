@@ -15,7 +15,7 @@
 | Model Card و License Metadata عمومی | بررسی Read-only دو Model ID از منابع رسمی | `PASS_DESK_REVIEW_ONLY`، نه تأیید قانونی |
 | GPU Benchmark، No-Egress و Inference واقعی | محیط مجاز سازمان در دسترس نیست | `PENDING_SERVER` |
 
-خروجی جدید ارائه‌شده توسط کاربر روی Commit `88d56fd`، نتیجه QA مستندات Stage 02 را **`18/19 PASS`** نشان می‌دهد؛ تنها شکست مربوط به شرط منسوخ `stage tracker preserved` بود. اصلاح شرط در Commit بعدی اعمال شد و اجرای کامل مجدد آن هنوز `PENDING_USER_LOCAL` است. Gate اجرایی Stage 02 همچنان `BLOCKED` می‌ماند.
+خروجی قبلی کاربر روی Commit `88d56fd` برابر **`18/19 PASS`** بود و شکست تنها مربوط به شرط منسوخ `stage tracker preserved` بود. پس از اصلاح، کاربر روی Commit `f3c32c3043a63c4a304162f0834a716cb659dc60` نتایج واقعی **`19/19 PASS`** برای Stage 02 Documentation QA، **`9/9 PASS`** برای Regressionهای Stage 02 و **`11/11 PASS`** برای تست‌های Stage 03 را ارائه کرد؛ `git status --short` نیز خالی بود. این شواهد، Gate اجرایی Stage 02 را پاس نمی‌کنند؛ مرحله همچنان `BLOCKED` است.
 
 ## ۲. Quality Metrics واقعی
 
@@ -75,3 +75,12 @@ Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، 
 - اجرای `python scripts/verification/check_stage02_docs.py` نتیجه **18/19 PASS** داد؛ تنها شرط `stage tracker preserved` به دلیل انتظار قدیمی `NOT_STARTED` در برابر ورود مشروط تأییدشده `D-016` شکست خورد. این خطا از Benchmark مدل یا تست Validator نیست. Regression Fix و Test مستقل برای شرط جدید اضافه شد؛ تکرار کامل Checker روی Commit اصلاح‌شده هنوز `PENDING_USER_LOCAL` است.
 - `git status --short` فقط `scripts/benchmark/__pycache__/` را Untracked نشان داد؛ Root `.gitignore` برای بی‌اثرکردن Cache خودکار Python اضافه شد و هیچ داده‌ای حذف نشد.
 - این شواهد همچنان به معنی اندازه‌گیری GPU، Accuracy فارسی، Evidence Relevance یا Quality مدل نیستند؛ آن آزمون‌ها `PENDING_SERVER` و MAE مرجع کارشناسی `NOT_MEASURABLE` باقی می‌مانند.
+
+
+## ۹. اصلاحات مستقل Stage 03 پس از ممیزی (2026-10-24)
+
+- ضعف Parser در پذیرش Duplicate JSON Key، `NaN`/`Infinity` و خطای کنترل‌نشده ناشی از JSON بسیار تودرتو برطرف شد؛ Overflow Float و Unicode Scalar نامعتبر نیز به‌صورت Fail Closed کنترل می‌شوند.
+- عدم تطبیق سناریوی مستند Synthetic با Domain رد می‌شود. برای Dataset واقعی گزینه `--manifest` اضافه شد تا JSONL Manifest ساختار نسخه‌دار، Hash دقیق UTF-8 متن، Domain و `case_id` را بررسی کند. ممنوعیت Group/Source تکراری بین Splitها کنترل می‌شود؛ Near-Duplicate، مجوز Data Steward و اعتبار رسمی Provenance خارج از این Validator هستند.
+- معیار `research_novelty` بدون Corpus و داوری علمی معتبر نمی‌تواند نمره عددی بگیرد. `not_assessed` و `score=null` مجازند؛ ادعای Published Rubric یا تأیید مجوز از این تغییر حاصل نمی‌شود.
+- دستیار روی **نسخه متناظر و مستقل در Sandbox** دستور `python -m py_compile` و **۳۱ تست Synthetic Unit/Regression از ۳۱ تست — PASS** را اجرا کرد. Source و Test روی GitHub منتشر شده‌اند؛ اجرای مجدد **Commit نهایی روی Clone کاربر** هنوز `PENDING_USER_LOCAL` است و نباید با اجرای Sandbox یکی فرض شود.
+- **وضعیت Gate بدون تغییر:** GPU، هر دو مدل Inference، Dataset و Expert Labels واقعی، Quality، Evidence Relevance، No-Egress، Latency، VRAM و Capacity `PENDING_SERVER`/در موارد بدون برچسب `NOT_MEASURABLE` هستند. Stage 03 `IN_PROGRESS` و Model Selection `BLOCKED` است.

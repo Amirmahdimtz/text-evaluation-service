@@ -130,8 +130,18 @@
 ```bash
 python -m unittest discover -s scripts/benchmark -p "test_*.py" -v
 python scripts/benchmark/validate_stage03_outputs.py --input /approved/local/results.jsonl
+python scripts/benchmark/validate_stage03_outputs.py --input /approved/local/results.jsonl --manifest /approved/local/manifest.jsonl
 ```
 
-خروجی `PASS` این Validator **صرفاً صحت Schema و تطبیق عین Quote/Offset** را نشان می‌دهد؛ کیفیت تحلیل، ارتباط معنایی شواهد، حقیقت ادعاها یا Accuracy مدل را ثابت نمی‌کند. تست‌های Unit آن فقط Synthetic هستند.
+خروجی `PASS` این Validator فقط صحت Schema، Quote/Offset و در صورت ارائه Manifest، تطبیق ساختاری Case/Domain/Hash را نشان می‌دهد؛ کیفیت تحلیل، ارتباط معنایی شواهد، حقیقت ادعاها، مجوز قانونی داده یا Accuracy مدل را ثابت نمی‌کند. تست‌های Unit آن فقط Synthetic هستند.
+
+### ۷.۱. سخت‌گیری Parser و کنترل اختیاری Manifest (اصلاح 2026-10-24)
+
+- Parser به‌طور مستقل کلید تکراری JSON در هر سطح، `NaN`، `Infinity`، عدد شناور Overflow، Unicode خراب و JSON با عمق غیرمجاز را رد می‌کند. خطاها تنها با Error Code و Aggregate Count گزارش می‌شوند و متن، Quote یا مقدار حساس در پیام خطا چاپ نمی‌شود.
+- شناسه‌های ۱۲ سناریوی آموزشی ثابت (`SP-01..04`، `ME-01..04`، `RE-01..04`) فقط با Domain مربوط پذیرفته می‌شوند. برای `case_id`های واقعی و نامشخص بدون Manifest، ادعای تأیید Case Identity نمی‌شود. در Benchmark دارای Dataset نسخه‌دار، **گزینه `--manifest` را همراه Manifest مجاز و تأییدشده به کار ببرید**.
+- Manifest ورودی **JSONL** و هر خط دقیقاً دارای کلیدهای تعریف‌شده در بخش ۲ است: `dataset_id`، `dataset_version`، `case_id`، `group_id`، `domain`، `source_classification`، `provenance`، `license_permission`، `language`، `length_bucket`، `quality_bucket`، `edge_case_tags`، `split`، `source_sha256` و `expert_labels_revision`. همه فیلدهای متنی غیرخالی، `edge_case_tags` آرایه String، `expert_labels_revision` می‌تواند `null` باشد و `split` یکی از `development`، `calibration` یا `holdout` است.
+- `source_sha256`، هش SHA-256 دقیق `original_text` به‌صورت UTF-8 و **بدون Normalization** است. خروجی و Manifest باید در `case_id`، Domain و هش متن یکسان باشند. `case_id` تکراری، ترکیب چند Dataset/Version در یک Manifest، عبور Group یکسان یا Hash متن یکسان بین Splitها و رکوردی که در Manifest یافت نشود رد می‌شوند. Near-Duplicate و وابستگی معنایی باید همچنان توسط Data Steward بررسی شوند.
+- Manifest از نظر ساختاری بررسی می‌شود؛ مقدار String مانند `license_permission` یا `provenance` صرفاً یک ادعای Metadata است و **به‌تنهایی تأیید مجوز، منشأ معتبر، Air-Gap یا محرمانگی نیست**. فایل‌های واقعی و Hash Manifest محرمانه باید داخل Storage مجاز بمانند و به GitHub/لپ‌تاپ نامجاز ارسال نشوند.
+- `research_novelty` بدون Corpus تطبیقی معتبر و داوری کارشناسی `not_assessed` با `score=null` است. Validator آفلاین هر `assessed` عددی برای این معیار را با `UNVERIFIABLE_NOVELTY` رد می‌کند. در آینده تنها Validator مستقلِ Corpus نسخه‌دار با تأیید مجاز می‌تواند مسیر استثنای علمی قابل‌ممیزی ایجاد کند. ارزیابی Novelty واقعی هنوز `PENDING_SERVER / NOT_MEASURABLE` است.
 
 ارجاع: [انتخاب مدل](01_model_selection.md) · [نتایج](03_benchmark_results.md) · [منابع](04_inference_resource_plan.md).
