@@ -39,8 +39,8 @@ def fenced_json(text: str, heading: str) -> dict:
 
 
 def stage_tracker_preserved(decisions: str) -> bool:
-    """Keep Stage 02 blocked; require recorded approval for later Stage 03 states."""
-    stage02 = re.search(r"(?m)^\| 02 \|[^|\n]*\| `BLOCKED` \|", decisions)
+    """Verify authorized historical state and D-017 local-gate progression."""
+    stage02 = re.search(r"(?m)^\| 02 \|[^|\n]*\| `(BLOCKED|DONE)` \|", decisions)
     stage03 = re.search(
         r"(?m)^\| 03 \|[^|\n]*\| `(NOT_STARTED|IN_PROGRESS|BLOCKED|DONE)` \|",
         decisions,
@@ -49,9 +49,20 @@ def stage_tracker_preserved(decisions: str) -> bool:
         r"(?m)^\| `D-016` \|[^|\n]*\| `CONFIRMED`(?:\s|\|)",
         decisions,
     )
-    return bool(stage02 and stage03 and (
-        stage03.group(1) == "NOT_STARTED" or conditional_entry
-    ))
+    deferred_server_gate = re.search(
+        r"(?m)^\| `D-017` \|[^|\n]*\| `CONFIRMED`(?:\s|\|)",
+        decisions,
+    )
+    if stage02 is None or stage03 is None:
+        return False
+    if stage02.group(1) == "DONE" and deferred_server_gate is None:
+        return False
+    if stage03.group(1) != "NOT_STARTED" and (
+        conditional_entry is None and deferred_server_gate is None
+    ):
+        return False
+    return True
+
 
 
 def check(root: Path) -> tuple[list[tuple[str, bool]], list[str]]:

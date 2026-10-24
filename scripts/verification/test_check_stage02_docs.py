@@ -1,4 +1,4 @@
-"""Regression tests for historical Stage 02 gate and authorized Stage 03 transition."""
+"""Regression tests for Stage 02/03 tracker under D-016 and D-017."""
 
 import unittest
 
@@ -33,8 +33,26 @@ class StageTrackerTests(unittest.TestCase):
     def test_authorized_done_does_not_clear_stage02(self):
         self.assertTrue(stage_tracker_preserved(self.manifest(stage03="DONE")))
 
-    def test_stage02_not_blocked_is_rejected(self):
+    def test_stage02_done_requires_d017(self):
         self.assertFalse(stage_tracker_preserved(self.manifest(stage02="DONE")))
+
+    def test_stage02_done_with_confirmed_d017(self):
+        self.assertTrue(stage_tracker_preserved(
+            self.manifest(stage02="DONE") +
+            "| `D-017` | Deferral to Stage 11 | `CONFIRMED` (user instruction) | gates |\n"
+        ))
+
+    def test_stage02_done_rejects_proposed_d017(self):
+        self.assertFalse(stage_tracker_preserved(
+            self.manifest(stage02="DONE") +
+            "| `D-017` | Deferral to Stage 11 | `PROPOSED` | not approved |\n"
+        ))
+
+    def test_stage03_done_d017_without_d016(self):
+        self.assertTrue(stage_tracker_preserved(
+            self.manifest(stage02="DONE", stage03="DONE", approval=None) +
+            "| `D-017` | Deferral to Stage 11 | `CONFIRMED` | local gates |\n"
+        ))
 
     def test_stage03_progress_without_approval_is_rejected(self):
         self.assertFalse(stage_tracker_preserved(self.manifest(approval=None)))
