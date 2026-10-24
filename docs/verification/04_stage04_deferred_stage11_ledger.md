@@ -1,0 +1,18 @@
+# Stage 04 — D-017 Internal Server Deferred Test Ledger
+
+Status for EVERY entry below: `DEFERRED_TO_STAGE_11`, **not PASSED**. Generic owner roles require organizational assignment under OD-07/08/12/13. Before execution obtain written Security/Infrastructure/Data authorization, approved staging segment, sanitized fixtures, private artifact manifest, network egress monitoring and stop limits. Stage 04 implementation owner is accountable for test plan; Stage 11 executor is the organizational domain owner.
+
+| ID | Implementation owner | Stage 11 execution owner | Deferral reason | Required environment and authorization | Acceptance oracle |
+|---|---|---|---|---|---|
+| S04-S11-01 | Stage 04 / Security Design | Network Security | Actual corporate firewall/DNS not accessible | Approved internal staging, packet trace and firewall read permission | No outbound public DNS/TCP/HTTP while synthetic request traverses stack; allowed internal traffic only |
+| S04-S11-02 | Stage 04 / API Security | IAM + Security | Corporate SSO/claims not selected | Approved gateway/IdP and test identities; IAM change/test approval | Invalid/revoked tokens fail closed; trusted identity and owner/org claims never spoofable |
+| S04-S11-03 | Stage 04 / Secret Foundation | Security + Vault SRE | No corporate Vault/KMS API or creds | Approved ephemeral secrets/rotations, scoped service account, signed test plan | Retrieval only with valid identity; unauthorized resolution denied; value absent from logs/CI/Git |
+| S04-S11-04 | Stage 04 / Platform | PKI + Infrastructure | No cert/trust chain or internal service network | mTLS endpoints and approved certs; network owner authorization | Only authenticated gateway/API/worker/inference identities connect; reject untrusted certs and plaintext |
+| S04-S11-05 | Stage 04 / Logging | Security + Observability SRE | No internal gateway/DB/worker/model sinks | Deployed internal staging, synthetic sentinel, access to all sinks | Zero sentinel, raw prompt, model output, auth header or secret in logs, traces, errors and metrics |
+| S04-S11-06 | Stage 04 / Supply Chain | MLOps + Security + Legal | Approved artifacts not imported or selected | Approved offline artifact import, hashes, licenses, SBOM and scan rights | Every package/model tokenizer hash and provenance verified; no unaccepted Critical/High vulnerabilities |
+| S04-S11-07 | Stage 04 / Deployment | Infrastructure + Security | No corporate workload isolation | Approved isolated segments, container/VM inventory and workload identity | Only connectivity matrix allowed; unauthorized cross-segment paths rejected |
+| S04-S11-08 | Stage 04 / Data Policy | Security + Data Steward + SRE | Encryption and retention decisions OPEN | Approved DB, KMS, backup isolation and retention/legal policy | Encrypt-in-transit/at-rest/backup, authorized restore, no cross-tenant disclosure, approved disposal behavior |
+| S04-S11-09 | Stage 04 / Egress Design | Network Security + AI SRE | GPU/runtime unavailable | Authorized internal inference with controlled egress and observability | Model startup/inference performs zero external downloads, telemetry or DNS; service route remains private |
+| S04-S11-10 | Stage 04 / Operations | SRE + Security | Production-like performance/DR unavailable | Approved staging and load/synthetic dataset limits | Health/readiness fail correctly under dependency loss; sustained load and authorized restore meet approved SLO/RPO/RTO |
+
+Stage 07/09/10 will contribute provider/worker/API-specific ledger entries during their own implementation. This list does not imply those later components exist today. All server-only entries are acceptance dependencies for Stage 11, with Stage 12 reserved for authorized production release.
