@@ -148,3 +148,22 @@ User-provided PowerShell evidence from full repository, commit `34b8720`, Python
 **Post-fix verification boundary:** a representative nested-router `TestClient` smoke was executed in the assistant's isolated **older FastAPI** environment and passed, but **the complete 37-test suite on FastAPI 0.148.0/Starlette 1.9.0 has not been rerun since the change**; mark it `PENDING_USER_LOCAL`, **not PASS**. The earlier 35/37 results remain genuine pre-fix evidence. The independent source change was reviewed for scope, but user-local regression is required before Gate approval. To diagnose port occupation, inspect `Get-NetTCPConnection -LocalPort 18080 -State Listen` with process identity; stop only a known, user-controlled prior Uvicorn process, not Docker or arbitrary services. Otherwise use an OS-selected ephemeral port for smoke testing. No production operations authorized.
 
 **Stage status `IN_PROGRESS`; Stage 05 entry remains `NOT_APPROVED`.** Full transitive vulnerability scanning, license clearance, trusted wheel hash/provenance and standard SBOM are still outstanding; company-network No-Egress/SSO/Vault tests remain deferred to Stage 11 per D-017.
+
+
+## Post-fix user-local acceptance evidence — 2026-10-24
+
+**User-supplied PowerShell transcript, complete project after commit `e16c5d6`, Windows Python 3.12 `.venv-review` with the upgraded dependency graph:**
+
+| Check | Command / observation | Result |
+|---|---|---|
+| Latest checked-out main | `git pull --ff-only origin main` → `Already up to date` | **PASS_USER_LOCAL** |
+| Complete foundation + security review tests | `.\\.venv-review\\Scripts\\python.exe -m pytest -q tests` → **37 passed in 10.21s** | **37/37 PASS_USER_LOCAL**, no failures; resolves prior 35/37 pre-fix run |
+| Installed dependency consistency | `.\\.venv-review\\Scripts\\python.exe -m pip check` → `No broken requirements found` | **PASS_USER_LOCAL** (not SCA/CVE clearance) |
+| Existing port owner | `Get-NetTCPConnection -LocalPort 18080 -State Listen`, PID 8896 `python` | **IDENTIFIED_PROCESS**, not terminated; exact command line not verified |
+| Alternate port development ASGI smoke | `.\\.venv-review\\Scripts\\python.exe -m uvicorn src.host.app:app --host 127.0.0.1 --port 0 --no-access-log` | **PASS_USER_LOCAL** startup/listening on `127.0.0.1:50165`, process 13500, `APP_START` event present |
+| GET `/health/live` + `/health/ready` on new temporary port | Not provided | **NOT_RUN_ON_50165**; prior port 18080 HTTP responses passed on older process |
+| Vulnerability scan / standardized SBOM / approved licenses / upstream artifact wheel hash & provenance | Not provided | **NOT_RUN / GATE OPEN** (27 packages inventoried earlier as metadata only) |
+
+The _two_ previous `_IncludedRouter` compatibility test failures are now verified fixed on the **new** FastAPI/Starlette version in the user-controlled local Windows environment. New temporary-port binding does not replace real HTTP smoke evidence on the same new interpreter. No data confidentiality, on-premise No-Egress or production readiness is implied by `ready` without DB/Worker/AI.
+
+**Current Stage 04: `IN_PROGRESS`; Stage 05 entry `NOT_APPROVED`.** Only unverified supply-chain checks (and new-interpreter temporary-port endpoint smoke as a requested supplementary confirmation) remain on the local review ledger. All organization-specific server security cases remain deferred to Stage 11 under D-017. The transcript is evidence supplied by the user; the assistant did not execute Windows commands or access the user's machine.
