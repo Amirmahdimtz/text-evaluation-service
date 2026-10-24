@@ -20,6 +20,7 @@ def test_config_synthetic_and_unknown_key(monkeypatch):
     monkeypatch.setenv("TES_ENVIRONMENT", "development")
     settings = ConfigReader()
     assert settings.get_api_prefix() == "/api/v1"
+    assert settings.get("server.port") == 18080
     assert settings.get("security.deny_external_egress") is True
     with pytest.raises(KeyError, match="CONFIG_KEY_UNKNOWN"):
         settings.get("database.password")

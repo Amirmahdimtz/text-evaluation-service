@@ -7,7 +7,7 @@ Status: `PROPOSED_NOT_DEPLOYED`, D-013/OD-13 OPEN. No actual organization DNS, s
 | Property | Development | Staging (requires authorization) | Production (requires Stage 11 PASS + Stage 12 approval) |
 |---|---|---|---|
 | Input | synthetic only | authorized synthetic/de-identified | classified data under approved policy |
-| API bind | `127.0.0.1:8000` local | private ingress behind approved gateway | private ingress behind TLS/IAM gateway |
+| API bind | `127.0.0.1:18080` local (2026-10-24 development port change; pending user-local bind verification) | private ingress behind approved gateway | private ingress behind TLS/IAM gateway |
 | DB | not provisioned in Stage 04 | local/isolated Postgres in Stage 05/11 | approved private PostgreSQL cluster |
 | Worker/Inference | absent until Stages 09/07 | separate private service identities and network segments | approved isolated service networks and GPU runtime |
 | Egress | do not submit confidential data; local app has no outgoing runtime client | firewall default deny, explicit internal allowlist | firewall default deny, DNS/proxy controlled and audited |

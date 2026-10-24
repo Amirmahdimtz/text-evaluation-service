@@ -3,7 +3,7 @@ app:
   version: "0.4.0"
 server:
   host: "127.0.0.1"
-  port: 8000
+  port: 18080
 api:
   prefix: "/api/v1"
 security:

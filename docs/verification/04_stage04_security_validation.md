@@ -70,3 +70,24 @@ Invoke-RestMethod http://127.0.0.1:8001/health/ready
 ```
 
 **Updated gate classification:** previous assistant-isolated `pip check` conflict and original Stage 02/03 `NOT_RUN` statements above remain accurate *for that earlier sandbox*; these checks have now **PASSED_USER_LOCAL** in an independent Windows Python 3.12 environment. The **full transitive vulnerability/SBOM/license/artifact provenance audit remains NOT_RUN**; no absence-of-vulnerabilities claim is made. Windows-specific standalone bind/HTTP smoke is `BLOCKED_PORT_IN_USE`, while the separate earlier assistant sandbox did verify both routes over HTTP 200. Stage 04 overall **IN_PROGRESS** until required local supply-chain gate evidence is available; real company-network controls remain `DEFERRED_TO_STAGE_11` per D-017.
+
+
+## Development-only port collision correction — 2026-10-24
+
+A second user-supplied Windows PowerShell transcript verified that `127.0.0.1:8000` was actively LISTENING in `com.docker.backend` (PID 5552). Direct `uvicorn --host 127.0.0.1 --port 8001 --no-access-log` also **failed** at bind with `WinError 10048`; no owning process for 8001 was identified. Both attempts reached ASGI startup and clean shutdown, but **neither Windows bind / HTTP request succeeded**. Do not stop Docker or infer the second port's owner without additional evidence.
+
+**Scoped code correction:** development YAML (`src/host/res/appsettings.development.yaml`) now configures `server.port=18080`; the separate `appsettings.yaml` for staging/production remains **unchanged at 8000** pending platform approval. The existing development ConfigReader test includes an assertion for `18080`, and development topology documentation was aligned. This is a proposed local conflict avoidance, **not proof that 18080 is available on the user's Windows machine**. No live corporate environment, firewall, port forwarding or Docker configuration was changed.
+
+Recommended verification from the repository root on updated `main`:
+
+```powershell
+Get-NetTCPConnection -LocalPort 18080 -State Listen -ErrorAction SilentlyContinue
+.\\.venv\\Scripts\\python.exe -m pytest -q tests/test_foundation.py
+$env:TES_ENVIRONMENT = "development"
+.\\.venv\\Scripts\\python.exe -m src.host.app
+# In a second PowerShell after successful listening:
+Invoke-RestMethod http://127.0.0.1:18080/health/live
+Invoke-RestMethod http://127.0.0.1:18080/health/ready
+```
+
+**Verification status:** user-local port 18080 bind/HTTP **NOT_RUN** at time of change; regression after this YAML/assertion change **NOT_RUN** in the user's updated checkout; prior user-local 26/26 PASS refers to the old 8000 configuration. Existing Stage 04 overall **IN_PROGRESS** with supply-chain audit outstanding. If 18080 is also occupied or excluded, test OS-selected ephemeral port with `uvicorn src.host.app:app --host 127.0.0.1 --port 0 --no-access-log` and use the actually announced port before selecting another fixed default.
