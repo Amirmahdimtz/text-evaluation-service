@@ -14,3 +14,9 @@ __pycache__/
 htmlcov/
 *.log
 *.bak
+
+# Stage 04 local-only Python environments, wheelhouse and security evidence
+.venv-review/
+.venv-supply-chain/
+.stage04-evidence*/
+wheelhouse/

@@ -1,0 +1,95 @@
+# Run only on an approved development workstation with public package metadata.
+# No text-evaluation input, corporate secret, or model artifact is accessed.
+# A clean results directory is required so stale evidence cannot be reused.
+[CmdletBinding()]
+param(
+    [string]$PythonPath = '.\.venv-review\Scripts\python.exe',
+    [string]$AuditPythonPath = '.\.venv-supply-chain\Scripts\python.exe',
+    [string]$EvidencePath = '.stage04-evidence',
+    [switch]$VerifyPublicPyPIDigests
+)
+
+$ErrorActionPreference = 'Stop'
+$repository = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+Push-Location $repository
+try {
+    if (-not (Test-Path $PythonPath -PathType Leaf)) {
+        throw "Reviewed target Python not found: $PythonPath"
+    }
+    if (Test-Path $EvidencePath) {
+        throw 'Evidence directory already exists. Preserve previous evidence and choose a fresh -EvidencePath. Do not delete prior evidence automatically.'
+    }
+    New-Item -ItemType Directory -Path $EvidencePath -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $EvidencePath 'wheelhouse') -Force | Out-Null
+
+    function Assert-Exit([string]$Step) {
+        if ($LASTEXITCODE -ne 0) {
+            throw "$Step failed with exit code $LASTEXITCODE; do not accept Stage 04 gate."
+        }
+    }
+
+    & $PythonPath -m pip check
+    Assert-Exit 'Target environment pip check'
+
+    $installedPath = & $PythonPath -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'
+    Assert-Exit 'Target site-packages resolution'
+    if (-not (Test-Path $installedPath)) {
+        throw 'Target Python site-packages directory not found'
+    }
+
+    & $PythonPath scripts/verification/audit_stage04_dependencies.py --output (Join-Path $EvidencePath 'inventory.json')
+    Assert-Exit 'Installed dependency RECORD and license metadata inventory'
+
+    & $PythonPath scripts/verification/review_stage04_supply_chain.py freeze --inventory (Join-Path $EvidencePath 'inventory.json') --output (Join-Path $EvidencePath 'pinned-closure.txt')
+    Assert-Exit 'Exact dependency closure export'
+    & $PythonPath scripts/verification/review_stage04_supply_chain.py license-template --inventory (Join-Path $EvidencePath 'inventory.json') --output (Join-Path $EvidencePath 'license-review.json')
+    Assert-Exit 'License review checklist'
+
+    # The separate audit venv keeps audit-tool dependencies out of the service closure.
+    if (-not (Test-Path $AuditPythonPath -PathType Leaf)) {
+        py -3.12 -m venv .venv-supply-chain
+        Assert-Exit 'Create dedicated audit environment'
+    }
+    & $AuditPythonPath -m pip install -r requirements-audit.txt
+    Assert-Exit 'Install pinned audit tools (approved development workstation only)'
+
+    & $AuditPythonPath -m pip_audit --strict --path $installedPath --vulnerability-service pypi --progress-spinner off --format json --output (Join-Path $EvidencePath 'vulnerabilities.json')
+    $auditExitCode = $LASTEXITCODE
+    if ($auditExitCode -ne 0) {
+        Write-Warning "Vulnerability audit found an issue or failed (exit $auditExitCode). Gate is NOT approved. Preserve the report."
+    }
+
+    & $AuditPythonPath -m cyclonedx_py environment $PythonPath --spec-version 1.6 --output-format JSON --output-file (Join-Path $EvidencePath 'sbom.cdx.json')
+    Assert-Exit 'Generate CycloneDX 1.6 SBOM for reviewed interpreter'
+
+    # --no-deps is safe ONLY because pinned-closure.txt lists all installed transitive deps.
+    & $PythonPath -m pip download --only-binary=:all: --no-deps -r (Join-Path $EvidencePath 'pinned-closure.txt') -d (Join-Path $EvidencePath 'wheelhouse')
+    Assert-Exit 'Download exact installed wheel versions for observed target platform'
+
+    & $PythonPath scripts/verification/review_stage04_supply_chain.py hash-wheels --inventory (Join-Path $EvidencePath 'inventory.json') --wheelhouse (Join-Path $EvidencePath 'wheelhouse') --output (Join-Path $EvidencePath 'wheel-hashes.json')
+    Assert-Exit 'Verify wheel coverage, archive format and local digests'
+
+    if ($VerifyPublicPyPIDigests) {
+        # Explicit opt-in: sends ONLY public PyPI package names and versions; no application data.
+        & $PythonPath scripts/verification/review_stage04_supply_chain.py verify-pypi --hashes (Join-Path $EvidencePath 'wheel-hashes.json') --output (Join-Path $EvidencePath 'pypi-digests.json')
+        Assert-Exit 'Verify wheel hashes against public PyPI release metadata'
+    }
+
+    & $PythonPath -m pip freeze > (Join-Path $EvidencePath 'pip-freeze.txt')
+    Assert-Exit 'Capture installed distribution versions'
+
+    $summary = @{
+        reviewed_python = $PythonPath
+        vulnerability_audit_exit = $auditExitCode
+        wheel_manifest = 'wheel-hashes.json'
+        sbom = 'sbom.cdx.json'
+        license_review = 'REVIEW_REQUIRED (license-review.json is an unapproved template)'
+        public_pypi_sha256_checked = [bool]$VerifyPublicPyPIDigests
+        gate = 'IN_PROGRESS - no automatic legal approval, publisher provenance or Stage 05 entry'
+    }
+    $summary | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $EvidencePath 'run-summary.json') -Encoding UTF8
+    Write-Host "Evidence collected in $EvidencePath. Local Stage 04 gate remains OPEN until reviewed evidence is accepted."
+}
+finally {
+    Pop-Location
+}
