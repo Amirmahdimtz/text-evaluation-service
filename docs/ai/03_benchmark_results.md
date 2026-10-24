@@ -60,7 +60,7 @@ Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، 
 
 ## ۶. نتیجه و محدودیت تصمیم
 
-**Model Selection: `BLOCKED`؛ Stage 03: `IN_PROGRESS`.** تا فراهم‌شدن GPU مجاز، Artifactهای نسخه‌دار، Dataset و Expert Labels، اجرای حداقل دو مدل و ثبت Latency/VRAM/Quality/Evidence هیچ برنده یا Capacity Baseline علمی قابل دفاعی وجود ندارد. Qwen3-14B + vLLM همچنان فقط Candidate است. Stage 02 نیز `BLOCKED` می‌ماند؛ این سند مجوز ورود به Stage 04 نیست.
+**Model Selection: `BLOCKED / NO_MODEL_SELECTED`؛ Stage 03: `DONE / LOCAL_GATE_PASS` طبق D-017.** چهار سند و Validator آفلاین آماده‌اند و تست‌های محلی مرتبط موفق بوده‌اند. اجرای مدل واقعی، License/Artifact، Dataset کارشناسی، Accuracy، GPU/Capacity و No-Egress با وضعیت `DEFERRED_TO_STAGE_11` ثبت شده‌اند، نه `PASSED`. Stage 02 با Gate طراحی جدید `DONE` است، ولی DI/DB/WebService به‌ترتیب در Stages 04/05/10 تست محلی لازم دارند. ورود Stage 04 فقط `APPROVED_FOR_REQUEST` است.
 
 ارجاع: [انتخاب مدل](01_model_selection.md) · [پروتکل](02_benchmark_protocol.md) · [منابع](04_inference_resource_plan.md) · [Decision Log](../requirements/05_open_decisions.md).
 
@@ -102,3 +102,24 @@ Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، 
 - تست Validator مرحله سوم: **`38/38 PASS`**، مدت گزارش‌شده `3.923s`. Regression مرحله دوم: **`9/9 PASS`**، مدت `0.395s`. بررسی مستندات Stage 02: **`19/19 PASS`**. مجموع: **`66/66 PASS`** در تست‌ها و بررسی‌های محلی ارائه‌شده با وضعیت `VERIFIED_USER_LOCAL`.
 - خروجی `git status --short` خالی است؛ Working Tree در زمان اجرای تست‌ها Clean بوده است. موارد تاریخی `PENDING_USER_LOCAL` برای همین تست‌ها و همین Commit با این شواهد بسته شده‌اند؛ Commit ثبت این شواهد صرفاً تغییر Documentation است و اجرای محلی تازه‌ای برای آن ادعا نمی‌شود.
 - **Gate مرحله سوم هنوز `BLOCKED` است.** Inference واقعی دو مدل، داده کارشناسی و آزمون سه حوزه، No-Egress، GPU/VRAM/Latency/Throughput و انتخاب مدل و Capacity Baseline همچنان `PENDING_SERVER` یا `NOT_MEASURABLE` هستند. هیچ تأیید ورود به Stage 04 صادر نشده است.
+
+## ۱۲. D-017 Deferred On-Premise Test Ledger
+
+تمام این آزمون‌ها بدون شواهد سرور واقعی، وضعیت `DEFERRED_TO_STAGE_11` دارند؛ نه `PASS`. مالک‌ها نقش پیشنهادی‌اند و عددهای پذیرش تا تصمیم OD-12/14 `OPEN` می‌مانند. مجوز استفاده از Artifact، Dataset و شبکه واقعی پیش از اجرا الزامی است.
+
+| Test ID | Implementation owner → Stage 11 executor | Why company server | Required input/permission | Measurable success evidence | Status |
+|---|---|---|---|---|---|
+| `S11-AI-01` | Stage 03 resource plan → Infrastructure/SRE | Real GPU/driver inventory | Authorized server access and resource limits | Pinned hardware/driver/runtime inventory and capacity probe | `DEFERRED_TO_STAGE_11` |
+| `S11-AI-02` | Stage 03 artifact protocol → MLOps/Legal/Security | Actual internal weights and license | Legal permission, internal registry, pinned revisions | Artifact SHA-256/license/supply-chain acceptance | `DEFERRED_TO_STAGE_11` |
+| `S11-AI-03` | Stage 03 candidates/Stage 07 provider → AI Lead/MLOps | Live Qwen2.5 inference | Approved baseline, vLLM and GPU | Offline startup, tokenizer/schema contract measured | `DEFERRED_TO_STAGE_11` |
+| `S11-AI-04` | Stage 03 candidates/Stage 07 provider → AI Lead/MLOps | Live Qwen3 inference | Approved candidate, vLLM and GPU | Same model/schema tests and fixed configuration | `DEFERRED_TO_STAGE_11` |
+| `S11-AI-05` | Stage 03 dataset/Stage 08 → Data Steward/SMEs | Expert golden dataset | Approved data, rater labels, group-disjoint splits | Three-domain versioned manifest and adjudicated labels | `DEFERRED_TO_STAGE_11` |
+| `S11-AI-06` | Stage 03 validator/Stage 07–08 → AI Quality Lead | Actual generation quality | Pinned prompts/schema and approved model runs | Structured-output validity and exact source quotes/offsets | `DEFERRED_TO_STAGE_11` |
+| `S11-AI-07` | Stage 03 metrics/Stage 08 → AI Lead/SMEs | Model-vs-human rating | Adjudicated labels, thresholds OD-14 | Per-domain MAE, agreement and CI with sample counts | `DEFERRED_TO_STAGE_11` |
+| `S11-AI-08` | Stage 03 evidence/Stage 08 → AI Quality/SMEs | Evidence relevance, hallucinations | Human annotation/corpus permission | Unsupported claims, relevance and abstention metrics | `DEFERRED_TO_STAGE_11` |
+| `S11-AI-09` | Stage 03 scenarios/Stage 08 → AI Quality/Security | Real prompt injection and long-context cases | Approved adversarial fixtures and limits | Fairness, stability, injection and context metrics | `DEFERRED_TO_STAGE_11` |
+| `S11-AI-10` | Stage 03 resource/Stage 09 → SRE/MLOps | Real GPU load and VRAM | Approved SLO/workload OD-12 | P50/P95, throughput, peak VRAM, OOM, soak data | `DEFERRED_TO_STAGE_11` |
+| `S11-SEC-11` | Stage 03 no-egress plan/Stage 04–07 → Network/Security | Company firewall/DNS/logging | Written security authorization and network isolation | No forbidden egress or sensitive log leakage; TLS/IAM proof | `DEFERRED_TO_STAGE_11` |
+| `S11-E2E-12` | Stage 03 ledger/Stage 09–10 → QA/SRE | Deployed internal end-to-end chain | Stage 04–10 local gates complete, approved staging | Measured API/Worker/DB/LLM E2E, recovery and auth tests | `DEFERRED_TO_STAGE_11` |
+
+**Gate verdict:** Stage 03 `DONE / LOCAL_GATE_PASS` only. Model, Performance, License and No-Egress acceptance remain unresolved until Stage 11; all local validation gates remain mandatory in their owning implementation stage.

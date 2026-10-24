@@ -4,7 +4,7 @@
 > **No invented approvals:** OPEN/PROPOSED/CANDIDATE are not CONFIRMED. Generic roles below are proposed approval responsibilities, not verified employer identities.  
 > **Sources:** Implementation Plan §§0,3,4,6,7,10/Stage 01,13–14; Architecture Guide; explicit project instructions.
 
-## 1. Decision Log (D-001..D-016)
+## 1. Decision Log (D-001..D-017)
 
 | Decision ID | Topic | Status | Grounded source/reason |
 |---|---|---|---|
@@ -24,6 +24,7 @@
 | `D-014` | AI quantitative acceptance metrics | `OPEN` | OD-14 |
 | `D-015` | Employer/customer and formal domain sign-off occurs at **final project acceptance (Stage 12)**, not after each implementation stage | `CONFIRMED` (project execution instruction from user, 2026-10-21) | Supersedes the Implementation Plan's intermediate external-approval gates; keeps internal technical/security gates and controlled-access prerequisites |
 | `D-016` | Conditional entry into Stage 03 with Stage 02 executable gates still open | `CONFIRMED` (explicit user Stage 03 instruction, 2026-10-21) | Allows independent Stage 03 preflight, offline documents and future **authorized** internal benchmark only; Stage 02 remains BLOCKED, DI/Bootstrap/DB/WebService NOT_RUN with 04/05/10 owners; does not approve protected data, model transfer, secret/network changes or Production |
+| `D-017` | Real company-server/GPU/model/network-dependent verification takes place at Stage 11, not in Stages 01–10 | `CONFIRMED` (explicit user direction 2026-10-24; Implementation Plan v1.1.0) | Keeps all mandatory stage-local/unit/contract/test-DB checks; requires detailed Stage 11 deferred ledger. No server test is PASSED and Stage 12 still requires actual proof. |
 
 **Important:** D-004 and D-015 are confirmed **project execution rules**, not business approval of any rubric, policy, topology or numerical target. All other previously unconfirmed choices remain OPEN/PROPOSED/CANDIDATE.
 
@@ -33,7 +34,7 @@
 - **Stage 12 (final delivery):** Seek consolidated formal employer/authorized SME acceptance of business scope, Rubrics, measurable quality, security/privacy documentation and the final product, after real evidence from prior stages is available. Do not call the product `Production-Ready` without final Gates and sign-off.
 - **Unresolved business settings:** Keep each OPEN with a proposed, versioned, clearly non-final design path. Implement/test candidates using permitted synthetic data where feasible; do not represent provisional weights, thresholds, scope or decisions as approved, or publish official enterprise grades before final acceptance.
 - **Irreducible safety/permission prerequisites:** Authorization to use real confidential data, security controls, use of protected infrastructure, secret changes, destructive operations and Production deployment remain mandatory **before those specific actions**. These are not customer acceptance sign-offs for ordinary stage completion.
-- **Progression:** Each next stage still requires a **new explicit request from the user** and a satisfied internal gate. Stage 01's internal documentation gaps were remedied and validated (`DONE`); missing employer signature is **not** a gate. Stage 02 has started on explicit user request; architecture documents are prepared, but the technical compatibility gate is **BLOCKED** because no executable repository source exists.
+- **Progression:** Each next stage still needs a new explicit user request. Under D-017, missing source for future DI/DB/HTTP implementation is not a Stage 02 design failure; the local tests are mandatory in their actual implementation stages. Company-server tests are mandatory only in Stage 11. Previous BLOCKED descriptions remain historical.
 - **Source precedence:** This user-confirmed amendment supersedes the *intermediate formal sign-off timing* in `Text_Evaluation_Service_Implementation_Plan_FA.md` (§§0, 4.2, 10/Stage 01, Stage 06, 12). All other baseline engineering/security requirements continue to apply. Original Project Sources remain unchanged and need synchronization with this decision.
 
 ## 2. Employer decision requests (ALL OPEN)
@@ -83,8 +84,8 @@ For every future approval, record **ID, decision value, scope, approver/role, da
 | Stage | Name | Status | Evidence |
 |---:|---|---|---|
 | 01 | Requirements & Acceptance | `DONE` | Five candidate baseline specifications, domain input matrix, validated synthetic business-report JSON, rubric calibration and evidence provenance added. **25/25 latest GitHub-stored-file documentation checks PASS**. Formal customer sign-off deferred to Stage 12 (`D-015`); **Stage 02 executed as a documentation/inspection stage; technical runtime verification BLOCKED.** |
-| 02 | Repository & Detailed Architecture | `BLOCKED` | Documentation QA **19/19 PASS** and Regression Tests **9/9 PASS** as user-local PowerShell evidence on `f3c32c3043a63c4a304162f0834a716cb659dc60`; clean working tree. DI/Bootstrap Stage 04, DB/transactions Stage 05 and WebService discovery Stage 10 remain `NOT_RUN`; documentation QA never clears the technical Stage 02 gate. |
-| 03 | Local Model Benchmark | `IN_PROGRESS` | **D-016 conditional entry**. Four Stage 03 documents added for candidate desk review, reproducible protocol, PENDING_SERVER/NO_MEASUREMENTS result ledger and UNVERIFIED resource estimates. No GPU, authorized dataset, expert ground truth, internal model execution or capacity baseline; model selection BLOCKED. Stage 04 not authorized. Final validator revision `663c1db` verified user-local: **38/38 benchmark tests PASS**, **9/9 Stage 02 regression tests PASS**, **19/19 Stage 02 documentation checks PASS**, Python compile PASS, clean working tree. Real-model benchmark still PENDING_SERVER. |
+| 02 | Repository & Detailed Architecture | `DONE` | D-017 local design gate: five documents, verified source tree, 19/19 user-local documentation QA and 9/9 checker regressions PASS. DI/Bootstrap tests mandatory in Stage 04, DB transactions/Migrations in Stage 05, WebService discovery in Stage 10: currently NOT_RUN, not PASSED. Historical BLOCKED status superseded only for Stage 02 design gate. |
+| 03 | Model Feasibility & Offline Benchmark Design | `DONE` | D-017 local gate: four AI documents, two candidate models, three-domain benchmark/dataset protocol, validated offline JSON/offset tool and theoretical resources. User-local compile and 38/38 Stage 03 tests PASS on `663c1db`; clean tree. [12 deferred tests](../ai/03_benchmark_results.md#12-d-017-deferred-on-premise-test-ledger) remain `DEFERRED_TO_STAGE_11`; model selection, GPU, AI accuracy and no-egress NOT VERIFIED. |
 | 04 | Infrastructure & Security | `NOT_STARTED` | No egress/recovery tests performed |
 | 05 | Database & Migration | `NOT_STARTED` | No DB/migration changes |
 | 06 | Rubric Management | `NOT_STARTED` | No published rubric or code |
@@ -92,7 +93,7 @@ For every future approval, record **ID, decision value, scope, approver/role, da
 | 08 | Evaluation Engine | `NOT_STARTED` | No scoring code |
 | 09 | Durable Worker & Queue | `NOT_STARTED` | No worker/queue code |
 | 10 | API & Authorization | `NOT_STARTED` | No HTTP endpoints or Auth integrations |
-| 11 | Full Verification & Calibration | `NOT_STARTED` | `PENDING_SERVER` for AI/Load/Security/Recovery tests |
+| 11 | On-Premise Server Verification & Calibration | `NOT_STARTED` | All 12 server-only quality/performance/security/E2E tests remain `DEFERRED_TO_STAGE_11`; requires controlled infrastructure and permissions. |
 | 12 | Production Release & Handover | `NOT_STARTED` | No production operations |
 
 **Stage 01 technical deliverables:** [Product FR/NFR](01_product_requirements.md) · [Candidate Rubrics](02_evaluation_rubrics.md) · [Acceptance Matrix](03_acceptance_criteria.md) · [Security/Data Policy](04_security_and_data_policy.md) · this file (Decision Log/Tracker). The Stage 01 validation report distinguishes documentation tests from product tests. **Stage 01 is DONE under the revised internal gate (`D-015`); no formal employer sign-off or operational model validation is implied.**
@@ -243,3 +244,12 @@ python scripts/verification/check_stage02_docs.py
 - **Executed tests — VERIFIED_USER_LOCAL:** `python -m py_compile` returned without error; `python -m unittest discover -s scripts/benchmark -p "test_*.py" -v` **38/38 PASS** (`Ran 38 tests in 3.923s`); `python -m unittest discover -s scripts/verification -p "test_*.py" -v` **9/9 PASS** (`Ran 9 tests in 0.395s`); `python scripts/verification/check_stage02_docs.py` **19/19 PASS** (`scope: Stage 02 documentation only`). Total **66/66 passed local checks** on this exact code snapshot.
 - **Working tree:** `git status --short` yielded no output. The earlier `PENDING_USER_LOCAL` entries reflect historical snapshots and are superseded **for the named tests on this exact commit** by these actual results. A subsequent documentation-only evidence commit is not itself a second user-local execution.
 - **Acceptance interpretation:** These tests prove only the covered offline validator behaviors and documentation checks. They **do not** establish AI accuracy, expert agreement, GPU/VRAM/latency/throughput, internal inference, license approval, data authorization or No-Egress. Stage 02 stays `BLOCKED` (deferred executable gates in Stage 04/05/10); Stage 03 stays `IN_PROGRESS` with acceptance `BLOCKED` and `PENDING_SERVER`; Stage 04 entry remains `NOT_APPROVED`. D-016 conditions unchanged.
+
+## 17. Retrospective gate reassessment under D-017 (2026-10-24)
+
+- **Normative basis:** revised Implementation Plan v1.1.0 §0.5, §9, §10 Stages 01–04 and D-015/D-017. Previous dated BLOCKED, IN_PROGRESS or NOT_APPROVED reports describe the historical gate and are superseded for current stage timing; their original observations are not deleted.
+- **Stage 01 DONE / LOCAL_GATE_PASS:** Five mandatory baseline requirement/rubric/acceptance/security/decision artifacts exist, 25/25 documentation checks previously PASS; unresolved business approvals remain OPEN/PROPOSED, not fabricated.
+- **Stage 02 DONE / LOCAL_GATE_PASS:** Five detailed architecture artifacts; repository source absence honestly documented; user-local Stage 02 documentation QA 19/19 PASS and checker regressions 9/9 PASS. DI/bootstrap remains a mandatory **local Stage 04** check, database/migration **Stage 05**, WebService discovery **Stage 10**; each remains NOT_RUN before implementation.
+- **Stage 03 DONE / LOCAL_GATE_PASS:** Four AI documents and validator tests, candidate baseline/alternative, three-domain protocol, manifest, theoretical capacity plan. User-local Stage 03 unit/negative/regression 38/38 PASS plus compile PASS on `663c1dbf211f51b29925d8f6c40d15f2605424fd`. Unrun real inference/GPU/AI-quality/security work recorded in [Stage 11 Ledger](../ai/03_benchmark_results.md#12-d-017-deferred-on-premise-test-ledger), all DEFERRED_TO_STAGE_11, never PASSED.
+- **Stage 04 entry APPROVED_FOR_REQUEST, but NOT_STARTED:** Separate explicit user instruction is required to begin Stage 04. No access to confidential data, server/Secrets/production is granted by this gate. Stage 11 real tests and Stage 12 release remain mandatory.
+- **Verification boundary:** Existing local test evidence refers to code snapshot `663c1db`; documentation/checker changes made for D-017 need their own local retest before claiming tests run on the amended HEAD.
