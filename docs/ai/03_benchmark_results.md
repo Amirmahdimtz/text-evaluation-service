@@ -2,6 +2,8 @@
 
 > وضعیت: `PENDING_SERVER / NO_MEASUREMENTS` · 2026-10-21. دستیار به هیچ سرور GPU/Inference سازمانی یا Golden Dataset کارشناسی دسترسی نداشته و هیچ Model Benchmark واقعی اجرا نکرده است. جدول‌ها صرفاً **وضعیت اندازه‌گیری** هستند، نه مقادیر صفر یا نتیجه تخمینی.
 
+> **D-017 / وضعیت فعلی:** Stage 03 `DONE / LOCAL_GATE_PASS`. `PENDING_SERVER / NO_MEASUREMENTS` در بالا فقط وضعیت تاریخی و نبود اندازه‌گیری واقعی مدل است و برابر شکست Gate آفلاین Stage 03 نیست. کارهای وابسته به سرور به Stage 11 با وضعیت `DEFERRED_TO_STAGE_11` واگذار شده‌اند.
+
 ## ۱. نتایج واقعی Preflight
 
 | بررسی | شواهد | وضعیت |
@@ -103,7 +105,7 @@ Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، 
 - خروجی `git status --short` خالی است؛ Working Tree در زمان اجرای تست‌ها Clean بوده است. موارد تاریخی `PENDING_USER_LOCAL` برای همین تست‌ها و همین Commit با این شواهد بسته شده‌اند؛ Commit ثبت این شواهد صرفاً تغییر Documentation است و اجرای محلی تازه‌ای برای آن ادعا نمی‌شود.
 - **Gate مرحله سوم هنوز `BLOCKED` است.** Inference واقعی دو مدل، داده کارشناسی و آزمون سه حوزه، No-Egress، GPU/VRAM/Latency/Throughput و انتخاب مدل و Capacity Baseline همچنان `PENDING_SERVER` یا `NOT_MEASURABLE` هستند. هیچ تأیید ورود به Stage 04 صادر نشده است.
 
-## ۱۲. D-017 Deferred On-Premise Test Ledger
+## 12. D-017 Deferred On-Premise Test Ledger
 
 تمام این آزمون‌ها بدون شواهد سرور واقعی، وضعیت `DEFERRED_TO_STAGE_11` دارند؛ نه `PASS`. مالک‌ها نقش پیشنهادی‌اند و عددهای پذیرش تا تصمیم OD-12/14 `OPEN` می‌مانند. مجوز استفاده از Artifact، Dataset و شبکه واقعی پیش از اجرا الزامی است.
 

@@ -92,3 +92,7 @@ vllm serve "$MODEL_DIR" --host 127.0.0.1 --port 8000 --max-model-len "$MAX_MODEL
 **نتیجه فعلی Capacity Plan: `UNVERIFIED`؛ تصمیم انتخاب مدل/Runtime: `BLOCKED`.** بدون Measurement، تجویز قطعی GPU با ظرفیت ۲۴/۴۸/۸۰ GB، خرید یا افزایش منابع توجیه فنی معتبر ندارد. عملیات Production، انتقال Artifact و تغییر شبکه به مجوز جداگانه نیاز دارند.
 
 ارجاع: [انتخاب مدل](01_model_selection.md) · [پروتکل](02_benchmark_protocol.md) · [نتایج](03_benchmark_results.md).
+
+## ۶. D-017 — جایگاه Resource Plan در مراحل پروژه
+
+Memory/Weight/KV Cache و Runbook این سند خروجی نظری Stage 03 هستند، نه اندازه‌گیری واقعی. GPU/VRAM/Latency/Throughput/Capacity و اجرای vLLM در Stage 11 و با مجوز سازمانی تست می‌شوند (`DEFERRED_TO_STAGE_11`) و تا آن زمان PASSED نیستند. نبود Inventory سرور مانع Gate آفلاین Stage 03 نیست؛ هیچ تصمیم Procurement/Production بر پایه اعداد نظری قطعی نمی‌شود. [Ledger](03_benchmark_results.md#12-d-017-deferred-on-premise-test-ledger).

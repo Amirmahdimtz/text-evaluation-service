@@ -2,6 +2,8 @@
 
 > وضعیت: `CANDIDATE_REVIEW / NO_MODEL_SELECTED` · تاریخ: 2026-10-21 · ردیابی: FR-04/06/10/11/12، NFR-05/08/11/12. این سند **بررسی اولیه منابع عمومی** است، نه Benchmark واقعی یا تأیید حقوقی سازمان.
 
+> **وضعیت پس از D-017:** Stage 03 `DONE / LOCAL_GATE_PASS`؛ انتخاب واقعی مدل و ظرفیت همچنان `NO_MODEL_SELECTED / DEFERRED_TO_STAGE_11`. گزاره‌های تاریخی `IN_PROGRESS` مربوط به Gate قبلی هستند و انتخاب دو کاندید را قطعی نمی‌کنند.
+
 ## ۱. وضعیت مبنا و حدود مجوز
 
 - آخرین Commit قبل از شروع این مرحله در `main` برابر `6f650728e80849f65f46b50c81ab2da500ac6d53` بود. در Tree واقعی Repository فقط اسناد مراحل ۰۱ و ۰۲ و اسکریپت QA مرحله ۰۲ مشاهده شد؛ `src/`، مدل دانلودشده، Inference Server، فایل Dependencies و CI موجود نبودند.
@@ -70,3 +72,7 @@
 تصمیم‌های باز: `OD-13` برای GPU، Import و شبکه داخلی (Infrastructure/Security/AI Lead)؛ `OD-14` برای Dataset، Expert Labels و Thresholdها (AI Lead/SMEs/PO/Data Steward)؛ `OD-02/12` برای اندازه متن و Workload؛ `OD-03/04/11` برای Rubric، Evidence و Coverage.
 
 ارجاع: [پروتکل](02_benchmark_protocol.md) · [نتایج](03_benchmark_results.md) · [منابع](04_inference_resource_plan.md) · [Decision Log](../requirements/05_open_decisions.md).
+
+## ۶. D-017 — تفکیک انتخاب کاندید از تأیید مدل
+
+Gate آفلاین Stage 03 شامل Desk Review دو مدل، مقایسه مفروضات، پروتکل آزمون و تست Validator است. مدل/Runtime و License واقعی Artifact و Capacity Baseline تنها در Stage 11 و پس از اجرای دو مدل با Corpus/مجوز معتبر مشخص می‌شوند؛ تا آن زمان `DEFERRED_TO_STAGE_11` و تصمیم انتخاب مدل `BLOCKED/NO_MODEL_SELECTED` می‌ماند. [Deferred Test Ledger](03_benchmark_results.md#12-d-017-deferred-on-premise-test-ledger).

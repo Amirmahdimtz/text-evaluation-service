@@ -2,6 +2,8 @@
 
 > وضعیت: `PROTOCOL_DRAFT / EXECUTION_PENDING_SERVER` · 2026-10-21 · ردیابی: FR-02/04/06/10/11/12 و NFR-05/08/11/12/13. این پروتکل، Provider یا Engine محصول در Stage 07/08 نیست.
 
+> **D-017 / برنامه v1.1.0:** طراحی Protocol/Manifest و Unit/Negative/Regression Validator در Stage 03 تکمیل و آزموده می‌شود؛ عملیات بخش ۶ که نیازمند GPU، مدل، داده کارشناسی و شبکه سازمان است فقط در Stage 11 اجرا خواهد شد.
+
 ## ۱. پیش‌شرط امنیت و محیط
 
 - پردازش متن محرمانه، Corpus واقعی و خروجی حاوی شاهد صرفاً در زیرساخت تأییدشده سازمان، پس از اخذ مجوز و کنترل Egress انجام می‌شود. تا آن زمان فقط داده Synthetic یا به‌شکل مستند مجاز استفاده شود.
@@ -151,3 +153,7 @@ python scripts/benchmark/validate_stage03_outputs.py --input /approved/local/res
 - تمام Identifierها، Reason و فهرست‌های Strength/Weakness/Recommendation و متن‌های Metadata در Manifest علاوه بر غیرخالی‌بودن باید به UTF-8 معتبر قابل کدگذاری باشند؛ Unicode lone surrogate ناشی از `\\uD800` و مشابه آن رد می‌شود. این کنترل **صحّت معنا یا انصاف مدل** را اثبات نمی‌کند.
 - `MAX_RECORDS = 100000` محدودیت ایمنی **تعداد رکورد در هر invocation** است، نه Sample Size یا Threshold کیفیت AI؛ Manifest بزرگ‌تر با خطای `INVALID_MANIFEST` و فایل خروجی بزرگ‌تر با `RECORD_LIMIT_EXCEEDED` و `FAIL` متوقف می‌شوند. با توقف زودهنگام، `records` تعداد رکوردهای خوانده‌شده تا توقف است، نه کل اندازه فایل؛ نتایج را برای محاسبه Metric به‌عنوان Run کامل محسوب نکنید. فایل‌های حجیم باید با سیاست نسخه‌بندی و Benchmark Run قابل‌ممیزی مدیریت شوند.
 - `MAX_LINE_BYTES = 10 MiB` همچنان محدودیت هر خط است. کنترل اندازه/تعداد باعث تأیید کیفیت، مجوز Data یا توان GPU نمی‌شود.
+
+## ۸. D-017 — زمان اجرای Benchmark واقعی
+
+تمام اقدامات وابسته به سرور داخلی در بخش ۶ این سند `DEFERRED_TO_STAGE_11` هستند، نه معیار شکست Stage 03 و نه PASSED. برای هر آزمون شناسه، مجوز ورودی، مالک اجرای Stage 11، روش اندازه‌گیری و معیار موفقیت در [Ledger](03_benchmark_results.md#12-d-017-deferred-on-premise-test-ledger) ثبت شده است. شبیه‌سازی و Fixture آفلاین کیفیت مدل واقعی یا No-Egress سازمانی را اثبات نمی‌کنند؛ تست‌های آفلاین Validator در Stage 03 اجباری‌اند و نمی‌توان آن‌ها را تعویق داد.
