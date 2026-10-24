@@ -125,3 +125,8 @@ Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، 
 | `S11-E2E-12` | Stage 03 ledger/Stage 09–10 → QA/SRE | Deployed internal end-to-end chain | Stage 04–10 local gates complete, approved staging | Measured API/Worker/DB/LLM E2E, recovery and auth tests | `DEFERRED_TO_STAGE_11` |
 
 **Gate verdict:** Stage 03 `DONE / LOCAL_GATE_PASS` only. Model, Performance, License and No-Egress acceptance remain unresolved until Stage 11; all local validation gates remain mandatory in their owning implementation stage.
+
+## ۱۳. تأیید اجرای محلی پس از اصلاح D-017 (2026-10-24)
+
+- **Evidence:** کاربر در PowerShell روی Commit دقیق `e9d6f1eb35a05c32ae6240733b9a3a5a8bda9c38` پس از Pull موفق، مجموعه تست Stage 02 Checker را **12/12 PASS** و Stage 02 Documentation QA را **19/19 PASS** اجرا کرد. مجموعه Validator مرحله سوم **38/38 PASS** بود؛ مجموعاً **69/69 VERIFIED_USER_LOCAL**. دستور `git status --short` خروجی نداشت.
+- **نتیجه رسمی Gate طبق D-017:** Stage 01، Stage 02 و Stage 03 همگی `DONE / LOCAL_GATE_PASS` هستند. مجوز **ورود در صورت درخواست** به Stage 04 برقرار است، اما Stage 04 `NOT_STARTED` باقی می‌ماند و آزمون‌های واقعی ۱۲گانه جدول بالا همچنان `DEFERRED_TO_STAGE_11` هستند؛ هیچ آزمایش روی سرور داخلی با این خروجی‌ها اثبات نشده است.
