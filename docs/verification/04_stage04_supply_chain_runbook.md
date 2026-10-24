@@ -69,3 +69,23 @@ $e = '.stage04-evidence-20261024'
 The validator rejects incomplete or nonmatching component/version coverage, vulnerable packages reported by the audit feed, invalid CycloneDX 1.6 structure indicators, missing/different wheel SHA-256, altered PyPI digest records, and unreviewed licenses. Its positive result is deliberately labelled `PASS_LOCAL_EVIDENCE_ONLY`, **not** a cryptographically signed supply-chain attestation or Production approval. Security review of advisory feed freshness, scanner coverage, third-party license terms and authorized publisher provenance is still required. Publisher identity and protected environment No-Egress remain Stage 11 gates under D-017.
 
 **Current evidence status** at authoring: external CVE scan **NOT_RUN**, CycloneDX SBOM for upgraded Windows venv **NOT_RUN**, downloadable wheel SHA-256 comparison **NOT_RUN**, PyPI cross-check **NOT_RUN**, license review **NOT_APPROVED**; the earlier metadata-only inventory of 27 packages **PASS_USER_LOCAL**. The new offline validator unit tests run in the assistant's separate Python 3.13.5 environment using **synthetic package fixtures only**, not the user's Windows venv. Do not change Stage 04 to `DONE` solely because the tooling is committed. Do not begin Stage 05 without explicit user instruction, even after Stage 04 Gate closes.
+
+
+## Windows PowerShell ExecutionPolicy preflight (2026-10-24)
+
+A user-local PowerShell transcript confirmed **52/52 pytest PASS in 35.24s** on `main` at `684f486` after pulling the new supply-chain test files. Starting `run_stage04_supply_chain.ps1` failed **before script execution** with `PSSecurityException: running scripts is disabled on this system`. Thus **no audit report, SBOM, wheel or license review is claimed produced by that attempt**; the dependency supply-chain Gate is still `NOT_RUN / IN_PROGRESS`.
+
+On a personal/authorized development machine only, first inspect which policy source applies (no modifications):
+
+```powershell
+Get-ExecutionPolicy -List
+Test-Path '.stage04-evidence-20261024'
+```
+
+If `MachinePolicy` and `UserPolicy` are both `Undefined` and local security policy permits running this reviewed project script, use a **separate one-time PowerShell process** with `RemoteSigned` (which does not persistently change ExecutionPolicy and remains stricter than `Bypass`):
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File ".\\scripts\\verification\\run_stage04_supply_chain.ps1" -PythonPath ".\\.venv-review\\Scripts\\python.exe" -EvidencePath ".stage04-evidence-20261024" -VerifyPublicPyPIDigests
+```
+
+Execute it from the repository root and only if public **dependency package metadata** lookups and wheel downloads are authorized on that workstation. This mechanism does **not** override Group Policy-enforced MachinePolicy/UserPolicy. If an organizational policy disallows scripts, do not disable or bypass it: consult the local administrator/security team for an approved procedure. If the evidence directory already exists, choose an unused new name; the script deliberately fails closed instead of overwriting evidence. The command's return value and generated evidence must be independently checked; PowerShell launch alone is **not** supply-chain Gate approval. Do not run the script in an isolated company production network without separate authorization.
