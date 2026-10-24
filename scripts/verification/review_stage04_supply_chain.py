@@ -209,6 +209,59 @@ def audit_report_status(data: dict[str, Any], expected: dict[str, str]) -> str:
     return "AUDIT_COMPLETE_WITH_FINDINGS" if has_findings else "AUDIT_COMPLETE_NO_REPORTED_FINDINGS"
 
 
+def summarize_audit_findings(data: dict[str, Any], inventory: dict[str, Any], *, source: str) -> dict[str, Any]:
+    """Render safe package/advisory facts from a complete report; no auto-fixes.
+
+    A successful summary means report parsing succeeded, NOT Stage 04 approval.
+    Neither untrusted advisory descriptions nor local paths are included.
+    """
+    if source not in ("osv", "pypi"):
+        raise EvidenceError("AUDIT_SOURCE_UNAPPROVED")
+    expected = _inventory(inventory)
+    audit_status = audit_report_status(data, expected)
+    packages = []
+    total = 0
+    for entry in data["dependencies"]:
+        findings = []
+        for vulnerability in entry["vulns"]:
+            if not isinstance(vulnerability, dict):
+                raise EvidenceError("AUDIT_VULNERABILITY_INVALID")
+            advisory_id = vulnerability.get("id")
+            fix_versions = vulnerability.get("fix_versions", [])
+            aliases = vulnerability.get("aliases", [])
+            if (not isinstance(advisory_id, str) or not advisory_id.strip()
+                    or len(advisory_id) > 180 or any(ord(c) < 33 for c in advisory_id)
+                    or not isinstance(fix_versions, list)
+                    or not all(isinstance(v, str) and v.strip() and len(v) < 80 for v in fix_versions)
+                    or not isinstance(aliases, list)
+                    or not all(isinstance(a, str) and a.strip() and len(a) < 180 for a in aliases)):
+                raise EvidenceError("AUDIT_VULNERABILITY_INVALID")
+            findings.append({
+                "id": advisory_id,
+                "aliases": sorted(set(aliases)),
+                "fix_versions": sorted(set(fix_versions)),
+            })
+        if findings:
+            packages.append({
+                "name": canonicalize_name(entry["name"]),
+                "installed_version": entry["version"],
+                "in_dependency_closure": canonicalize_name(entry["name"]) in expected,
+                "advisories": sorted(findings, key=lambda x: x["id"]),
+            })
+            total += len(findings)
+    packages.sort(key=lambda x: x["name"])
+    return {
+        "format": "stage04-audit-findings-summary-v1",
+        "advisory_source": source,
+        "scan_status": audit_status,
+        "affected_packages": len(packages),
+        "reported_advisories": total,
+        "packages": packages,
+        "stage04_gate": "OPEN" if packages else "PENDING_LICENSE_AND_EVIDENCE_REVIEW",
+        "caveat": "Advisory IDs may alias the same issue. Fix versions are upstream suggestions, not approved upgrades.",
+    }
+
+
 def _validate_audit(data: dict[str, Any], expected: dict[str, str]) -> None:
     if audit_report_status(data, expected) == "AUDIT_COMPLETE_WITH_FINDINGS":
         raise EvidenceError("AUDIT_VULNERABILITIES_REPORTED")
@@ -322,6 +375,11 @@ def main() -> int:
     audit = sub.add_parser("audit-status", help="Validate full JSON CVE audit coverage; distinguish findings from scan failure")
     audit.add_argument("--inventory", type=Path, required=True)
     audit.add_argument("--audit", type=Path, required=True)
+    findings = sub.add_parser("audit-findings", help="Summarize complete CVE findings safely without applying fixes")
+    findings.add_argument("--inventory", type=Path, required=True)
+    findings.add_argument("--audit", type=Path, required=True)
+    findings.add_argument("--source", choices=("osv", "pypi"), required=True)
+    findings.add_argument("--output", type=Path, required=True)
     req = sub.add_parser("freeze", help="Create exact transitive pins from an installed metadata inventory")
     req.add_argument("--inventory", type=Path, required=True)
     req.add_argument("--output", type=Path, required=True)
@@ -346,6 +404,15 @@ def main() -> int:
         if not target or not Path(target).is_dir():
             parser.exit(1, "FAIL: TARGET_SITE_PACKAGES_NOT_FOUND\n")
         print(target)
+        return 0
+    if args.command == "audit-findings":
+        try:
+            result = summarize_audit_findings(_read(args.audit), _read(args.inventory), source=args.source)
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        except (EvidenceError, OSError) as exc:
+            parser.exit(1, f"FAIL: {exc}\n")
+        print(f"AUDIT_FINDINGS_SUMMARY: {result['affected_packages']} packages, {result['reported_advisories']} advisory records; gate {result['stage04_gate']}")
         return 0
     if args.command == "audit-status":
         try:

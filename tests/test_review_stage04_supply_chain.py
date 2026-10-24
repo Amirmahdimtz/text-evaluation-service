@@ -185,7 +185,7 @@ def test_powershell_collector_uses_python_cli_without_fragile_inline_quoted_expr
     assert content.index("Assert-Exit 'Target site-packages resolution'") < content.index("New-Item -ItemType Directory -Path $EvidencePath")
 
 
-def test_collector_uses_bounded_pip_network_timeouts_and_retries():
+def test_collector_uses_bounded_pip_timeouts_and_retries():
     content = (SCRIPT.parent / "run_stage04_supply_chain.ps1").read_text(encoding="utf-8")
     assert "-m pip install --disable-pip-version-check --timeout 120 --retries 6 -r requirements-audit.txt" in content
     assert "-m pip download --disable-pip-version-check --timeout 120 --retries 6 --only-binary=:all: --no-deps" in content
@@ -241,8 +241,70 @@ def test_collector_uses_independent_pip_audit_timeout_and_requires_complete_repo
     assert "AUDIT_COMPLETE_NO_REPORTED_FINDINGS" in content
 
 
+def test_findings_summary_is_offline_with_package_ids_and_fixes(tmp_path, monkeypatch):
+    inv, audit, *_ = fixture(tmp_path)
+    audit["dependencies"][0]["vulns"] = [
+        {"id": "GHSA-SYNTHETIC-ONE", "aliases": ["CVE-SYNTHETIC-ONE"],
+         "fix_versions": ["1.2.4"], "description": "PRIVATE-TEXT-MUST-NOT-COPY"},
+        {"id": "GHSA-SYNTHETIC-TWO", "fix_versions": [], "aliases": []},
+    ]
+    result = review.summarize_audit_findings(audit, inv, source="osv")
+    assert result["affected_packages"] == 1
+    assert result["reported_advisories"] == 2
+    assert result["packages"][0]["in_dependency_closure"] is True
+    assert result["packages"][0]["advisories"][0]["fix_versions"] == ["1.2.4"]
+    assert "PRIVATE-TEXT-MUST-NOT-COPY" not in json.dumps(result)
+    assert result["stage04_gate"] == "OPEN"
+
+
+def test_findings_summary_rejects_missing_coverage_and_invalid_vulnerability(tmp_path):
+    inv, audit, *_ = fixture(tmp_path)
+    with pytest.raises(review.EvidenceError, match="AUDIT_SOURCE_UNAPPROVED"):
+        review.summarize_audit_findings(audit, inv, source="unknown")
+    audit["dependencies"] = []
+    with pytest.raises(review.EvidenceError, match="AUDIT_COVERAGE_MISMATCH"):
+        review.summarize_audit_findings(audit, inv, source="osv")
+    audit["dependencies"] = [{"name": "example-pkg", "version": "1.2.3", "vulns": [{"id": "bad", "fix_versions": "1.2.4"}]}]
+    with pytest.raises(review.EvidenceError, match="AUDIT_VULNERABILITY_INVALID"):
+        review.summarize_audit_findings(audit, inv, source="osv")
+
+
+def test_audit_findings_cli_reports_known_findings_without_false_pass(tmp_path):
+    import subprocess
+    import sys
+    inv, audit, *_ = fixture(tmp_path)
+    audit["dependencies"][0]["vulns"] = [{"id": "GHSA-SYNTHETIC", "fix_versions": ["1.3.0"]}]
+    inv_path = tmp_path / "inv.json"
+    audit_path = tmp_path / "audit.json"
+    output = tmp_path / "findings.json"
+    inv_path.write_text(json.dumps(inv), encoding="utf-8")
+    audit_path.write_text(json.dumps(audit), encoding="utf-8")
+    command = [sys.executable, str(SCRIPT), "audit-findings", "--inventory", str(inv_path),
+               "--audit", str(audit_path), "--source", "osv", "--output", str(output)]
+    completed = subprocess.run(command, capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr
+    assert "gate OPEN" in completed.stdout
+    assert "PASS_" not in completed.stdout
+    assert json.loads(output.read_text(encoding="utf-8"))["packages"][0]["name"] == "example-pkg"
+    audit_path.write_text("{}", encoding="utf-8")
+    denied = subprocess.run(command, capture_output=True, text=True)
+    assert denied.returncode != 0
+    assert "PASS_" not in denied.stdout
+    assert "AUDIT_FINDINGS_SUMMARY" not in denied.stdout
+
+
+def test_findings_summary_keeps_extra_installed_tool_advisories(tmp_path):
+    inv, audit, *_ = fixture(tmp_path)
+    audit["dependencies"].append({"name": "pip", "version": "25.0.1", "vulns": [
+        {"id": "PYSEC-SYNTHETIC", "fix_versions": ["25.1.2"]}]})
+    result = review.summarize_audit_findings(audit, inv, source="osv")
+    assert result["packages"][0]["name"] == "pip"
+    assert result["packages"][0]["in_dependency_closure"] is False
+    assert result["reported_advisories"] == 1
+
+
 def test_collector_supports_explicit_allowlisted_advisory_services_without_silent_fallback():
-    content = (SCRIPT.parent / "run_stage04_supply_chain.ps1").read_text(encoding="utf-8")
+    content = (SCRIPT.parent / 'run_stage04_supply_chain.ps1').read_text(encoding='utf-8')
     assert "[ValidateSet('pypi', 'osv')]" in content
     assert "[string]$VulnerabilityService = 'pypi'" in content
     assert '("vulnerabilities.{0}.json" -f $VulnerabilityService)' in content
@@ -252,9 +314,9 @@ def test_collector_supports_explicit_allowlisted_advisory_services_without_silen
 
 
 def test_advisory_source_is_passed_as_single_explicit_pip_audit_argument():
-    content = (SCRIPT.parent / "run_stage04_supply_chain.ps1").read_text(encoding="utf-8")
-    assert content.count("--vulnerability-service $VulnerabilityService") == 1
-    assert "--vulnerability-service pypi --timeout" not in content
-    assert "--vulnerability-service osv --timeout" not in content
+    content = (SCRIPT.parent / 'run_stage04_supply_chain.ps1').read_text(encoding='utf-8')
+    assert content.count('--vulnerability-service $VulnerabilityService') == 1
+    assert '--vulnerability-service pypi --timeout' not in content
+    assert '--vulnerability-service osv --timeout' not in content
     assert "Assert-Exit 'Vulnerability audit report completeness'" in content
     assert "Vulnerability audit produced no report" in content

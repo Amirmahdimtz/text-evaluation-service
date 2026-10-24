@@ -188,3 +188,26 @@ if (Test-Path -LiteralPath "$e\vulnerabilities-osv.json" -PathType Leaf) {
 ```
 
 A subsequent **full** collector run may explicitly select OSV with `-VulnerabilityService osv` and **must use a new unused EvidencePath**, e.g. `.stage04-evidence-20261024-04`; do not delete/overwrite `-03`. The targeted OSV output is not a full collector run and does not automatically create a `run-summary.json` binding that report to the existing wheelhouse. If OSV also fails due to approved-network restrictions, use an authorized mirror/feed or a different allowed workstation, preserving original evidence and without disabling TLS validation. If OSV returns known vulnerabilities, assess/fix them; do not ignore records or misreport the feed as PyPI. Internal-server/inference artifacts remain Stage 11 under D-017; Stage 04 Gate remains **IN_PROGRESS** until package findings, license decisions and local evidence have been reviewed.
+
+
+## Real OSV security findings and offline findings summary — 2026-10-24
+
+**User-executed Windows Python 3.12 evidence:** after pulling `main` at `9ea0083`, all **61/61 project tests passed in 30.29 seconds**. `pip-audit==2.10.1`, pointed at the reviewed `.venv-review` environment and `--vulnerability-service osv`, **completed its public advisory scan** and reported `Found 14 known vulnerabilities in 2 packages`. The scanner exited **1** due to identified findings, **not** due to network failure. The project's existing `audit-status` output was `AUDIT_COMPLETE_WITH_FINDINGS`, validation exit **0**, meaning the entire inventory was represented in a parseable report. **This is not a successful security Gate.** Do not infer package identities, severities, or fixed versions from the count alone; full advisory JSON remains on the user's workstation and has not been inspected in this repo review.
+
+A dedicated **offline and fail-closed** `audit-findings` command now generates a narrow public-metadata-only summary from the already completed scan and its matching original installed-inventory manifest. It records only package name/installed version, advisory ID/aliases and scanner-reported `fix_versions`, package-closure membership, advisory source, finding counts and `stage04_gate: OPEN`; it never copies descriptions, secrets, host paths or private service text, and performs **zero network I/O or package changes**. Advisory aliases can describe the same underlying issue; do not assume 14 independent exploit paths. 
+
+Run **from the repository root**, retaining the original complete `vulnerabilities-osv.json`, `inventory.json` and Wheel/SBOM evidence unchanged:
+
+```powershell
+git pull --ff-only origin main
+.\.venv-review\Scripts\python.exe -m pytest -q tests
+$e = '.stage04-evidence-20261024-03'
+.\.venv-review\Scripts\python.exe scripts/verification/review_stage04_supply_chain.py audit-findings --inventory "$e\inventory.json" --audit "$e\vulnerabilities-osv.json" --source osv --output "$e\findings-summary-osv.json"
+Get-Content "$e\findings-summary-osv.json"
+```
+
+The command prints `AUDIT_FINDINGS_SUMMARY: 2 packages, 14 advisory records; gate OPEN` if the supplied files contain precisely the previously reported results and their fields pass validation; counts are **not guaranteed until actually run**. The generated summary contains only **public package and advisory metadata**, not private business text. Share this summary (not any confidential environment settings or raw application data) for a package-by-package decision on whether each issue is in runtime or dev-only closure, availability of a supported patched version, exploitability, direct/transitive constraints and precise retesting. **Never blindly upgrade or run `pip-audit --fix`.**
+
+Upstream fix versions returned in JSON are *candidates*, not approvals. If the package is a shared tool (for example `pip`) beyond the 27-package source closure, it is still included in this report and marked `in_dependency_closure: false`; the reviewer must determine whether it affects runtime/deployment. After approved package remediation, reinstall into a clean disposable test environment, rerun the entire test suite, regenerate all evidence in a **fresh immutable directory**, rerun OSV/PyPI or authorized advisory check and separately complete qualified license review. The 27 wheels and hashes from the old environment are **not** proof for changed versions. Corporate-only security remains `DEFERRED_TO_STAGE_11`, Stage 05 remains `NOT_STARTED`.
+
+New summary CLI and its adversarial regression tests: **28/28 supply-chain tests PASS_ASSISTANT_LOCAL (Python 3.13.5)**; compilation PASS. Combined Windows suite including this new change **PENDING_USER_LOCAL**. Stage 04 remains **IN_PROGRESS / NO_GO_STAGE_05**.
