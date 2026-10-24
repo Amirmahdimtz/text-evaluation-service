@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from validate_stage03_outputs import inspect_file, validate_record
+from validate_stage03_outputs import inspect_file, load_manifest, main, validate_record
 
 
 def record() -> dict:
@@ -24,6 +25,22 @@ def record() -> dict:
                 "start_offset": 0, "end_offset": 3,
             }],
         },
+    }
+
+
+
+def manifest_record(value: dict | None = None) -> dict:
+    value = value or record()
+    return {
+        "dataset_id": "synthetic-set", "dataset_version": "v1",
+        "case_id": value["case_id"], "group_id": "group1",
+        "domain": value["domain"], "source_classification": "synthetic",
+        "provenance": "manually written synthetic fixture",
+        "license_permission": "synthetic test fixture only",
+        "language": "fa", "length_bucket": "short", "quality_bucket": "mid",
+        "edge_case_tags": ["unicode"], "split": "development",
+        "source_sha256": hashlib.sha256(value["original_text"].encode("utf-8")).hexdigest(),
+        "expert_labels_revision": None,
     }
 
 
@@ -90,6 +107,169 @@ class ValidatorTests(unittest.TestCase):
             path.write_bytes(b"{secret\n")
             total, invalid, errors = inspect_file(path)
             self.assertEqual((total, invalid, errors["INVALID_JSON"]), (1, 1, 1))
+
+
+    def test_reject_duplicate_json_keys_top_level_and_nested(self):
+        sample = json.dumps(record(), ensure_ascii=False)
+        top = sample.replace('"run_id":', '"run_id":"unexpected","run_id":', 1)
+        nested = sample.replace('"score": 4', '"score": 2,"score": 4', 1)
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "invalid.jsonl"
+            path.write_text(top + "\n" + nested + "\n", encoding="utf-8")
+            self.assertEqual(inspect_file(path)[2]["INVALID_JSON"], 2)
+
+    def test_reject_nan_and_infinity(self):
+        sample = json.dumps(record(), ensure_ascii=False)
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "invalid.jsonl"
+            cases = [sample.replace('"score": 4', f'"score": {constant}', 1)
+                     for constant in ("NaN", "Infinity", "-Infinity")]
+            path.write_text("\n".join(cases) + "\n", encoding="utf-8")
+            self.assertEqual(inspect_file(path)[2]["INVALID_JSON"], 3)
+
+    def test_reject_float_overflow(self):
+        sample = json.dumps(record(), ensure_ascii=False)
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "invalid.jsonl"
+            path.write_text(sample.replace('"score": 4', '"score": 1e9999') + "\n", encoding="utf-8")
+            self.assertEqual(inspect_file(path)[2]["INVALID_JSON"], 1)
+
+    def test_deeply_nested_input_is_caught_without_crash(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "deep.jsonl"
+            path.write_bytes(("[" * 20000 + "0" + "]" * 20000 + "\n").encode())
+            self.assertEqual(inspect_file(path)[:2], (1, 1))
+            self.assertEqual(inspect_file(path)[2]["INVALID_JSON"], 1)
+
+    def test_invalid_and_valid_record_continuity(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "mixed.jsonl"
+            path.write_text("NaN\n" + json.dumps(record(), ensure_ascii=False) + "\n", encoding="utf-8")
+            self.assertEqual(inspect_file(path)[:2], (2, 1))
+
+    def test_surrogate_original_text_rejected(self):
+        value = record()
+        value["original_text"] = "\ud800"
+        self.assertIn("INVALID_ORIGINAL_TEXT", validate_record(value))
+
+    def test_reject_wrong_domain_for_known_synthetic_case(self):
+        value = record()
+        value["case_id"] = "RE-01"
+        self.assertIn("INVALID_CASE_DOMAIN", validate_record(value))
+
+    def test_unknown_case_is_structural_only_without_manifest(self):
+        value = record()
+        value["case_id"] = "custom-dataset-item"
+        self.assertEqual(validate_record(value), [])
+
+    def test_research_novelty_assessed_is_unverifiable(self):
+        value = record()
+        value["case_id"] = "RE-01"
+        value["domain"] = "research"
+        value["output"]["criterion_code"] = "research_novelty"
+        self.assertIn("UNVERIFIABLE_NOVELTY", validate_record(value))
+
+    def test_research_novelty_abstention_is_valid(self):
+        value = record()
+        value["case_id"] = "RE-01"
+        value["domain"] = "research"
+        value["output"]["criterion_code"] = "research_novelty"
+        value["output"]["status"] = "not_assessed"
+        value["output"]["score"] = None
+        value["output"]["evidence"] = []
+        self.assertEqual(validate_record(value), [])
+
+    def test_manifest_matches_source_text_and_case_domain(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "manifest.jsonl").write_text(json.dumps(manifest_record()) + "\n", encoding="utf-8")
+            (root / "result.jsonl").write_text(json.dumps(record(), ensure_ascii=False) + "\n", encoding="utf-8")
+            manifest = load_manifest(root / "manifest.jsonl")
+            self.assertEqual(inspect_file(root / "result.jsonl", manifest)[:2], (1, 0))
+
+    def test_manifest_rejects_hash_mismatch_and_domain_mismatch(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            value = record()
+            (root / "manifest.jsonl").write_text(json.dumps(manifest_record()) + "\n", encoding="utf-8")
+            manifest = load_manifest(root / "manifest.jsonl")
+            value["original_text"] = "different text"
+            (root / "result.jsonl").write_text(json.dumps(value) + "\n", encoding="utf-8")
+            self.assertEqual(inspect_file(root / "result.jsonl", manifest)[2]["MANIFEST_SOURCE_MISMATCH"], 1)
+            other = manifest_record()
+            other["domain"] = "research"
+            (root / "manifest.jsonl").write_text(json.dumps(other) + "\n", encoding="utf-8")
+            manifest = load_manifest(root / "manifest.jsonl")
+            self.assertEqual(inspect_file(root / "result.jsonl", manifest)[2]["MANIFEST_DOMAIN_MISMATCH"], 1)
+
+    def test_manifest_rejects_unknown_case(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "manifest.jsonl").write_text(json.dumps(manifest_record()) + "\n", encoding="utf-8")
+            value = record()
+            value["case_id"] = "OTHER-04"
+            (root / "result.jsonl").write_text(json.dumps(value) + "\n", encoding="utf-8")
+            errors = inspect_file(root / "result.jsonl", load_manifest(root / "manifest.jsonl"))[2]
+            self.assertEqual(errors["CASE_NOT_IN_MANIFEST"], 1)
+
+    def test_reject_duplicate_manifest_ids(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "manifest.jsonl"
+            line = json.dumps(manifest_record()) + "\n"
+            path.write_text(line + line, encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_manifest(path)
+
+    def test_reject_invalid_manifest_schema_and_hash(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "manifest.jsonl"
+            value = manifest_record()
+            value["source_sha256"] = "not-a-sha"
+            path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_manifest(path)
+            value = manifest_record()
+            del value["provenance"]
+            path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_manifest(path)
+
+    def test_reject_manifest_nested_duplicate_key(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "manifest.jsonl"
+            value = json.dumps(manifest_record())
+            path.write_text(value.replace('"case_id":', '"case_id": "WRONG","case_id":', 1) + "\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_manifest(path)
+
+    def test_invalid_manifest_cli_is_sanitized(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "manifest.jsonl").write_text("{raw_secret\n", encoding="utf-8")
+            (root / "results.jsonl").write_text(json.dumps(record(), ensure_ascii=False) + "\n", encoding="utf-8")
+            stream = StringIO()
+            with redirect_stdout(stream):
+                code = main(["--input", str(root / "results.jsonl"),
+                             "--manifest", str(root / "manifest.jsonl")])
+            self.assertEqual(code, 2)
+            self.assertEqual(json.loads(stream.getvalue())["error"], "INVALID_MANIFEST")
+            self.assertNotIn("raw_secret", stream.getvalue())
+
+    def test_manifest_missing_path_is_io_error(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "results.jsonl").write_text(json.dumps(record(), ensure_ascii=False) + "\n", encoding="utf-8")
+            stream = StringIO()
+            with redirect_stdout(stream):
+                code = main(["--input", str(root / "results.jsonl"),
+                             "--manifest", str(root / "notfound.jsonl")])
+            self.assertEqual(code, 2)
+            self.assertEqual(json.loads(stream.getvalue())["error"], "MANIFEST_IO_ERROR")
+
 
 
 if __name__ == "__main__":
