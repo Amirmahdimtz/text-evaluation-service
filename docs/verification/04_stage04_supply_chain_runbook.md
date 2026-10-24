@@ -248,3 +248,49 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File ".\scripts\verific
 Stop and report the first failed command; do not treat partial results as Gate PASS. If `.stage04-evidence-20261024-04` already exists, choose a new unique name. The new OSV scan **must** confirm complete coverage and no new unaccepted vulnerabilities; the collector must regenerate all Wheel hashes, public PyPI release-digest matches and CycloneDX SBOM from the **new** installed dependency closure. Its `license-review.json` is an **unapproved template**; license obligations must be evaluated by the responsible reviewer for all installed packages. Package hashes matched over TLS are not a signed upstream publisher attestation. Local Stage 04 stays **IN_PROGRESS / NO_GO_STAGE_05**, while corporate No-Egress/SSO/Vault and organization artifact provenance remain Stage 11 under D-017.
 
 **Note:** An observed Windows-only exploitability limitation of the pytest CVE does not waive patching; this project is intended for Unix/Linux server deployment. The new static guard is a pin-floor regression check, not a current vulnerability database scan.
+
+## Starlette wheel index discovery failure and verified local-source recovery — 2026-10-24
+
+**User-local Windows Python 3.12 evidence on HEAD `5be8039`:** GitHub access restored, `pytest==9.0.3` installed, both isolated environments have `pip==26.2.2` and `bootstrap-check` PASS, `pip check` PASS, full test suite **70/70 PASS in 57.29s**. The fresh `.stage04-evidence-20261024-05` collector passed 27-package metadata inventory, complete OSV audit **`No known vulnerabilities found`**, and CycloneDX SBOM generation. However, `pip download` aborted with `No matching distribution found for starlette==1.9.0` and `from versions: none`. The collector correctly failed closed; this fresh run produced **no complete 27-wheel integrity/PyPI-digest report or final run-summary**. The prior immutable `-05` evidence must be preserved. No known vulnerabilities in this one OSV scan does not prove permanent/complete immunity or satisfy the license Gate.
+
+**PyPI verification, Oct 24, 2026:** official [starlette 1.9.0 release](https://pypi.org/project/starlette/1.9.0/) provides `starlette-1.9.0-py3-none-any.whl` for **Python >=3.11**, uploaded Oct 18, 2026. Its published SHA-256 is `fd3f159936e882d06c1108f84688f7cda2cf85fc6a592a50edbd175e882c2ddc`. This means the transient package-index candidate failure **does not support a package/Python incompatibility conclusion**. The previous `-04` wheelhouse contains that wheel according to user-local download log and can be considered **only if the actual local file matches this independent public checksum**. Official [pip download docs](https://pip.pypa.io/en/stable/cli/pip_download/) confirm use of a local directory through `--find-links`; `PIP_FIND_LINKS` is the process-scoped environment equivalent. This source is *not* a signed builder provenance guarantee; independent official publisher attestations can be reviewed separately.
+
+### Non-destructive recovery with an explicitly verified historical wheelhouse
+
+On the authorized Windows development workstation, **after confirming the patched repository and Python environment still match**, run from the repository root:
+
+```powershell
+git pull --ff-only origin main
+if ($LASTEXITCODE -ne 0) { throw 'Cannot verify current checkout' }
+
+$source = '.stage04-evidence-20261024-04\wheelhouse'
+$wheel = Join-Path $source 'starlette-1.9.0-py3-none-any.whl'
+$sha256 = 'fd3f159936e882d06c1108f84688f7cda2cf85fc6a592a50edbd175e882c2ddc'
+if (-not (Test-Path -LiteralPath $wheel -PathType Leaf)) {
+    throw 'Trusted prior Starlette wheel missing; cannot recover offline'
+}
+if ((Get-FileHash -LiteralPath $wheel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sha256) {
+    throw 'Starlette wheel differs from official PyPI digest'
+}
+if (Test-Path -LiteralPath '.stage04-evidence-20261024-06') {
+    throw 'Evidence output already exists; choose a new unique directory'
+}
+
+$previousLinks = [Environment]::GetEnvironmentVariable('PIP_FIND_LINKS', 'Process')
+try {
+    # Local source is allowed only after byte-for-byte comparison to the official SHA256.
+    $env:PIP_FIND_LINKS = (Resolve-Path -LiteralPath $source).Path
+    powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File ".\scripts\verification\run_stage04_supply_chain.ps1" -PythonPath ".\.venv-review\Scripts\python.exe" -AuditPythonPath ".\.venv-supply-chain\Scripts\python.exe" -EvidencePath ".stage04-evidence-20261024-06" -VulnerabilityService osv -VerifyPublicPyPIDigests
+    if ($LASTEXITCODE -ne 0) { throw 'Stage 04 collector failed; preserve all evidence' }
+} finally {
+    if ($null -eq $previousLinks) {
+        Remove-Item Env:PIP_FIND_LINKS -ErrorAction SilentlyContinue
+    } else {
+        $env:PIP_FIND_LINKS = $previousLinks
+    }
+}
+```
+
+The process-local links apply to the child PowerShell invocation and `pip download` without overwriting any old wheelhouse. The new pinned closure still requires `pytest==9.0.3`; the older `pytest==9.0.2` wheel from `-04` **must not** enter the resulting manifest. The existing offline `hash-wheels` validator rejects wrong/duplicate/missing wheel identities; the opt-in public PyPI release metadata comparison checks every actual SHA-256. If the verified `-04` source is unusable or PyPI remains unavailable for other wheels, stop with an explicit failure, **do not skip Hash/CVE/License checks, change Starlette versions, or disable TLS**.
+
+Once successful, independently check `-06` output for `pytest==9.0.3`, `AUDIT_COMPLETE_NO_REPORTED_FINDINGS`, 27 wheel SHA matches and CycloneDX coverage. The `license-review.json` in the collector output is still a **blank human-review template** and cannot be declared legal-approved without qualified evidence/reviewer sign-off. **Stage 04 IN_PROGRESS, Stage 05 NOT_STARTED.** No product source, runtime dependencies or secrets were changed by this recovery documentation.
