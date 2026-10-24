@@ -294,3 +294,32 @@ try {
 The process-local links apply to the child PowerShell invocation and `pip download` without overwriting any old wheelhouse. The new pinned closure still requires `pytest==9.0.3`; the older `pytest==9.0.2` wheel from `-04` **must not** enter the resulting manifest. The existing offline `hash-wheels` validator rejects wrong/duplicate/missing wheel identities; the opt-in public PyPI release metadata comparison checks every actual SHA-256. If the verified `-04` source is unusable or PyPI remains unavailable for other wheels, stop with an explicit failure, **do not skip Hash/CVE/License checks, change Starlette versions, or disable TLS**.
 
 Once successful, independently check `-06` output for `pytest==9.0.3`, `AUDIT_COMPLETE_NO_REPORTED_FINDINGS`, 27 wheel SHA matches and CycloneDX coverage. The `license-review.json` in the collector output is still a **blank human-review template** and cannot be declared legal-approved without qualified evidence/reviewer sign-off. **Stage 04 IN_PROGRESS, Stage 05 NOT_STARTED.** No product source, runtime dependencies or secrets were changed by this recovery documentation.
+
+
+## License metadata triage after successful -06 collector — 2026-10-24
+
+A user-local complete run of the fresh collector in `.stage04-evidence-20261024-06` reported all 27 exact-version Wheels downloaded, hashed and checked against public PyPI SHA256, a generated CycloneDX 1.6 SBOM, a complete OSV report with **zero reported findings** and final `run-summary.json`. The patched full Windows pytest suite previously passed **70/70**. The remaining local supply-chain work is (1) **independent review of the actual evidence JSON files** and (2) **qualified OSS license review of all 27 packages**. The generated license checklist still contains `REVIEW_REQUIRED` placeholders and no valid reviewer approval.
+
+To prepare a **read-only, public-package-metadata-only** triage from the locally generated license template (no network, no mutation or upload of app text), run at the repository root:
+
+```powershell
+$e = '.stage04-evidence-20261024-06'
+$licensePath = Join-Path $e 'license-review.json'
+$review = Get-Content -LiteralPath $licensePath -Raw | ConvertFrom-Json
+if ($review.format -ne 'stage04-license-review-v1' -or @($review.decisions).Count -ne 27) {
+    throw 'License evidence has wrong format or incomplete component coverage'
+}
+$review.decisions |
+    Sort-Object name |
+    Select-Object name, version, license_metadata, decision |
+    Format-Table -AutoSize -Wrap
+
+# Explicitly identify packages without usable installed license metadata.
+$review.decisions |
+    Where-Object { [string]::IsNullOrWhiteSpace($_.license_metadata) } |
+    Select-Object name, version
+```
+
+Only share the package name, version and declared license metadata; **do not share reviewer credentials, secrets, local environment configuration, confidential text, or blindly approve licenses**. License metadata provided by a wheel author is informational and may be incomplete, `UNKNOWN`, generic classifiers, or contradictory; read and verify each pinned distribution's applicable LICENSE/NOTICE/COPYING text and SPDX semantics. Determine whether each package is runtime or dev-only, whether redistribution and NOTICE/source obligations apply, and whether organization policy approves its usage. Cite version-specific upstream/PyPI source and file/URL, document reviewer identity/role and written decision; if not authorized, keep status OPEN for responsible legal/security reviewer. Never create fake reviewer names, permissions, or APPROVED fields.
+
+After qualified review, the existing offline `review_stage04_supply_chain.py evaluate` command can match `--licenses` against `inventory.json`, OSV results, SBOM, Wheel hash manifest, PyPI hash evidence and Wheelhouse. All files must come from **the same immutable `-06` evidence run**. A PASS would mean only local evidence consistency; it cannot attest to licensed legal authority, signed upstream build provenance, or Stage 11 corporate compliance. **Stage04 IN_PROGRESS; Stage05 NOT_STARTED.**
