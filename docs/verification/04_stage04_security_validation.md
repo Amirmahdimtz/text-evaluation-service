@@ -104,3 +104,18 @@ User-supplied PowerShell output, on a working copy fast-forwarded to `f391461` (
 - No clean working-tree command after pull was included. Corporate network, Vault, SSO, model, DB, firewall and Production still not tested/touched. Dependency/SBOM/vulnerability/license/provenance audit remains **NOT_RUN**.
 
 **Gate conclusion: Stage 04 `IN_PROGRESS`.** The development port collision is resolved for actual Uvicorn startup on the user's machine, but network HTTP response verification and the outstanding local dependency supply-chain review cannot be marked PASS on this evidence alone. Stage 05 not started.
+
+## User-local Windows live HTTP health verification — 2026-10-24
+
+The user supplied actual PowerShell responses from the running development FastAPI/Uvicorn instance (previously verified bound on `127.0.0.1:18080`):
+
+| Request (executed on user's Windows host) | Observed response | Result |
+|---|---|---|
+| `Invoke-RestMethod http://127.0.0.1:18080/health/live` | `status: alive` | **PASS_USER_LOCAL** |
+| `Invoke-RestMethod http://127.0.0.1:18080/health/ready` | `status: ready` | **PASS_USER_LOCAL** |
+
+The PowerShell commands completed without HTTP errors; their formatted output did not explicitly display numeric HTTP codes. The implemented routes use FastAPI's default successful response behavior, but numeric codes were not captured in the user's transcript. This evidence supplements the already reported **26/26 foundation pytest PASS after the port change** and **actual Windows Uvicorn bind/startup PASS**. Earlier `NOT_RUN` statements above remain historically accurate for the earlier snapshots and are now superseded **for these two Windows health requests** by this evidence.
+
+**Meaning of readiness at Stage 04:** health checks assert ASGI application lifespan/bootstrap only. Database, inference model, worker, corporate identity/network dependencies are not implemented or exercised and are not implied to be healthy.
+
+**Remaining acceptance work:** full transitive SBOM, artifact hash/provenance, license and vulnerability review **NOT_RUN**; internal organization network/security/inference tests **DEFERRED_TO_STAGE_11**. **Stage 04 = IN_PROGRESS** and **Stage 05 = NOT_STARTED**. Neither confidential data nor production systems were accessed.
