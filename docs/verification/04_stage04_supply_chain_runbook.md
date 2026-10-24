@@ -107,3 +107,20 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File ".\scripts\verific
 ```
 
 Use this one-off command **only** on a workstation where executing reviewed scripts and public package metadata lookups are authorized. No persistent ExecutionPolicy changes or deletion required. If the new path exists, choose another unused name. The corrected script still fails closed on any incomplete tool/evidence step. An audit run may report vulnerabilities or unsupported wheel availability; those outcomes must be evaluated rather than bypassed. The Stage 04 Gate remains `IN_PROGRESS` until real scan/license/wheel/SBOM evidence is reviewed.
+
+
+## Windows dependency download timeout (2026-10-24)
+
+The user installed the latest Stage 04 fix (`359e6ea`), successfully printed the target `site-packages` path using the new CLI and ran the **entire 54-test suite: 54 passed in 12.40s**. The authorized one-off PowerShell collector then passed `pip check`, installed-RECORD metadata inventory (**27 packages**) and generated the exact frozen dependency closure and blank license-review template. It proceeded to `pip install -r requirements-audit.txt` in the separate audit virtualenv, but `files.pythonhosted.org` timed out during the `chardet` wheel download (pip default 15-second socket timeout). The collector correctly **failed closed with exit code 2**; vulnerability scanning, CycloneDX generation, wheelhouse digest verification, PyPI digest comparison and license approvals have **not run** on this Windows attempt.
+
+The collector now uses **bounded per-command** pip networking options (`--timeout 120 --retries 6`) for both audit-tool installation and exact-wheel download. Neither system proxy/firewall nor persistent pip configuration is modified, and failures still stop the run. The already created `.stage04-evidence-20261024-02` is incomplete historical evidence; **do not delete, overwrite or present it as approved**. The existing `.venv-supply-chain` may be reused; pip resolves/install missing dependencies on retry without dropping evidence.
+
+From repository root on an authorized workstation, use a **fresh evidence directory name**:
+
+```powershell
+git pull --ff-only origin main
+.\.venv-review\Scripts\python.exe -m pytest -q tests
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File ".\scripts\verification\run_stage04_supply_chain.ps1" -PythonPath ".\.venv-review\Scripts\python.exe" -EvidencePath ".stage04-evidence-20261024-03" -VerifyPublicPyPIDigests
+```
+
+If public package downloads continue to time out, report the failed host and step. Do not disable SSL verification, skip vulnerability scans, change corporate network controls, or artificially mark the local Gate as passed. An authorized package mirror or existing verified wheel cache can be evaluated as an explicit follow-up; **do not silently substitute an unknown index**. New network-resilience regression and an isolated Python compile test passed in the assistant container; the corrected Windows collector and external audit remain **PENDING_USER_LOCAL**.

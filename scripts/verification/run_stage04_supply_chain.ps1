@@ -54,7 +54,9 @@ try {
         py -3.12 -m venv .venv-supply-chain
         Assert-Exit 'Create dedicated audit environment'
     }
-    & $AuditPythonPath -m pip install -r requirements-audit.txt
+    # Public package CDN downloads can be slow; use a bounded longer read timeout.
+    # Do not suppress failed installs or change global pip / network policy.
+    & $AuditPythonPath -m pip install --disable-pip-version-check --timeout 120 --retries 6 -r requirements-audit.txt
     Assert-Exit 'Install pinned audit tools (approved development workstation only)'
 
     & $AuditPythonPath -m pip_audit --strict --path $installedPath --vulnerability-service pypi --progress-spinner off --format json --output (Join-Path $EvidencePath 'vulnerabilities.json')
@@ -67,7 +69,7 @@ try {
     Assert-Exit 'Generate CycloneDX 1.6 SBOM for reviewed interpreter'
 
     # --no-deps is safe ONLY because pinned-closure.txt lists all installed transitive deps.
-    & $PythonPath -m pip download --only-binary=:all: --no-deps -r (Join-Path $EvidencePath 'pinned-closure.txt') -d (Join-Path $EvidencePath 'wheelhouse')
+    & $PythonPath -m pip download --disable-pip-version-check --timeout 120 --retries 6 --only-binary=:all: --no-deps -r (Join-Path $EvidencePath 'pinned-closure.txt') -d (Join-Path $EvidencePath 'wheelhouse')
     Assert-Exit 'Download exact installed wheel versions for observed target platform'
 
     & $PythonPath scripts/verification/review_stage04_supply_chain.py hash-wheels --inventory (Join-Path $EvidencePath 'inventory.json') --wheelhouse (Join-Path $EvidencePath 'wheelhouse') --output (Join-Path $EvidencePath 'wheel-hashes.json')

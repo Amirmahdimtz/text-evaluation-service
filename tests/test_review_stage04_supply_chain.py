@@ -183,3 +183,11 @@ def test_powershell_collector_uses_python_cli_without_fragile_inline_quoted_expr
     assert "review_stage04_supply_chain.py site-packages" in content
     assert "-c 'import sysconfig" not in content
     assert content.index("Assert-Exit 'Target site-packages resolution'") < content.index("New-Item -ItemType Directory -Path $EvidencePath")
+
+
+def test_collector_uses_bounded_pip_network_timeouts_and_retries():
+    content = (SCRIPT.parent / "run_stage04_supply_chain.ps1").read_text(encoding="utf-8")
+    assert "-m pip install --disable-pip-version-check --timeout 120 --retries 6 -r requirements-audit.txt" in content
+    assert "-m pip download --disable-pip-version-check --timeout 120 --retries 6 --only-binary=:all: --no-deps" in content
+    assert "Assert-Exit 'Install pinned audit tools" in content
+    assert "Assert-Exit 'Download exact installed wheel versions" in content
