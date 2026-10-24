@@ -95,3 +95,10 @@ Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، 
 - **Resource-safety:** برای جلوگیری از Tracking State بی‌کران، `MAX_RECORDS=100000` در هر invocation اعمال شد. Manifest اضافی Fail Closed و نتیجه اضافی دارای `RECORD_LIMIT_EXCEEDED` و `FAIL` است؛ هیچ Run ناقصی نباید مبنای Metric شود. این عدد Limit ایمنی ابزار است و **هیچ ربطی به حد پذیرش AI یا تعداد Dataset مصوب ندارد**.
 - **Offline synthetic tests:** مجموعه ۳۱ تست موجود همراه ۷ Regression جدید روی نسخه معادل در Sandbox دستیار **۳۸/۳۸ PASS**؛ `py_compile` PASS. GitHub commit read-back و بررسی Diff مستقل انجام می‌شود. اجرای Commit نهایی بر Clone شخصی کاربر هنوز `PENDING_USER_LOCAL` است.
 - **هنوز بسته نشده:** مجوز و Inventory سخت‌افزار/شبکه، Model Revision و Checksum، Golden Dataset برچسب‌دار سه حوزه، Inference داخلی دو کاندید، Metricهای Quality/Evidence/Abstention/Fairness/Latency/Peak VRAM/Throughput و No-Egress `PENDING_SERVER` یا `NOT_MEASURABLE` باقی‌اند. سندها برنامه‌اند نه اثبات انتخاب مدل یا Capacity Baseline.
+
+## ۱۱. تأیید اجرای محلی نسخه نهایی Validator توسط کاربر (2026-10-24)
+
+- کاربر اجرای واقعی PowerShell روی `git rev-parse HEAD = 663c1dbf211f51b29925d8f6c40d15f2605424fd` را ارائه کرد؛ `git pull --ff-only origin main` موفق بود و `python -m py_compile` بدون خطا اجرا شد.
+- تست Validator مرحله سوم: **`38/38 PASS`**، مدت گزارش‌شده `3.923s`. Regression مرحله دوم: **`9/9 PASS`**، مدت `0.395s`. بررسی مستندات Stage 02: **`19/19 PASS`**. مجموع: **`66/66 PASS`** در تست‌ها و بررسی‌های محلی ارائه‌شده با وضعیت `VERIFIED_USER_LOCAL`.
+- خروجی `git status --short` خالی است؛ Working Tree در زمان اجرای تست‌ها Clean بوده است. موارد تاریخی `PENDING_USER_LOCAL` برای همین تست‌ها و همین Commit با این شواهد بسته شده‌اند؛ Commit ثبت این شواهد صرفاً تغییر Documentation است و اجرای محلی تازه‌ای برای آن ادعا نمی‌شود.
+- **Gate مرحله سوم هنوز `BLOCKED` است.** Inference واقعی دو مدل، داده کارشناسی و آزمون سه حوزه، No-Egress، GPU/VRAM/Latency/Throughput و انتخاب مدل و Capacity Baseline همچنان `PENDING_SERVER` یا `NOT_MEASURABLE` هستند. هیچ تأیید ورود به Stage 04 صادر نشده است.
