@@ -13,7 +13,7 @@ Date: 2026-10-24. GitHub baseline: `4e14c2db36dcd7ac771c3ee554367fd9e3a34b88`, `
 
 | Check | Command | Result | Scope |
 |---|---|---|---|
-| Stage 04 unit/security/integration smoke | `PYTHONPATH=. python -m pytest -q tests/test_foundation.py` | `22 PASSED, 0 FAILED, 0 SKIPPED` | local synthetic only |
+| Stage 04 unit/security/integration smoke | `PYTHONPATH=. python -m pytest -q tests/test_foundation.py` | `26 PASSED, 0 FAILED, 0 SKIPPED` | local synthetic only |
 | Python syntax | `PYTHONPATH=. python -m compileall -q src tests scripts` | `PASS` | local Python 3.13.5 |
 | Static safety/source constraints | `python scripts/verification/check_stage04_safety.py` | `PASS: 9 runtime source files; dependency pins; credential patterns; ignored secrets` | AST/runtime source; not whole-repo DLP |
 | Installed pinned versions | `importlib.metadata.version(...)` | `MATCH direct pins` | current sandbox, not clean dependency resolution |
@@ -22,15 +22,15 @@ Date: 2026-10-24. GitHub baseline: `4e14c2db36dcd7ac771c3ee554367fd9e3a34b88`, `
 | Full transitive SBOM, vulnerability and license approval | `NOT_RUN` | `NOT_RUN: offline vulnerability database, approved wheelhouse and lock/hash manifest unavailable` | **local supply-chain gate outstanding** |
 | Corporate SSO/Vault/mTLS/firewall/no-egress/model/restore/load | `DEFERRED_TO_STAGE_11` | not run | see ledger |
 
-The earlier DI test initially failed due to inherited `object.__init__(*args, **kwargs)` being treated as injection parameters. The resolver now skips variadic arguments; tests rerun 22/22 PASS. A local cyclic self-annotation issue was fixed by supplying the decorated class to localns; rerun PASS. No tests are claimed successful before rerun.
+The earlier DI test initially failed due to inherited `object.__init__(*args, **kwargs)` being treated as injection parameters. The resolver now skips variadic arguments; tests rerun 26/26 PASS. A local cyclic self-annotation issue was fixed by supplying the decorated class to localns; rerun PASS. No tests are claimed successful before rerun.
 
 ## Gate evaluation
 
 | Acceptance item | Local verdict | Evidence / remaining risk |
 |---|---|---|
 | Threat modeling and trust boundaries | PASS_DOCUMENTED | `docs/security/01_threat_model.md` |
-| Candidate access matrix + local denial policy | PASS_LOCAL / ORG_APPROVAL_OPEN | Policy tests 22 suite, `OD-07` not decided |
-| Config, DI, bootstrap, discoverable WebService | PASS_LOCAL | Discovery, singleton, config and startup tests; **no actual feature controller** until Stage 10 |
+| Candidate access matrix + local denial policy | PASS_LOCAL / ORG_APPROVAL_OPEN | Policy tests in 26-test suite, `OD-07` not decided |
+| Config, DI, bootstrap, discoverable WebService | PASS_LOCAL | Discovery, singleton, config and startup tests; **only synthetic discovery fixture; no actual product controller** until Stage 10 |
 | Import/startup/shutdown/health/error sanitization | PASS_LOCAL | TestClient smoke, static liveness/readiness and all sanitized errors |
 | Sensitive logging/secret handling local | PASS_LOCAL | Synthetic marker and redacted config/exception tests; external gateway logs unverified |
 | Network/topology/secrets deployment design | PASS_DOCUMENTED / NOT_DEPLOYED | proposed topology and port matrix, OD-08/13 OPEN |

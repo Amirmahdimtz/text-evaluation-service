@@ -229,3 +229,72 @@ def test_app_does_not_initialize_external_resources(monkeypatch):
     app = create_app()
     assert app.state.ready is False
     assert len([r for r in app.routes if "/api/v1/" in r.path]) == 0
+
+
+def test_controller_auto_discovery_with_synthetic_fixture(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    from fastapi import APIRouter
+    import src.application.web as web_module
+    from src.application.web import WebService
+
+    root = tmp_path / "application"
+    feature = root / "fixture"
+    feature.mkdir(parents=True)
+    (feature / "fixture_controller.py").write_text("# synthetic fixture\n", encoding="utf-8")
+    monkeypatch.setattr(web_module, "__file__", str(root / "web.py"))
+
+    @inject
+    class FixtureController:
+        def __init__(self, config: ConfigReader):
+            self._config = config
+
+        def api(self):
+            router = APIRouter()
+
+            @router.get("/probe")
+            def probe():
+                return {"prefix": self._config.get_api_prefix()}
+
+            return router
+
+    reset_bootstrap_for_tests()
+    bootstrap_di()
+    monkeypatch.setattr(web_module, "import_module", lambda _: SimpleNamespace(FixtureController=FixtureController))
+    routes = resolve(WebService).api()
+    assert any(route.path == "/api/v1/fixture/probe" for route in routes.routes)
+
+
+def test_controller_discovery_fails_closed(monkeypatch, tmp_path):
+    import src.application.web as web_module
+    from src.application.web import WebService
+    root = tmp_path / "application"
+    feature = root / "fixture"
+    feature.mkdir(parents=True)
+    (feature / "fixture_controller.py").write_text("# invalid synthetic fixture\n", encoding="utf-8")
+    monkeypatch.setattr(web_module, "__file__", str(root / "web.py"))
+    def missing_module(name):
+        raise ModuleNotFoundError("synthetic-secret-marker")
+    monkeypatch.setattr(web_module, "import_module", missing_module)
+    reset_bootstrap_for_tests()
+    bootstrap_di()
+    with pytest.raises(DependencyError, match="^CONTROLLER_DISCOVERY_FAILED$") as exc:
+        resolve(WebService).api()
+    assert "synthetic-secret-marker" not in str(exc.value)
+
+
+def test_application_import_fails_safely_when_environment_invalid(monkeypatch):
+    from src.host.app import create_app
+    reset_bootstrap_for_tests()
+    monkeypatch.setenv("TES_ENVIRONMENT", "unrecognized")
+    with pytest.raises(ValueError, match="^CONFIG_INVALID_ENVIRONMENT$"):
+        create_app()
+    reset_bootstrap_for_tests()
+
+
+def test_di_singleton_is_thread_safe():
+    from concurrent.futures import ThreadPoolExecutor
+    reset_bootstrap_for_tests()
+    bootstrap_di()
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        services = list(executor.map(lambda _: resolve(ConfigReader), range(64)))
+    assert all(service is services[0] for service in services)
