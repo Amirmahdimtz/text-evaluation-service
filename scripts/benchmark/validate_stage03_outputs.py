@@ -1,14 +1,18 @@
-"""Validate Stage 03 synthetic/authorized model outputs without disclosing text.
+"""Validate Stage 03 outputs without exposing source text.
 
-This standalone CLI verifies JSON structure and original-source quote offsets.
-It does not verify factual relevance, expert agreement, or model quality.
+This offline validator checks JSON structure, exact original-source offsets, and,
+when a manifest is supplied, case/domain/source-hash consistency. It cannot
+certify dataset authorization, evidence relevance, or model quality.
 Python 3.10+, standard library only.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import math
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -36,7 +40,46 @@ RESPONSE_FIELDS = frozenset({
 EVIDENCE_FIELDS = frozenset({
     "source_kind", "quote", "start_offset", "end_offset",
 })
+MANIFEST_FIELDS = frozenset({
+    "dataset_id", "dataset_version", "case_id", "group_id", "domain",
+    "source_classification", "provenance", "license_permission", "language",
+    "length_bucket", "quality_bucket", "edge_case_tags", "split",
+    "source_sha256", "expert_labels_revision",
+})
+SYNTHETIC_CASE_DOMAINS = {
+    **{f"SP-{n:02}": "speech" for n in range(1, 5)},
+    **{f"ME-{n:02}": "media" for n in range(1, 5)},
+    **{f"RE-{n:02}": "research" for n in range(1, 5)},
+}
 MAX_LINE_BYTES = 10 * 1024 * 1024
+
+
+def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON key")
+        result[key] = value
+    return result
+
+
+def _reject_constant(_value: str) -> None:
+    raise ValueError("non-standard JSON constant")
+
+
+def _finite_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError("non-finite JSON number")
+    return parsed
+
+
+def strict_json_loads(data: bytes) -> Any:
+    """Reject duplicate keys, NaN/Infinity, malformed UTF-8 and deep nesting."""
+    return json.loads(
+        data.decode("utf-8"), object_pairs_hook=_unique_object,
+        parse_constant=_reject_constant, parse_float=_finite_float,
+    )
 
 
 def validate_record(record: Any) -> list[str]:
@@ -54,10 +97,17 @@ def validate_record(record: Any) -> list[str]:
     original = record.get("original_text")
     if not isinstance(original, str) or not original.strip():
         return ["INVALID_ORIGINAL_TEXT"]
+    try:
+        original.encode("utf-8")
+    except UnicodeEncodeError:
+        return ["INVALID_ORIGINAL_TEXT"]
     result = record.get("output")
     if not isinstance(result, dict) or result.keys() != RESPONSE_FIELDS:
         return ["INVALID_SCHEMA"]
     errors: list[str] = []
+    expected_domain = SYNTHETIC_CASE_DOMAINS.get(record["case_id"])
+    if expected_domain is not None and domain != expected_domain:
+        errors.append("INVALID_CASE_DOMAIN")
     if (not isinstance(result["criterion_code"], str)
             or result["criterion_code"] not in CRITERIA[domain]):
         errors.append("INVALID_CRITERION")
@@ -66,6 +116,9 @@ def validate_record(record: Any) -> list[str]:
     if status == "assessed":
         if type(score) is not int or not 0 <= score <= 5:
             errors.append("INVALID_SCORE")
+        if result["criterion_code"] == "research_novelty":
+            # Source-text quotes cannot prove novelty without validated corpus.
+            errors.append("UNVERIFIABLE_NOVELTY")
     elif status == "not_assessed":
         if score is not None:
             errors.append("INVALID_ABSTENTION")
@@ -107,7 +160,47 @@ def validate_record(record: Any) -> list[str]:
     return sorted(set(errors))
 
 
-def inspect_file(path: Path) -> tuple[int, int, Counter[str]]:
+def load_manifest(path: Path) -> dict[str, tuple[str, str]]:
+    """Index versioned case metadata; never treat it as legal approval."""
+    cases: dict[str, tuple[str, str]] = {}
+    with path.open("rb") as stream:
+        while True:
+            line = stream.readline(MAX_LINE_BYTES + 1)
+            if not line:
+                break
+            if len(line) > MAX_LINE_BYTES:
+                raise ValueError("oversized manifest record")
+            try:
+                entry = strict_json_loads(line)
+            except (ValueError, UnicodeDecodeError, RecursionError) as exc:
+                raise ValueError("invalid manifest JSON") from exc
+            if not isinstance(entry, dict) or entry.keys() != MANIFEST_FIELDS:
+                raise ValueError("invalid manifest schema")
+            if (any(not isinstance(entry[field], str) or not entry[field].strip()
+                    for field in MANIFEST_FIELDS - {
+                        "edge_case_tags", "expert_labels_revision",
+                    })
+                    or not isinstance(entry["edge_case_tags"], list)
+                    or any(not isinstance(tag, str) or not tag.strip()
+                           for tag in entry["edge_case_tags"])
+                    or (entry["expert_labels_revision"] is not None
+                        and (not isinstance(entry["expert_labels_revision"], str)
+                             or not entry["expert_labels_revision"].strip()))
+                    or entry["domain"] not in CRITERIA
+                    or re.fullmatch(r"[0-9a-fA-F]{64}", entry["source_sha256"]) is None
+                    or entry["case_id"] in cases):
+                raise ValueError("invalid manifest values")
+            cases[entry["case_id"]] = (
+                entry["domain"], entry["source_sha256"].lower(),
+            )
+    if not cases:
+        raise ValueError("empty manifest")
+    return cases
+
+
+def inspect_file(
+    path: Path, manifest: dict[str, tuple[str, str]] | None = None,
+) -> tuple[int, int, Counter[str]]:
     total = invalid = 0
     failures: Counter[str] = Counter()
     seen: set[tuple[str, str, str, str]] = set()
@@ -122,12 +215,24 @@ def inspect_file(path: Path) -> tuple[int, int, Counter[str]]:
                 failures["OVERSIZED_RECORD"] += 1
                 break  # Do not parse partial lines or allocate beyond the safety cap.
             try:
-                record = json.loads(line.decode("utf-8"))
-            except (ValueError, UnicodeDecodeError):
+                record = strict_json_loads(line)
+            except (ValueError, UnicodeDecodeError, RecursionError):
                 invalid += 1
                 failures["INVALID_JSON"] += 1
                 continue
             errors = validate_record(record)
+            if manifest is not None and isinstance(record, dict):
+                case_id = record.get("case_id")
+                known = manifest.get(case_id) if isinstance(case_id, str) else None
+                if known is None:
+                    errors.append("CASE_NOT_IN_MANIFEST")
+                elif known[0] != record.get("domain"):
+                    errors.append("MANIFEST_DOMAIN_MISMATCH")
+                elif (not isinstance(record.get("original_text"), str)
+                      or "INVALID_ORIGINAL_TEXT" in errors
+                      or hashlib.sha256(record["original_text"].encode("utf-8")).hexdigest()
+                      != known[1]):
+                    errors.append("MANIFEST_SOURCE_MISMATCH")
             if not errors:
                 key = (
                     record["run_id"], record["model_id"],
@@ -140,7 +245,7 @@ def inspect_file(path: Path) -> tuple[int, int, Counter[str]]:
                     seen.add(key)
             if errors:
                 invalid += 1
-                failures.update(errors)
+                failures.update(set(errors))
     return total, invalid, failures
 
 
@@ -148,9 +253,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True,
                         help="Approved local JSONL. Raw source text stays on host.")
+    parser.add_argument("--manifest", type=Path,
+                        help="Optional approved case manifest JSONL; checks case, domain and SHA-256.")
     args = parser.parse_args(argv)
     try:
-        total, invalid, failures = inspect_file(args.input)
+        manifest = load_manifest(args.manifest) if args.manifest else None
+    except OSError:
+        print(json.dumps({"status": "FAIL", "error": "MANIFEST_IO_ERROR"}))
+        return 2
+    except ValueError:
+        print(json.dumps({"status": "FAIL", "error": "INVALID_MANIFEST"}))
+        return 2
+    try:
+        total, invalid, failures = inspect_file(args.input, manifest)
     except OSError:
         print(json.dumps({"status": "FAIL", "error": "INPUT_IO_ERROR"}))
         return 2
@@ -160,7 +275,8 @@ def main(argv: list[str] | None = None) -> int:
         "valid": total - invalid,
         "invalid": invalid,
         "error_counts": dict(sorted(failures.items())),
-        "scope": "structure_and_exact_source_offsets_only; NOT_AI_QUALITY",
+        "manifest_check": "STRUCTURE_AND_SOURCE_HASH" if manifest is not None else "NOT_PROVIDED",
+        "scope": "structure_and_exact_source_offsets_only; NOT_AI_QUALITY_OR_AUTHORIZATION",
     }
     print(json.dumps(result, ensure_ascii=True, sort_keys=True))
     return 0 if total and not invalid else 1
