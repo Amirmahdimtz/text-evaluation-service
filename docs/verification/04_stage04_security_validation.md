@@ -14,6 +14,7 @@ Date: 2026-10-24. GitHub baseline: `4e14c2db36dcd7ac771c3ee554367fd9e3a34b88`, `
 | Check | Command | Result | Scope |
 |---|---|---|---|
 | Stage 04 unit/security/integration smoke | `PYTHONPATH=. python -m pytest -q tests/test_foundation.py` | `26 PASSED, 0 FAILED, 0 SKIPPED` | local synthetic only |
+| Real Uvicorn loopback smoke | `PYTHONPATH=. python -m src.host.app`, local Python urllib GET `/health/live` and `/health/ready`, then SIGTERM | PASS: both HTTP 200; APP_START/APP_STOP observed | isolated local only |
 | Python syntax | `PYTHONPATH=. python -m compileall -q src tests scripts` | `PASS` | local Python 3.13.5 |
 | Static safety/source constraints | `python scripts/verification/check_stage04_safety.py` | `PASS: 9 runtime source files; dependency pins; credential patterns; ignored secrets` | AST/runtime source; not whole-repo DLP |
 | Installed pinned versions | `importlib.metadata.version(...)` | `MATCH direct pins` | current sandbox, not clean dependency resolution |
