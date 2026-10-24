@@ -19,9 +19,6 @@ try {
     if (Test-Path $EvidencePath) {
         throw 'Evidence directory already exists. Preserve previous evidence and choose a fresh -EvidencePath. Do not delete prior evidence automatically.'
     }
-    New-Item -ItemType Directory -Path $EvidencePath -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $EvidencePath 'wheelhouse') -Force | Out-Null
-
     function Assert-Exit([string]$Step) {
         if ($LASTEXITCODE -ne 0) {
             throw "$Step failed with exit code $LASTEXITCODE; do not accept Stage 04 gate."
@@ -31,11 +28,18 @@ try {
     & $PythonPath -m pip check
     Assert-Exit 'Target environment pip check'
 
-    $installedPath = & $PythonPath -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'
+    # Avoid `python -c` with quoted dictionary keys: Windows PowerShell 5.1
+    # strips embedded native argument quotes, causing NameError: purelib.
+    $installedPath = & $PythonPath scripts/verification/review_stage04_supply_chain.py site-packages
     Assert-Exit 'Target site-packages resolution'
-    if (-not (Test-Path $installedPath)) {
+    if (-not $installedPath -or -not (Test-Path -LiteralPath $installedPath -PathType Container)) {
         throw 'Target Python site-packages directory not found'
     }
+
+    # Create an immutable evidence directory only after local preflight passes.
+    # A failed run leaves its evidence intact and must use a fresh path.
+    New-Item -ItemType Directory -Path $EvidencePath -ErrorAction Stop | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $EvidencePath 'wheelhouse') -ErrorAction Stop | Out-Null
 
     & $PythonPath scripts/verification/audit_stage04_dependencies.py --output (Join-Path $EvidencePath 'inventory.json')
     Assert-Exit 'Installed dependency RECORD and license metadata inventory'

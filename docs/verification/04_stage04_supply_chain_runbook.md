@@ -89,3 +89,21 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File ".\\scripts\\verif
 ```
 
 Execute it from the repository root and only if public **dependency package metadata** lookups and wheel downloads are authorized on that workstation. This mechanism does **not** override Group Policy-enforced MachinePolicy/UserPolicy. If an organizational policy disallows scripts, do not disable or bypass it: consult the local administrator/security team for an approved procedure. If the evidence directory already exists, choose an unused new name; the script deliberately fails closed instead of overwriting evidence. The command's return value and generated evidence must be independently checked; PowerShell launch alone is **not** supply-chain Gate approval. Do not run the script in an isolated company production network without separate authorization.
+
+
+## Windows PowerShell native quoting regression and fix — 2026-10-24
+
+User-local evidence from `main` at `9c6cb03`: all `Get-ExecutionPolicy -List` scopes were `Undefined` and the one-off `-ExecutionPolicy RemoteSigned` script invocation **started successfully**. `pip check` reported `No broken requirements found`, then the original inline `python -c '...["purelib"]...'` lost nested string quotes in Windows PowerShell native argument passing, raising `NameError: name 'purelib' is not defined`. **Collector stopped before dependency inventory, CVE scan, SBOM, wheel checks, public digest review, or license decisions.** This was a script/quoting defect; do not mark Stage 04 gate PASS.
+
+The collector now invokes `review_stage04_supply_chain.py site-packages` via the **reviewed target Python**; this CLI resolves `sysconfig.get_path("purelib")` in a real source file without any embedded command-line quotes, ensures the directory exists and prints only its path. The output directory is now created after this preflight. The relevant Stage 04 synthetic regression tests and an isolated CLI invocation passed in the assistant's Linux/Python 3.13 environment (**17/17 supply-chain test module PASSED**); the corrected Windows PowerShell collector itself remains **PENDING_USER_LOCAL**.
+
+The initial failed collector created `.stage04-evidence-20261024` before exiting. **Do not delete or overwrite it**; after pulling the fix, use a new, unused evidence path, e.g.:
+
+```powershell
+git pull --ff-only origin main
+.\.venv-review\Scripts\python.exe -m pytest -q tests
+.\.venv-review\Scripts\python.exe scripts/verification/review_stage04_supply_chain.py site-packages
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File ".\scripts\verification\run_stage04_supply_chain.ps1" -PythonPath ".\.venv-review\Scripts\python.exe" -EvidencePath ".stage04-evidence-20261024-02" -VerifyPublicPyPIDigests
+```
+
+Use this one-off command **only** on a workstation where executing reviewed scripts and public package metadata lookups are authorized. No persistent ExecutionPolicy changes or deletion required. If the new path exists, choose another unused name. The corrected script still fails closed on any incomplete tool/evidence step. An audit run may report vulnerabilities or unsupported wheel availability; those outcomes must be evaluated rather than bypassed. The Stage 04 Gate remains `IN_PROGRESS` until real scan/license/wheel/SBOM evidence is reviewed.

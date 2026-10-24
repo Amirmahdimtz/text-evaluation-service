@@ -12,6 +12,7 @@ import http.client
 import json
 import re
 import ssl
+import sysconfig
 import zipfile
 from datetime import datetime, timezone
 from urllib.parse import quote
@@ -310,6 +311,7 @@ def evaluate(*, inventory: dict[str, Any], audit: dict[str, Any], sbom: dict[str
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("site-packages", help="Print target interpreter purelib path without shell-embedded Python quotes")
     req = sub.add_parser("freeze", help="Create exact transitive pins from an installed metadata inventory")
     req.add_argument("--inventory", type=Path, required=True)
     req.add_argument("--output", type=Path, required=True)
@@ -327,6 +329,14 @@ def main() -> int:
     for field in ("inventory", "audit", "sbom", "hashes", "pypi-hashes", "licenses", "wheelhouse", "output"):
         check.add_argument(f"--{field}", type=Path, required=True)
     args = parser.parse_args()
+    if args.command == "site-packages":
+        # Native Windows PowerShell can strip quotes passed to `python -c`.
+        # Keep the quoted sysconfig key in this Python source file instead.
+        target = sysconfig.get_path("purelib")
+        if not target or not Path(target).is_dir():
+            parser.exit(1, "FAIL: TARGET_SITE_PACKAGES_NOT_FOUND\n")
+        print(target)
+        return 0
     try:
         inventory = _read(args.inventory) if args.command != "verify-pypi" else None
         if args.command == "freeze":

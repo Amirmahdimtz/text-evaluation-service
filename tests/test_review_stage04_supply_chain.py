@@ -160,3 +160,26 @@ def test_license_expression_must_be_explicit_and_auditable(tmp_path):
     licenses["decisions"][0]["license_expression"] = ""
     with pytest.raises(review.EvidenceError, match="LICENSE_EXPRESSION_UNREVIEWED"):
         review.evaluate(inventory=inv, audit=audit, sbom=sbom, hashes=hashes, pypi_hashes=pypi, wheelhouse=wh, licenses=licenses)
+
+
+def test_site_packages_cli_outputs_actual_python_path_without_inline_code_quotes():
+    import subprocess
+    import sys
+    import sysconfig
+
+    completed = subprocess.run(
+        [sys.executable, str(SCRIPT), "site-packages"],
+        capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stderr == ""
+    assert "PASS_" not in completed.stdout
+    assert Path(completed.stdout.strip()).resolve() == Path(sysconfig.get_path("purelib")).resolve()
+    assert Path(completed.stdout.strip()).is_dir()
+
+
+def test_powershell_collector_uses_python_cli_without_fragile_inline_quoted_expression():
+    content = (SCRIPT.parent / "run_stage04_supply_chain.ps1").read_text(encoding="utf-8")
+    assert "review_stage04_supply_chain.py site-packages" in content
+    assert "-c 'import sysconfig" not in content
+    assert content.index("Assert-Exit 'Target site-packages resolution'") < content.index("New-Item -ItemType Directory -Path $EvidencePath")
