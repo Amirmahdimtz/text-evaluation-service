@@ -6,6 +6,8 @@ param(
     [string]$PythonPath = '.\.venv-review\Scripts\python.exe',
     [string]$AuditPythonPath = '.\.venv-supply-chain\Scripts\python.exe',
     [string]$EvidencePath = '.stage04-evidence',
+    [ValidateSet('pypi', 'osv')]
+    [string]$VulnerabilityService = 'pypi',
     [switch]$VerifyPublicPyPIDigests
 )
 
@@ -61,8 +63,11 @@ try {
 
     # pip-audit has a separate socket timeout (default 15s), independent from pip install.
     # Exit code 1 can mean real findings OR an advisory-service failure: validate the JSON.
-    $auditReport = Join-Path $EvidencePath 'vulnerabilities.json'
-    & $AuditPythonPath -m pip_audit --strict --path $installedPath --vulnerability-service pypi --timeout 120 --progress-spinner off --format json --output $auditReport
+    # An explicitly chosen service is mandatory for reproducible advisory evidence.
+    # Never silently fall back to another provider after a network failure.
+    $auditReport = Join-Path $EvidencePath ("vulnerabilities.{0}.json" -f $VulnerabilityService)
+    Write-Host "Auditing public package names/versions via $VulnerabilityService"
+    & $AuditPythonPath -m pip_audit --strict --path $installedPath --vulnerability-service $VulnerabilityService --timeout 120 --progress-spinner off --format json --output $auditReport
     $auditExitCode = $LASTEXITCODE
     if (-not (Test-Path -LiteralPath $auditReport -PathType Leaf)) {
         throw "Vulnerability audit produced no report (exit $auditExitCode); preserve partial evidence. Stage 04 gate remains OPEN."
@@ -105,6 +110,8 @@ try {
         reviewed_python = $PythonPath
         vulnerability_audit_exit = $auditExitCode
         vulnerability_audit_status = $auditStatus
+        vulnerability_service = $VulnerabilityService
+        vulnerability_report = (Split-Path -Leaf $auditReport)
         wheel_manifest = 'wheel-hashes.json'
         sbom = 'sbom.cdx.json'
         license_review = 'REVIEW_REQUIRED (license-review.json is an unapproved template)'

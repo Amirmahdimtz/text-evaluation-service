@@ -233,9 +233,28 @@ def test_audit_status_cli_fails_without_report_and_accepts_complete_synthetic(tm
 
 def test_collector_uses_independent_pip_audit_timeout_and_requires_complete_report():
     content = (SCRIPT.parent / "run_stage04_supply_chain.ps1").read_text(encoding="utf-8")
-    assert "-m pip_audit --strict --path $installedPath --vulnerability-service pypi --timeout 120" in content
+    assert "-m pip_audit --strict --path $installedPath --vulnerability-service $VulnerabilityService --timeout 120" in content
     assert "review_stage04_supply_chain.py audit-status --inventory" in content
     assert "Vulnerability audit report completeness" in content
     assert "Vulnerability audit produced no report" in content
     assert "AUDIT_COMPLETE_WITH_FINDINGS" in content
     assert "AUDIT_COMPLETE_NO_REPORTED_FINDINGS" in content
+
+
+def test_collector_supports_explicit_allowlisted_advisory_services_without_silent_fallback():
+    content = (SCRIPT.parent / "run_stage04_supply_chain.ps1").read_text(encoding="utf-8")
+    assert "[ValidateSet('pypi', 'osv')]" in content
+    assert "[string]$VulnerabilityService = 'pypi'" in content
+    assert '("vulnerabilities.{0}.json" -f $VulnerabilityService)' in content
+    assert "vulnerability_service = $VulnerabilityService" in content
+    assert "vulnerability_report = (Split-Path -Leaf $auditReport)" in content
+    assert "Never silently fall back to another provider" in content
+
+
+def test_advisory_source_is_passed_as_single_explicit_pip_audit_argument():
+    content = (SCRIPT.parent / "run_stage04_supply_chain.ps1").read_text(encoding="utf-8")
+    assert content.count("--vulnerability-service $VulnerabilityService") == 1
+    assert "--vulnerability-service pypi --timeout" not in content
+    assert "--vulnerability-service osv --timeout" not in content
+    assert "Assert-Exit 'Vulnerability audit report completeness'" in content
+    assert "Vulnerability audit produced no report" in content

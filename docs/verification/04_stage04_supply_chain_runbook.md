@@ -157,3 +157,34 @@ if (Test-Path -LiteralPath "$e\vulnerabilities-retry.json" -PathType Leaf) {
 Do not interpret the `pip-audit` exit code alone as a vulnerability count; **valid JSON and full inventory coverage are mandatory**. If the audit report is complete and identifies vulnerabilities, address or explicitly risk-review them; do not ignore findings or run `--fix` automatically. If no vulnerabilities are reported, this only closes the advisory-scan subgate for the selected PyPI feed/date; license decisions, independent evidence review, and full Stage 04 acceptance are still required. The offline `evaluate` command in this runbook accepts `--audit "$e\vulnerabilities-retry.json"` while reusing all other `-03` artifacts once all 27 license reviews have been legitimately completed and recorded. Do **not** invent a reviewer name, license expression, signed attestation or APPROVED decision.
 
 For a later complete collector run, use a *new* unused EvidencePath such as `.stage04-evidence-20261024-04`; the original `-03` remains immutable historical evidence. No further corporate network/secret/production changes are authorized.
+
+
+## Alternative advisory service after PyPI connection resets — 2026-10-24
+
+User verified latest `main` at `229df23` on Windows Python 3.12: **59/59 tests PASS (26.88s)**. The targeted `pip-audit --timeout 120 --vulnerability-service pypi` attempt raised `requests.exceptions.ConnectionError` / `RemoteDisconnected` when connecting to the PyPI service and returned exit 1 **without creating `vulnerabilities-retry.json`**. This is a **network/service failure**, not a vulnerability finding or advisory clearance. The already preserved `.stage04-evidence-20261024-03` records 27 installed packages, SBOM/wheel hashes and public PyPI wheel digest checks according to earlier user logs; full artifacts have not been independently read by the assistant. License review remains OPEN.
+
+`pip-audit==2.10.1` supports the **OSV** vulnerability service through `--vulnerability-service osv` (upstream pip-audit CLI, https://github.com/pypa/pip-audit). OSV is an **alternate public advisory feed**, not a proven replacement for complete PyPI advisory coverage and not a bypass of a corporate network policy. The collector now accepts only explicit `-VulnerabilityService pypi` (default) or `-VulnerabilityService osv`, persists the selected service and the provider-specific JSON report filename in `run-summary.json`, and **never automatically switches providers**. Its full-coverage `audit-status` check still fails closed for missing/partial JSON; a report with findings cannot approve Stage 04.
+
+### Targeted OSV retry using existing evidence (no redownload)
+
+On a workstation with approval to send **public package names and versions** to `api.osv.dev`, from the repository root:
+
+```powershell
+
+git pull --ff-only origin main
+.\.venv-review\Scripts\python.exe -m pytest -q tests
+
+$e = '.stage04-evidence-20261024-03'
+$installed = & .\.venv-review\Scripts\python.exe scripts/verification/review_stage04_supply_chain.py site-packages
+& .\.venv-supply-chain\Scripts\python.exe -m pip_audit --strict --path $installed --vulnerability-service osv --timeout 120 --progress-spinner off --format json --output "$e\vulnerabilities-osv.json"
+$auditExit = $LASTEXITCODE
+Write-Host "OSV pip-audit exit: $auditExit"
+if (Test-Path -LiteralPath "$e\vulnerabilities-osv.json" -PathType Leaf) {
+    & .\.venv-review\Scripts\python.exe scripts/verification/review_stage04_supply_chain.py audit-status --inventory "$e\inventory.json" --audit "$e\vulnerabilities-osv.json"
+    Write-Host "OSV coverage validation exit: $LASTEXITCODE"
+} else {
+    Write-Warning 'No complete OSV report; Stage 04 remains OPEN'
+}
+```
+
+A subsequent **full** collector run may explicitly select OSV with `-VulnerabilityService osv` and **must use a new unused EvidencePath**, e.g. `.stage04-evidence-20261024-04`; do not delete/overwrite `-03`. The targeted OSV output is not a full collector run and does not automatically create a `run-summary.json` binding that report to the existing wheelhouse. If OSV also fails due to approved-network restrictions, use an authorized mirror/feed or a different allowed workstation, preserving original evidence and without disabling TLS validation. If OSV returns known vulnerabilities, assess/fix them; do not ignore records or misreport the feed as PyPI. Internal-server/inference artifacts remain Stage 11 under D-017; Stage 04 Gate remains **IN_PROGRESS** until package findings, license decisions and local evidence have been reviewed.
