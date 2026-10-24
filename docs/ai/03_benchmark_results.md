@@ -17,6 +17,8 @@
 
 خروجی قبلی کاربر روی Commit `88d56fd` برابر **`18/19 PASS`** بود و شکست تنها مربوط به شرط منسوخ `stage tracker preserved` بود. پس از اصلاح، کاربر روی Commit `f3c32c3043a63c4a304162f0834a716cb659dc60` نتایج واقعی **`19/19 PASS`** برای Stage 02 Documentation QA، **`9/9 PASS`** برای Regressionهای Stage 02 و **`11/11 PASS`** برای تست‌های Stage 03 را ارائه کرد؛ `git status --short` نیز خالی بود. این شواهد، Gate اجرایی Stage 02 را پاس نمی‌کنند؛ مرحله همچنان `BLOCKED` است.
 
+در اجرای جدید کاربر روی Commit `d1920bf98d519fbd9e19e494b249d1c1738d191d`، **۳۱/۳۱ تست Stage 03**، **۹/۹ Regression Stage 02** و **۱۹/۱۹ بررسی مستندات Stage 02** با موفقیت اجرا شدند، Compile بدون خطا بود و `git status --short` خروجی نداشت. این ۵۹ بررسی، `VERIFIED_USER_LOCAL` هستند، نه مدل Benchmark یا Acceptance Gate.
+
 ## ۲. Quality Metrics واقعی
 
 | Metric | speech | media | research | علت |
@@ -84,3 +86,12 @@ Failure Classes لازم: `INVALID_JSON`، `INVALID_SCORE`، `QUOTE_MISMATCH`، 
 - معیار `research_novelty` بدون Corpus و داوری علمی معتبر نمی‌تواند نمره عددی بگیرد. `not_assessed` و `score=null` مجازند؛ ادعای Published Rubric یا تأیید مجوز از این تغییر حاصل نمی‌شود.
 - دستیار روی **نسخه متناظر و مستقل در Sandbox** دستور `python -m py_compile` و **۳۱ تست Synthetic Unit/Regression از ۳۱ تست — PASS** را اجرا کرد. Source و Test روی GitHub منتشر شده‌اند؛ اجرای مجدد **Commit نهایی روی Clone کاربر** هنوز `PENDING_USER_LOCAL` است و نباید با اجرای Sandbox یکی فرض شود.
 - **وضعیت Gate بدون تغییر:** GPU، هر دو مدل Inference، Dataset و Expert Labels واقعی، Quality، Evidence Relevance، No-Egress، Latency، VRAM و Capacity `PENDING_SERVER`/در موارد بدون برچسب `NOT_MEASURABLE` هستند. Stage 03 `IN_PROGRESS` و Model Selection `BLOCKED` است.
+
+
+## ۱۰. ممیزی نهایی آمادگی Gate و رفع نقص Validation (2026-10-24)
+
+- **Source audit:** دو سند الزام‌آور پروژه و GitHub `main`، چهار خروجی Stage 03 و واحدهای تست موجود بررسی شدند. Gate رسمی Stage 03 انتخاب مدل/Runtime مشروط با اندازه‌گیری سه حوزه، Benchmark کیفیت و ظرفیت، No-Egress، مدل Artifact مجاز و Expert Labels را الزامی می‌داند؛ این شواهد وجود ندارند. **Gate: BLOCKED؛ مجوز ورود به Stage 04: NOT_APPROVED**. این تصمیم به‌معنای تغییر Decisionهای فنی باز به CONFIRMED نیست.
+- **نقص جدید ورودی:** فیلدهای متنی غیرمعتبر با Unicode lone surrogate در Identifier/Reason/فهرست‌ها/Metadata Manifest قبلاً ممکن بود پذیرفته شوند. با بررسی قابلیت Encode شدن UTF-8 و تست‌های منفی اصلاح شدند؛ این اسکریپت Parser اصلی مدل یا صحت معنایی را تضمین نمی‌کند.
+- **Resource-safety:** برای جلوگیری از Tracking State بی‌کران، `MAX_RECORDS=100000` در هر invocation اعمال شد. Manifest اضافی Fail Closed و نتیجه اضافی دارای `RECORD_LIMIT_EXCEEDED` و `FAIL` است؛ هیچ Run ناقصی نباید مبنای Metric شود. این عدد Limit ایمنی ابزار است و **هیچ ربطی به حد پذیرش AI یا تعداد Dataset مصوب ندارد**.
+- **Offline synthetic tests:** مجموعه ۳۱ تست موجود همراه ۷ Regression جدید روی نسخه معادل در Sandbox دستیار **۳۸/۳۸ PASS**؛ `py_compile` PASS. GitHub commit read-back و بررسی Diff مستقل انجام می‌شود. اجرای Commit نهایی بر Clone شخصی کاربر هنوز `PENDING_USER_LOCAL` است.
+- **هنوز بسته نشده:** مجوز و Inventory سخت‌افزار/شبکه، Model Revision و Checksum، Golden Dataset برچسب‌دار سه حوزه، Inference داخلی دو کاندید، Metricهای Quality/Evidence/Abstention/Fairness/Latency/Peak VRAM/Throughput و No-Egress `PENDING_SERVER` یا `NOT_MEASURABLE` باقی‌اند. سندها برنامه‌اند نه اثبات انتخاب مدل یا Capacity Baseline.

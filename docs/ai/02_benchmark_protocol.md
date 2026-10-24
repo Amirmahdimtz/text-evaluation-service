@@ -145,3 +145,9 @@ python scripts/benchmark/validate_stage03_outputs.py --input /approved/local/res
 - `research_novelty` بدون Corpus تطبیقی معتبر و داوری کارشناسی `not_assessed` با `score=null` است. Validator آفلاین هر `assessed` عددی برای این معیار را با `UNVERIFIABLE_NOVELTY` رد می‌کند. در آینده تنها Validator مستقلِ Corpus نسخه‌دار با تأیید مجاز می‌تواند مسیر استثنای علمی قابل‌ممیزی ایجاد کند. ارزیابی Novelty واقعی هنوز `PENDING_SERVER / NOT_MEASURABLE` است.
 
 ارجاع: [انتخاب مدل](01_model_selection.md) · [نتایج](03_benchmark_results.md) · [منابع](04_inference_resource_plan.md).
+
+### ۷.۲. ممیزی ایمنی ورودی (2026-10-24)
+
+- تمام Identifierها، Reason و فهرست‌های Strength/Weakness/Recommendation و متن‌های Metadata در Manifest علاوه بر غیرخالی‌بودن باید به UTF-8 معتبر قابل کدگذاری باشند؛ Unicode lone surrogate ناشی از `\\uD800` و مشابه آن رد می‌شود. این کنترل **صحّت معنا یا انصاف مدل** را اثبات نمی‌کند.
+- `MAX_RECORDS = 100000` محدودیت ایمنی **تعداد رکورد در هر invocation** است، نه Sample Size یا Threshold کیفیت AI؛ Manifest بزرگ‌تر با خطای `INVALID_MANIFEST` و فایل خروجی بزرگ‌تر با `RECORD_LIMIT_EXCEEDED` و `FAIL` متوقف می‌شوند. با توقف زودهنگام، `records` تعداد رکوردهای خوانده‌شده تا توقف است، نه کل اندازه فایل؛ نتایج را برای محاسبه Metric به‌عنوان Run کامل محسوب نکنید. فایل‌های حجیم باید با سیاست نسخه‌بندی و Benchmark Run قابل‌ممیزی مدیریت شوند.
+- `MAX_LINE_BYTES = 10 MiB` همچنان محدودیت هر خط است. کنترل اندازه/تعداد باعث تأیید کیفیت، مجوز Data یا توان GPU نمی‌شود.

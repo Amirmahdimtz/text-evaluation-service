@@ -52,6 +52,7 @@ SYNTHETIC_CASE_DOMAINS = {
     **{f"RE-{n:02}": "research" for n in range(1, 5)},
 }
 MAX_LINE_BYTES = 10 * 1024 * 1024
+MAX_RECORDS = 100_000  # Limit per-invocation tracking memory; not a quality threshold.
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -82,12 +83,23 @@ def strict_json_loads(data: bytes) -> Any:
     )
 
 
+def _valid_text(value: Any) -> bool:
+    """Require nonempty, valid UTF-8 text without lone surrogate escapes."""
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def validate_record(record: Any) -> list[str]:
     """Return safe machine-readable errors; never return source text."""
     if not isinstance(record, dict):
         return ["INVALID_RECORD"]
     for name in ("run_id", "attempt_id", "case_id", "model_id"):
-        if not isinstance(record.get(name), str) or not record[name].strip():
+        if not _valid_text(record.get(name)):
             return ["INVALID_IDENTIFIERS"]
     if record.get("rubric_version") != "candidate-0.1":
         return ["INVALID_RUBRIC_VERSION"]
@@ -95,11 +107,7 @@ def validate_record(record: Any) -> list[str]:
     if not isinstance(domain, str) or domain not in CRITERIA:
         return ["INVALID_DOMAIN"]
     original = record.get("original_text")
-    if not isinstance(original, str) or not original.strip():
-        return ["INVALID_ORIGINAL_TEXT"]
-    try:
-        original.encode("utf-8")
-    except UnicodeEncodeError:
+    if not _valid_text(original):
         return ["INVALID_ORIGINAL_TEXT"]
     result = record.get("output")
     if not isinstance(result, dict) or result.keys() != RESPONSE_FIELDS:
@@ -124,12 +132,12 @@ def validate_record(record: Any) -> list[str]:
             errors.append("INVALID_ABSTENTION")
     else:
         errors.append("INVALID_STATUS")
-    if not isinstance(result["reason"], str) or not result["reason"].strip():
+    if not _valid_text(result["reason"]):
         errors.append("INVALID_REASON")
     for field in ("strengths", "weaknesses", "recommendations"):
         value = result[field]
         if not isinstance(value, list) or any(
-            not isinstance(item, str) or not item.strip() for item in value
+            not _valid_text(item) for item in value
         ):
             errors.append("INVALID_" + field.upper())
     evidence = result["evidence"]
@@ -171,24 +179,22 @@ def load_manifest(path: Path) -> dict[str, tuple[str, str]]:
             line = stream.readline(MAX_LINE_BYTES + 1)
             if not line:
                 break
-            if len(line) > MAX_LINE_BYTES:
-                raise ValueError("oversized manifest record")
+            if len(line) > MAX_LINE_BYTES or len(cases) >= MAX_RECORDS:
+                raise ValueError("manifest safety limit exceeded")
             try:
                 entry = strict_json_loads(line)
             except (ValueError, UnicodeDecodeError, RecursionError) as exc:
                 raise ValueError("invalid manifest JSON") from exc
             if not isinstance(entry, dict) or entry.keys() != MANIFEST_FIELDS:
                 raise ValueError("invalid manifest schema")
-            if (any(not isinstance(entry[field], str) or not entry[field].strip()
+            if (any(not _valid_text(entry[field])
                     for field in MANIFEST_FIELDS - {
                         "edge_case_tags", "expert_labels_revision",
                     })
                     or not isinstance(entry["edge_case_tags"], list)
-                    or any(not isinstance(tag, str) or not tag.strip()
-                           for tag in entry["edge_case_tags"])
+                    or any(not _valid_text(tag) for tag in entry["edge_case_tags"])
                     or (entry["expert_labels_revision"] is not None
-                        and (not isinstance(entry["expert_labels_revision"], str)
-                             or not entry["expert_labels_revision"].strip()))
+                        and not _valid_text(entry["expert_labels_revision"]))
                     or entry["domain"] not in CRITERIA
                     or entry["split"] not in {"development", "calibration", "holdout"}
                     or re.fullmatch(r"[0-9a-fA-F]{64}", entry["source_sha256"]) is None
@@ -228,6 +234,10 @@ def inspect_file(
                 invalid += 1
                 failures["OVERSIZED_RECORD"] += 1
                 break  # Do not parse partial lines or allocate beyond the safety cap.
+            if total > MAX_RECORDS:
+                invalid += 1
+                failures["RECORD_LIMIT_EXCEEDED"] += 1
+                break  # Fail closed; remaining attempts are not counted.
             try:
                 record = strict_json_loads(line)
             except (ValueError, UnicodeDecodeError, RecursionError):

@@ -291,5 +291,71 @@ class ValidatorTests(unittest.TestCase):
 
 
 
+    def test_reject_lone_surrogate_in_reason(self):
+        value = record()
+        value["output"]["reason"] = "\ud800"
+        self.assertIn("INVALID_REASON", validate_record(value))
+
+    def test_reject_lone_surrogate_in_recommendations(self):
+        value = record()
+        value["output"]["recommendations"] = ["\ud800"]
+        self.assertIn("INVALID_RECOMMENDATIONS", validate_record(value))
+
+    def test_reject_lone_surrogate_in_identifier(self):
+        value = record()
+        value["attempt_id"] = "\ud800"
+        self.assertIn("INVALID_IDENTIFIERS", validate_record(value))
+
+    def test_reject_lone_surrogate_in_manifest_provenance(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "manifest.jsonl"
+            value = manifest_record()
+            value["provenance"] = "\ud800"
+            path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_manifest(path)
+
+    def test_reject_lone_surrogate_in_manifest_tag(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "manifest.jsonl"
+            value = manifest_record()
+            value["edge_case_tags"] = ["\ud800"]
+            path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_manifest(path)
+
+    def test_reject_manifest_over_safety_limit(self):
+        from unittest.mock import patch
+        import validate_stage03_outputs as validator
+
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "manifest.jsonl"
+            first = manifest_record()
+            second = dict(first, case_id="SP-02", group_id="grp02",
+                          source_sha256="0" * 64)
+            path.write_text(json.dumps(first) + "\n" +
+                            json.dumps(second) + "\n", encoding="utf-8")
+            with patch.object(validator, "MAX_RECORDS", 1):
+                with self.assertRaises(ValueError):
+                    load_manifest(path)
+
+    def test_fail_closed_attempts_over_safety_limit(self):
+        from unittest.mock import patch
+        import validate_stage03_outputs as validator
+
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "results.jsonl"
+            first = record()
+            second = record()
+            second["attempt_id"] = "second"
+            path.write_text(json.dumps(first) + "\n" +
+                            json.dumps(second) + "\n", encoding="utf-8")
+            with patch.object(validator, "MAX_RECORDS", 1):
+                total, invalid, failures = inspect_file(path)
+            self.assertEqual((total, invalid), (2, 1))
+            self.assertEqual(failures["RECORD_LIMIT_EXCEEDED"], 1)
+
+
+
 if __name__ == "__main__":
     unittest.main()
