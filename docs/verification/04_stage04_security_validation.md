@@ -42,3 +42,31 @@ The earlier DI test initially failed due to inherited `object.__init__(*args, **
 | No unmitigated Critical/High local security defect | NOT_PROVEN_AS_ABSOLUTE | No evident local exploit, but full dependency security check outstanding |
 
 **Stage status until missing local gates are closed: `IN_PROGRESS`**, not `DONE`. The absence of organizational server alone is *not* a blocker (D-017); unresolved **local** regression and supply-chain checks are not misclassified as server-dependent. Never treat this foundation as a production deployment approval. Stage 05 is not authorized by this document.
+
+
+## Independent user-local Windows verification — 2026-10-24
+
+**Evidence source:** user-provided PowerShell console transcript, not commands executed by the assistant. Working copy was fast-forwarded from `e9d6f1e` to `ce2d389` on `main`. A fresh Python **3.12** virtual environment installed `requirements-dev.txt` successfully, including all exact direct pins. Some transient PyPI read-timeout retries resolved without aborting installation.
+
+| Verification | User-local command | Observed result |
+|---|---|---|
+| Stage 04 tests | `.\\.venv\\Scripts\\python.exe -m pytest -q tests/test_foundation.py` | **26 passed, 0 failed, 1 DeprecationWarning** (Starlette TestClient imports deprecated AnyIO alias) |
+| Syntax | `.\\.venv\\Scripts\\python.exe -m compileall -q src tests scripts` | **PASS** (zero exit/errors printed) |
+| Safety/static | `.\\.venv\\Scripts\\python.exe scripts/verification/check_stage04_safety.py` | **PASS**; 9 runtime files, dependency pins, credential patterns, ignored secrets |
+| Dependency consistency | `.\\.venv\\Scripts\\python.exe -m pip check` | **PASS:** `No broken requirements found.` (consistency only, **not** a CVE/license audit) |
+| Stage 02 documentation checks | `.\\.venv\\Scripts\\python.exe scripts/verification/check_stage02_docs.py` | **19/19 PASS**, complete Git tree showed 40 entries |
+| Stage 02 regression suite | `.\\.venv\\Scripts\\python.exe scripts/verification/test_check_stage02_docs.py` | **12/12 PASS** |
+| Stage 03 regression suite | `.\\.venv\\Scripts\\python.exe scripts/benchmark/test_validate_stage03_outputs.py` | **38/38 PASS** |
+| Windows Uvicorn bound to configured port | `.\\.venv\\Scripts\\python.exe -m src.host.app` | **FAIL to bind** at `127.0.0.1:8000`, `WinError 10048`; `APP_START`, then `APP_STOP` logged; port already in use by an unidentified local process. **No Windows HTTP health endpoint check was performed**. |
+| Clean working-tree check | `git status --short` | **NOT_RUN/NOT_PROVIDED** in this transcript |
+
+The port binding error is an environment resource collision, not evidence of a DI import/startup failure. On this checkout, `src/host/res/appsettings.development.yaml` configures port `8000`. Safe non-destructive alternate smoke command:
+
+```powershell
+.\\.venv\\Scripts\\python.exe -m uvicorn src.host.app:app --host 127.0.0.1 --port 8001 --no-access-log
+# In a separate PowerShell:
+Invoke-RestMethod http://127.0.0.1:8001/health/live
+Invoke-RestMethod http://127.0.0.1:8001/health/ready
+```
+
+**Updated gate classification:** previous assistant-isolated `pip check` conflict and original Stage 02/03 `NOT_RUN` statements above remain accurate *for that earlier sandbox*; these checks have now **PASSED_USER_LOCAL** in an independent Windows Python 3.12 environment. The **full transitive vulnerability/SBOM/license/artifact provenance audit remains NOT_RUN**; no absence-of-vulnerabilities claim is made. Windows-specific standalone bind/HTTP smoke is `BLOCKED_PORT_IN_USE`, while the separate earlier assistant sandbox did verify both routes over HTTP 200. Stage 04 overall **IN_PROGRESS** until required local supply-chain gate evidence is available; real company-network controls remain `DEFERRED_TO_STAGE_11` per D-017.
