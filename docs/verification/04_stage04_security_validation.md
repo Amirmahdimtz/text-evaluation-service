@@ -91,3 +91,16 @@ Invoke-RestMethod http://127.0.0.1:18080/health/ready
 ```
 
 **Verification status:** user-local port 18080 bind/HTTP **NOT_RUN** at time of change; regression after this YAML/assertion change **NOT_RUN** in the user's updated checkout; prior user-local 26/26 PASS refers to the old 8000 configuration. Existing Stage 04 overall **IN_PROGRESS** with supply-chain audit outstanding. If 18080 is also occupied or excluded, test OS-selected ephemeral port with `uvicorn src.host.app:app --host 127.0.0.1 --port 0 --no-access-log` and use the actually announced port before selecting another fixed default.
+
+
+## Windows confirmation after development port adjustment — 2026-10-24
+
+User-supplied PowerShell output, on a working copy fast-forwarded to `f391461` (`main`), with `TES_ENVIRONMENT=development` and `PYTHONPATH=.`:
+
+- `Get-NetTCPConnection -LocalPort 18080 -State Listen -ErrorAction SilentlyContinue` returned **no listening entry before startup** (not itself a proof of port availability).
+- `.\\.venv\\Scripts\\python.exe -m pytest -q tests/test_foundation.py` returned **26 passed, 0 failed, 1 non-fatal AnyIO/Starlette deprecation warning**, in **6.58s**, **after** changing development port and asserting `server.port == 18080`.
+- `.\\.venv\\Scripts\\python.exe -m src.host.app` logged `APP_START`, `Application startup complete`, followed by `Uvicorn running on http://127.0.0.1:18080` (server process **8896**). No bind error was reported; local development **port bind/startup PASS_USER_LOCAL**.
+- The user has **not yet supplied actual GET responses** for `/health/live` and `/health/ready` on port 18080; Windows HTTP health check remains **NOT_RUN / EVIDENCE_PENDING**. An earlier independent assistant sandbox did execute HTTP 200 on both routes but does not replace platform-specific Windows evidence.
+- No clean working-tree command after pull was included. Corporate network, Vault, SSO, model, DB, firewall and Production still not tested/touched. Dependency/SBOM/vulnerability/license/provenance audit remains **NOT_RUN**.
+
+**Gate conclusion: Stage 04 `IN_PROGRESS`.** The development port collision is resolved for actual Uvicorn startup on the user's machine, but network HTTP response verification and the outstanding local dependency supply-chain review cannot be marked PASS on this evidence alone. Stage 05 not started.
