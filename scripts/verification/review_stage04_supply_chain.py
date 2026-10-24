@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+from importlib import metadata
 import http.client
 import json
 import re
@@ -20,10 +21,30 @@ from pathlib import Path
 from typing import Any
 
 from packaging.utils import canonicalize_name, parse_wheel_filename
+from packaging.version import InvalidVersion, Version
 
 
 class EvidenceError(ValueError):
     """Input evidence is incomplete, mismatched, or not fit for a release gate."""
+
+
+MIN_APPROVED_PIP = Version("26.2.2")
+
+
+def bootstrap_pip_status(installed_version: str | None = None) -> str:
+    """Require a patched bootstrap installer for the active Python environment.
+
+    Package installation is intentionally a separately authorized local action.
+    This check cannot attest package provenance or an OSV scan result.
+    """
+    try:
+        current = installed_version if installed_version is not None else metadata.version("pip")
+        version = Version(current)
+    except (metadata.PackageNotFoundError, InvalidVersion, TypeError):
+        raise EvidenceError("BOOTSTRAP_PIP_VERSION_UNVERIFIED") from None
+    if version < MIN_APPROVED_PIP or version.is_prerelease or version.is_devrelease:
+        raise EvidenceError(f"BOOTSTRAP_PIP_BELOW_SECURITY_BASELINE: {current} < {MIN_APPROVED_PIP}")
+    return f"PASS_BOOTSTRAP_PIP_VERSION: {current} (version floor only; CVE scan still required)"
 
 
 def _read(path: Path) -> dict[str, Any]:
@@ -372,6 +393,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("site-packages", help="Print target interpreter purelib path without shell-embedded Python quotes")
+    sub.add_parser("bootstrap-check", help="Fail if this Python environment uses a vulnerable pip version")
     audit = sub.add_parser("audit-status", help="Validate full JSON CVE audit coverage; distinguish findings from scan failure")
     audit.add_argument("--inventory", type=Path, required=True)
     audit.add_argument("--audit", type=Path, required=True)
@@ -397,6 +419,12 @@ def main() -> int:
     for field in ("inventory", "audit", "sbom", "hashes", "pypi-hashes", "licenses", "wheelhouse", "output"):
         check.add_argument(f"--{field}", type=Path, required=True)
     args = parser.parse_args()
+    if args.command == "bootstrap-check":
+        try:
+            print(bootstrap_pip_status())
+        except EvidenceError as exc:
+            parser.exit(1, f"FAIL: {exc}\n")
+        return 0
     if args.command == "site-packages":
         # Native Windows PowerShell can strip quotes passed to `python -c`.
         # Keep the quoted sysconfig key in this Python source file instead.

@@ -42,7 +42,7 @@ def main() -> int:
         if any(p.search(contents) for p in SECRET_PATTERNS):
             raise SystemExit(f"FAIL: suspicious credential in {path.relative_to(ROOT)}")
     runtime = _pinned_versions(ROOT / "requirements.txt")
-    _pinned_versions(ROOT / "requirements-dev.txt")
+    dev = _pinned_versions(ROOT / "requirements-dev.txt")
     try:
         starlette = tuple(int(x) for x in runtime["starlette"].split("."))
     except (KeyError, ValueError):
@@ -51,6 +51,12 @@ def main() -> int:
         raise SystemExit("FAIL: known vulnerable Starlette version (CVE-2026-54283)")
     if "fastapi" not in runtime:
         raise SystemExit("FAIL: missing FastAPI pin")
+    try:
+        pytest_version = tuple(int(x) for x in dev["pytest"].split("."))
+    except (KeyError, ValueError):
+        raise SystemExit("FAIL: patched pytest pin required") from None
+    if pytest_version < (9, 0, 3):
+        raise SystemExit("FAIL: known vulnerable pytest version (CVE-2025-71176)")
     patterns = (ROOT / ".gitignore").read_text(encoding="utf-8")
     if not all(item in patterns for item in (".env", "*.key", "*.pem", "*.log")):
         raise SystemExit("FAIL: .gitignore missing essential secret protections")

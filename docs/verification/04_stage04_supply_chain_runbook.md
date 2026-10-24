@@ -211,3 +211,40 @@ The command prints `AUDIT_FINDINGS_SUMMARY: 2 packages, 14 advisory records; gat
 Upstream fix versions returned in JSON are *candidates*, not approvals. If the package is a shared tool (for example `pip`) beyond the 27-package source closure, it is still included in this report and marked `in_dependency_closure: false`; the reviewer must determine whether it affects runtime/deployment. After approved package remediation, reinstall into a clean disposable test environment, rerun the entire test suite, regenerate all evidence in a **fresh immutable directory**, rerun OSV/PyPI or authorized advisory check and separately complete qualified license review. The 27 wheels and hashes from the old environment are **not** proof for changed versions. Corporate-only security remains `DEFERRED_TO_STAGE_11`, Stage 05 remains `NOT_STARTED`.
 
 New summary CLI and its adversarial regression tests: **28/28 supply-chain tests PASS_ASSISTANT_LOCAL (Python 3.13.5)**; compilation PASS. Combined Windows suite including this new change **PENDING_USER_LOCAL**. Stage 04 remains **IN_PROGRESS / NO_GO_STAGE_05**.
+
+
+## Remediation of confirmed OSV findings in pip and pytest — 2026-10-24
+
+The user-supplied `findings-summary-osv.json` from Python 3.12 Windows on `114c659` is **complete** and corresponds to **65/65 passing tests (37.46 seconds)**. OSV reported **14 records, seven unique PYSEC IDs / CVE groups**: six issues in the **bootstrap installer `pip==25.0.1`** (12 duplicate advisory records, **not a direct project dependency**) and one in **dev-only `pytest==9.0.2`** (two duplicate advisory records, **in the 27-package dependency closure**). Affected package data is public metadata, not confidential evaluation text.
+
+**Version selection and independently verified sources:**
+- `pytest==9.0.3`: patch for CVE-2025-71176, which is specifically about insecure temporary directories on Unix. Source: https://www.pytest.org/en/latest/changelog.html and https://github.com/advisories/GHSA-6w46-j5rx-g56g ; Python >=3.10 is supported.
+- `pip==26.2.2`: fixes all six reported pip advisory version ranges, including CVE-2026-13346 (patched in 26.2.0). Released October 20, 2026; official Python and PyPI sources: https://pypi.org/project/pip/26.2.2/ and https://www.python.org/downloads/release/python-3149/ . The official pip wheel SHA256 is `fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70`. This pin targets **only disposable development/audit virtualenv installers**; do not introduce `pip` as a production runtime dependency or upgrade system Python.
+
+**Changes to Stage 04 only:** `requirements-dev.txt` pins pytest 9.0.3; static safety guard rejects older/missing pytest pin; the offline supply-chain verifier now has `bootstrap-check` requiring `pip>=26.2.2`, rejects unverifiable/prerelease versions, and the PowerShell collector runs it on **both** reviewed target Python and dedicated audit Python **before** installing or downloading packages. Neither pip nor pytest is upgraded automatically by a scanner. Minimal isolated code/test subset in assistant Python 3.13.5: **37/37 tests PASSED** (32 supply-chain, two static safety, three installed-inventory regressions); `compileall` PASSED. Assistant's sandbox still has an **older pip and pytest** and could not install the patched public versions, so *upgraded-target Windows installation, complete integration suite and repeat OSV audit are PENDING_USER_LOCAL*.
+
+### Exact Windows remediation on authorized development workstation
+
+**Preserve `.stage04-evidence-20261024-03` and the OSV finding report.** Use the official hashed pip wheel direct link below, as published by PyPI/Python.org, only if outbound public package downloads are permitted. This is a change **only inside the existing `.venv-review` and `.venv-supply-chain` environments**, with no system-wide pip/Secret/Production changes:
+
+```powershell
+git pull --ff-only origin main
+$pipWheel = 'https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70'
+& .\.venv-review\Scripts\python.exe -m pip install --disable-pip-version-check --timeout 120 --retries 6 --no-deps $pipWheel
+& .\.venv-supply-chain\Scripts\python.exe -m pip install --disable-pip-version-check --timeout 120 --retries 6 --no-deps $pipWheel
+& .\.venv-review\Scripts\python.exe -m pip install --disable-pip-version-check --timeout 120 --retries 6 -r requirements-dev.txt
+
+& .\.venv-review\Scripts\python.exe scripts/verification/review_stage04_supply_chain.py bootstrap-check
+& .\.venv-supply-chain\Scripts\python.exe scripts/verification/review_stage04_supply_chain.py bootstrap-check
+& .\.venv-review\Scripts\python.exe -m pip check
+& .\.venv-review\Scripts\python.exe -m pytest -q tests
+& .\.venv-review\Scripts\python.exe -m compileall -q src tests scripts
+& .\.venv-review\Scripts\python.exe scripts/verification/check_stage04_safety.py
+
+# The old 27-package closure changed (pytest): new immutable evidence is mandatory.
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File ".\scripts\verification\run_stage04_supply_chain.ps1" -PythonPath ".\.venv-review\Scripts\python.exe" -AuditPythonPath ".\.venv-supply-chain\Scripts\python.exe" -EvidencePath ".stage04-evidence-20261024-04" -VulnerabilityService osv -VerifyPublicPyPIDigests
+```
+
+Stop and report the first failed command; do not treat partial results as Gate PASS. If `.stage04-evidence-20261024-04` already exists, choose a new unique name. The new OSV scan **must** confirm complete coverage and no new unaccepted vulnerabilities; the collector must regenerate all Wheel hashes, public PyPI release-digest matches and CycloneDX SBOM from the **new** installed dependency closure. Its `license-review.json` is an **unapproved template**; license obligations must be evaluated by the responsible reviewer for all installed packages. Package hashes matched over TLS are not a signed upstream publisher attestation. Local Stage 04 stays **IN_PROGRESS / NO_GO_STAGE_05**, while corporate No-Egress/SSO/Vault and organization artifact provenance remain Stage 11 under D-017.
+
+**Note:** An observed Windows-only exploitability limitation of the pytest CVE does not waive patching; this project is intended for Unix/Linux server deployment. The new static guard is a pin-floor regression check, not a current vulnerability database scan.

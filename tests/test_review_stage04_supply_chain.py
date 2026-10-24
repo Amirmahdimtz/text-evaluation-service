@@ -320,3 +320,46 @@ def test_advisory_source_is_passed_as_single_explicit_pip_audit_argument():
     assert '--vulnerability-service osv --timeout' not in content
     assert "Assert-Exit 'Vulnerability audit report completeness'" in content
     assert "Vulnerability audit produced no report" in content
+
+
+def test_bootstrap_pip_version_guard_rejects_reported_affected_version():
+    with pytest.raises(review.EvidenceError, match="BOOTSTRAP_PIP_BELOW_SECURITY_BASELINE"):
+        review.bootstrap_pip_status("25.0.1")
+    with pytest.raises(review.EvidenceError, match="BOOTSTRAP_PIP_BELOW_SECURITY_BASELINE"):
+        review.bootstrap_pip_status("26.2.1")
+    assert review.bootstrap_pip_status("26.2.2").startswith("PASS_BOOTSTRAP_PIP_VERSION")
+    assert review.bootstrap_pip_status("26.3.0").startswith("PASS_BOOTSTRAP_PIP_VERSION")
+
+
+def test_bootstrap_pip_version_guard_rejects_unverifiable_and_prerelease():
+    with pytest.raises(review.EvidenceError, match="BOOTSTRAP_PIP_VERSION_UNVERIFIED"):
+        review.bootstrap_pip_status("not-a-version")
+    with pytest.raises(review.EvidenceError, match="BOOTSTRAP_PIP_BELOW_SECURITY_BASELINE"):
+        review.bootstrap_pip_status("27.0.0rc1")
+
+
+def test_collector_rejects_vulnerable_pip_in_target_and_audit_environments():
+    content = (SCRIPT.parent / "run_stage04_supply_chain.ps1").read_text(encoding="utf-8")
+    assert "& $PythonPath scripts/verification/review_stage04_supply_chain.py bootstrap-check" in content
+    assert "& $AuditPythonPath scripts/verification/review_stage04_supply_chain.py bootstrap-check" in content
+    assert "Assert-Exit 'Target installer security baseline'" in content
+    assert "Assert-Exit 'Audit installer security baseline'" in content
+    assert content.index("Assert-Exit 'Target installer security baseline'") < content.index("-m pip check")
+    assert content.index("Assert-Exit 'Audit installer security baseline'") < content.index("-m pip install")
+
+
+def test_bootstrap_cli_fails_closed_in_old_isolated_environment():
+    import subprocess
+    import sys
+    import importlib.metadata
+    from packaging.version import Version
+    command = [sys.executable, str(SCRIPT), "bootstrap-check"]
+    response = subprocess.run(command, text=True, capture_output=True, check=False)
+    current = Version(importlib.metadata.version("pip"))
+    if current < review.MIN_APPROVED_PIP:
+        assert response.returncode == 1
+        assert "BOOTSTRAP_PIP_BELOW_SECURITY_BASELINE" in response.stderr
+        assert "PASS_" not in response.stdout
+    else:
+        assert response.returncode == 0
+        assert "PASS_BOOTSTRAP_PIP_VERSION" in response.stdout

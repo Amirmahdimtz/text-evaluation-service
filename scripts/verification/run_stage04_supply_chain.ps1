@@ -27,6 +27,9 @@ try {
         }
     }
 
+    # pip is not in our 27-package closure, but is installed in the target venv.
+    & $PythonPath scripts/verification/review_stage04_supply_chain.py bootstrap-check
+    Assert-Exit 'Target installer security baseline'
     & $PythonPath -m pip check
     Assert-Exit 'Target environment pip check'
 
@@ -52,21 +55,20 @@ try {
     Assert-Exit 'License review checklist'
 
     # The separate audit venv keeps audit-tool dependencies out of the service closure.
+    # A fresh venv has an old pip and lacks packaging. Provision the pinned,
+    # reviewed audit environment explicitly before running this collector.
     if (-not (Test-Path $AuditPythonPath -PathType Leaf)) {
-        py -3.12 -m venv .venv-supply-chain
-        Assert-Exit 'Create dedicated audit environment'
+        throw 'Dedicated audit Python missing. Provision a venv with patched pip and pinned audit tools first.'
     }
-    # Public package CDN downloads can be slow; use a bounded longer read timeout.
-    # Do not suppress failed installs or change global pip / network policy.
+    & $AuditPythonPath scripts/verification/review_stage04_supply_chain.py bootstrap-check
+    Assert-Exit 'Audit installer security baseline'
     & $AuditPythonPath -m pip install --disable-pip-version-check --timeout 120 --retries 6 -r requirements-audit.txt
     Assert-Exit 'Install pinned audit tools (approved development workstation only)'
 
     # pip-audit has a separate socket timeout (default 15s), independent from pip install.
     # Exit code 1 can mean real findings OR an advisory-service failure: validate the JSON.
-    # An explicitly chosen service is mandatory for reproducible advisory evidence.
-    # Never silently fall back to another provider after a network failure.
+    # Never silently fall back to another provider.
     $auditReport = Join-Path $EvidencePath ("vulnerabilities.{0}.json" -f $VulnerabilityService)
-    Write-Host "Auditing public package names/versions via $VulnerabilityService"
     & $AuditPythonPath -m pip_audit --strict --path $installedPath --vulnerability-service $VulnerabilityService --timeout 120 --progress-spinner off --format json --output $auditReport
     $auditExitCode = $LASTEXITCODE
     if (-not (Test-Path -LiteralPath $auditReport -PathType Leaf)) {
