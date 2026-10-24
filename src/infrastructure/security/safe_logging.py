@@ -29,10 +29,12 @@ def configure_logging() -> logging.Logger:
     logger = logging.getLogger("text_evaluation_service")
     logger.setLevel(logging.INFO)
     logger.propagate = False
+    # A preinstalled handler can otherwise bypass our redaction contract.
+    # Keep the sink, but enforce the safe formatter on every existing handler.
     if not logger.handlers:
-        handler = logging.StreamHandler()
+        logger.addHandler(logging.StreamHandler())
+    for handler in logger.handlers:
         handler.setFormatter(SafeFormatter())
-        logger.addHandler(handler)
     return logger
 
 
