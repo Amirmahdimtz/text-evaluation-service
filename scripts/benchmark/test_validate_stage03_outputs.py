@@ -242,6 +242,25 @@ class ValidatorTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_manifest(path)
 
+    def test_manifest_rejects_group_leakage_across_splits(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "manifest.jsonl"
+            first = manifest_record()
+            second = dict(first, case_id="SP-02", split="holdout",
+                          source_sha256="0" * 64)
+            path.write_text(json.dumps(first) + "\n" + json.dumps(second) + "\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_manifest(path)
+
+    def test_manifest_rejects_same_source_across_splits(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "manifest.jsonl"
+            first = manifest_record()
+            second = dict(first, case_id="SP-02", group_id="another", split="holdout")
+            path.write_text(json.dumps(first) + "\n" + json.dumps(second) + "\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_manifest(path)
+
     def test_invalid_manifest_cli_is_sanitized(self):
         from contextlib import redirect_stdout
         from io import StringIO

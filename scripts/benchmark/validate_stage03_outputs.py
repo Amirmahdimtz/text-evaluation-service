@@ -163,6 +163,9 @@ def validate_record(record: Any) -> list[str]:
 def load_manifest(path: Path) -> dict[str, tuple[str, str]]:
     """Index versioned case metadata; never treat it as legal approval."""
     cases: dict[str, tuple[str, str]] = {}
+    dataset_identity: tuple[str, str] | None = None
+    group_splits: dict[str, str] = {}
+    source_splits: dict[str, str] = {}
     with path.open("rb") as stream:
         while True:
             line = stream.readline(MAX_LINE_BYTES + 1)
@@ -187,9 +190,20 @@ def load_manifest(path: Path) -> dict[str, tuple[str, str]]:
                         and (not isinstance(entry["expert_labels_revision"], str)
                              or not entry["expert_labels_revision"].strip()))
                     or entry["domain"] not in CRITERIA
+                    or entry["split"] not in {"development", "calibration", "holdout"}
                     or re.fullmatch(r"[0-9a-fA-F]{64}", entry["source_sha256"]) is None
                     or entry["case_id"] in cases):
                 raise ValueError("invalid manifest values")
+            identity = (entry["dataset_id"], entry["dataset_version"])
+            group_id, split = entry["group_id"], entry["split"]
+            source_hash = entry["source_sha256"].lower()
+            if (dataset_identity is not None and dataset_identity != identity
+                    or group_id in group_splits and group_splits[group_id] != split
+                    or source_hash in source_splits and source_splits[source_hash] != split):
+                raise ValueError("mixed manifest dataset or split leakage")
+            dataset_identity = identity
+            group_splits[group_id] = split
+            source_splits[source_hash] = split
             cases[entry["case_id"]] = (
                 entry["domain"], entry["source_sha256"].lower(),
             )
