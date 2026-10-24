@@ -59,10 +59,27 @@ try {
     & $AuditPythonPath -m pip install --disable-pip-version-check --timeout 120 --retries 6 -r requirements-audit.txt
     Assert-Exit 'Install pinned audit tools (approved development workstation only)'
 
-    & $AuditPythonPath -m pip_audit --strict --path $installedPath --vulnerability-service pypi --progress-spinner off --format json --output (Join-Path $EvidencePath 'vulnerabilities.json')
+    # pip-audit has a separate socket timeout (default 15s), independent from pip install.
+    # Exit code 1 can mean real findings OR an advisory-service failure: validate the JSON.
+    $auditReport = Join-Path $EvidencePath 'vulnerabilities.json'
+    & $AuditPythonPath -m pip_audit --strict --path $installedPath --vulnerability-service pypi --timeout 120 --progress-spinner off --format json --output $auditReport
     $auditExitCode = $LASTEXITCODE
-    if ($auditExitCode -ne 0) {
-        Write-Warning "Vulnerability audit found an issue or failed (exit $auditExitCode). Gate is NOT approved. Preserve the report."
+    if (-not (Test-Path -LiteralPath $auditReport -PathType Leaf)) {
+        throw "Vulnerability audit produced no report (exit $auditExitCode); preserve partial evidence. Stage 04 gate remains OPEN."
+    }
+    $auditStatus = & $PythonPath scripts/verification/review_stage04_supply_chain.py audit-status --inventory (Join-Path $EvidencePath 'inventory.json') --audit $auditReport
+    Assert-Exit 'Vulnerability audit report completeness'
+    if ($auditStatus -eq 'AUDIT_COMPLETE_WITH_FINDINGS') {
+        if ($auditExitCode -ne 1) {
+            throw "Vulnerability audit reported findings with unexpected exit code $auditExitCode"
+        }
+        Write-Warning 'Verified vulnerability findings in complete audit JSON. Stage 04 gate is NOT approved.'
+    } elseif ($auditStatus -eq 'AUDIT_COMPLETE_NO_REPORTED_FINDINGS') {
+        if ($auditExitCode -ne 0) {
+            throw "Vulnerability audit returned exit code $auditExitCode despite clean JSON; gate remains OPEN."
+        }
+    } else {
+        throw 'Vulnerability audit returned an unknown status; gate remains OPEN.'
     }
 
     & $AuditPythonPath -m cyclonedx_py environment $PythonPath --spec-version 1.6 --output-format JSON --output-file (Join-Path $EvidencePath 'sbom.cdx.json')
@@ -87,6 +104,7 @@ try {
     $summary = @{
         reviewed_python = $PythonPath
         vulnerability_audit_exit = $auditExitCode
+        vulnerability_audit_status = $auditStatus
         wheel_manifest = 'wheel-hashes.json'
         sbom = 'sbom.cdx.json'
         license_review = 'REVIEW_REQUIRED (license-review.json is an unapproved template)'

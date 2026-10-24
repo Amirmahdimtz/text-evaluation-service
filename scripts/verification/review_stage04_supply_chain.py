@@ -192,19 +192,26 @@ def _validate_pypi_digests(data: dict[str, Any], hashes: dict[str, Any]) -> None
             raise EvidenceError("PYPI_WHEEL_SHA256_MISMATCH")
 
 
-def _validate_audit(data: dict[str, Any], expected: dict[str, str]) -> None:
+def audit_report_status(data: dict[str, Any], expected: dict[str, str]) -> str:
+    """Require full named/versioned coverage before calling an advisory result complete."""
     entries = data.get("dependencies")
     if not isinstance(entries, list):
         raise EvidenceError("AUDIT_FORMAT_UNKNOWN")
     actual = _identities(entries, source="AUDIT")
     if any(actual.get(name) != version for name, version in expected.items()):
         raise EvidenceError("AUDIT_COVERAGE_MISMATCH")
+    has_findings = False
     for entry in entries:
         vulns = entry.get("vulns")
         if not isinstance(vulns, list):
             raise EvidenceError("AUDIT_MISSING_VULNERABILITY_DATA")
-        if vulns:
-            raise EvidenceError("AUDIT_VULNERABILITIES_REPORTED")
+        has_findings = has_findings or bool(vulns)
+    return "AUDIT_COMPLETE_WITH_FINDINGS" if has_findings else "AUDIT_COMPLETE_NO_REPORTED_FINDINGS"
+
+
+def _validate_audit(data: dict[str, Any], expected: dict[str, str]) -> None:
+    if audit_report_status(data, expected) == "AUDIT_COMPLETE_WITH_FINDINGS":
+        raise EvidenceError("AUDIT_VULNERABILITIES_REPORTED")
 
 
 def _validate_sbom(data: dict[str, Any], expected: dict[str, str]) -> None:
@@ -312,6 +319,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("site-packages", help="Print target interpreter purelib path without shell-embedded Python quotes")
+    audit = sub.add_parser("audit-status", help="Validate full JSON CVE audit coverage; distinguish findings from scan failure")
+    audit.add_argument("--inventory", type=Path, required=True)
+    audit.add_argument("--audit", type=Path, required=True)
     req = sub.add_parser("freeze", help="Create exact transitive pins from an installed metadata inventory")
     req.add_argument("--inventory", type=Path, required=True)
     req.add_argument("--output", type=Path, required=True)
@@ -336,6 +346,12 @@ def main() -> int:
         if not target or not Path(target).is_dir():
             parser.exit(1, "FAIL: TARGET_SITE_PACKAGES_NOT_FOUND\n")
         print(target)
+        return 0
+    if args.command == "audit-status":
+        try:
+            print(audit_report_status(_read(args.audit), _inventory(_read(args.inventory))))
+        except (EvidenceError, OSError) as exc:
+            parser.exit(1, f"FAIL: {exc}\n")
         return 0
     try:
         inventory = _read(args.inventory) if args.command != "verify-pypi" else None

@@ -191,3 +191,51 @@ def test_collector_uses_bounded_pip_network_timeouts_and_retries():
     assert "-m pip download --disable-pip-version-check --timeout 120 --retries 6 --only-binary=:all: --no-deps" in content
     assert "Assert-Exit 'Install pinned audit tools" in content
     assert "Assert-Exit 'Download exact installed wheel versions" in content
+
+
+def test_audit_status_distinguishes_complete_clean_and_findings(tmp_path):
+    inv, audit, sbom, hashes, pypi, wh, licenses = fixture(tmp_path)
+    expected = review._inventory(inv)
+    assert review.audit_report_status(audit, expected) == "AUDIT_COMPLETE_NO_REPORTED_FINDINGS"
+    audit["dependencies"][0]["vulns"] = [{"id": "SYNTHETIC-CVE"}]
+    assert review.audit_report_status(audit, expected) == "AUDIT_COMPLETE_WITH_FINDINGS"
+    with pytest.raises(review.EvidenceError, match="AUDIT_VULNERABILITIES_REPORTED"):
+        review.evaluate(inventory=inv, audit=audit, sbom=sbom, hashes=hashes, pypi_hashes=pypi, wheelhouse=wh, licenses=licenses)
+
+
+def test_audit_status_rejects_incomplete_and_unknown_advisory_results(tmp_path):
+    inv, audit, *_ = fixture(tmp_path)
+    expected = review._inventory(inv)
+    del audit["dependencies"][0]["vulns"]
+    with pytest.raises(review.EvidenceError, match="AUDIT_MISSING_VULNERABILITY_DATA"):
+        review.audit_report_status(audit, expected)
+    audit["dependencies"] = []
+    with pytest.raises(review.EvidenceError, match="AUDIT_COVERAGE_MISMATCH"):
+        review.audit_report_status(audit, expected)
+
+
+def test_audit_status_cli_fails_without_report_and_accepts_complete_synthetic(tmp_path):
+    import subprocess
+    import sys
+    inv, audit, *_ = fixture(tmp_path)
+    inv_path = tmp_path / "inventory.json"
+    audit_path = tmp_path / "scan.json"
+    inv_path.write_text(json.dumps(inv), encoding="utf-8")
+    cmd = [sys.executable, str(SCRIPT), "audit-status", "--inventory", str(inv_path), "--audit", str(audit_path)]
+    missing = subprocess.run(cmd, capture_output=True, text=True)
+    assert missing.returncode != 0
+    assert "AUDIT_COMPLETE" not in missing.stdout
+    audit_path.write_text(json.dumps(audit), encoding="utf-8")
+    done = subprocess.run(cmd, capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == "AUDIT_COMPLETE_NO_REPORTED_FINDINGS"
+
+
+def test_collector_uses_independent_pip_audit_timeout_and_requires_complete_report():
+    content = (SCRIPT.parent / "run_stage04_supply_chain.ps1").read_text(encoding="utf-8")
+    assert "-m pip_audit --strict --path $installedPath --vulnerability-service pypi --timeout 120" in content
+    assert "review_stage04_supply_chain.py audit-status --inventory" in content
+    assert "Vulnerability audit report completeness" in content
+    assert "Vulnerability audit produced no report" in content
+    assert "AUDIT_COMPLETE_WITH_FINDINGS" in content
+    assert "AUDIT_COMPLETE_NO_REPORTED_FINDINGS" in content

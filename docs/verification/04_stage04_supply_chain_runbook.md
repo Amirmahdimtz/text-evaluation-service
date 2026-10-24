@@ -124,3 +124,36 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File ".\scripts\verific
 ```
 
 If public package downloads continue to time out, report the failed host and step. Do not disable SSL verification, skip vulnerability scans, change corporate network controls, or artificially mark the local Gate as passed. An authorized package mirror or existing verified wheel cache can be evaluated as an explicit follow-up; **do not silently substitute an unknown index**. New network-resilience regression and an isolated Python compile test passed in the assistant container; the corrected Windows collector and external audit remain **PENDING_USER_LOCAL**.
+
+
+## Advisory scan timeout and reuse of verified local evidence — 2026-10-24
+
+User-local evidence: **55/55 tests PASS**, tools successfully installed, 27 wheel files downloaded, and wheel manifest plus PyPI digest checks returned success. However, the `pip-audit` vulnerability query timed out against `pypi.org` with its own `--timeout` default of **15 seconds**; previous `pip install --timeout 120` does not govern this command. The scanner returned exit 1 on network error with **no verified complete JSON**. Consequently `vulnerabilities.json` must not be marked PASS, and the local license review is still unapproved. The collected `.stage04-evidence-20261024-03` directory is **partial evidence to preserve**, not to overwrite or delete.
+
+The collector now uses **`pip-audit --timeout 120`** and validates the full report with `review_stage04_supply_chain.py audit-status` (exact package/version coverage, explicit vulnerability lists). The CLI distinguishes `AUDIT_COMPLETE_NO_REPORTED_FINDINGS` from `AUDIT_COMPLETE_WITH_FINDINGS`; it returns nonzero on missing/partial/unreadable scan evidence. Public service failures abort the collector fail-closed; a complete report with known vulnerabilities is retained for remediation but does not approve the Gate. Four focused synthetic/CLI/static regression tests added; **22/22 isolated tests PASS**, Windows scanner not yet rerun.
+
+### Targeted Windows audit retry (avoids redownloading 27 wheels)
+
+After pulling the fix, from the repository root run the commands below on an authorized development workstation; they send **only public package names/versions** to the advisory service. Use a *new report filename* to preserve the failed attempt's history:
+
+```powershell
+git pull --ff-only origin main
+.\.venv-review\Scripts\python.exe -m pytest -q tests
+
+$e = '.stage04-evidence-20261024-03'
+$installed = & .\.venv-review\Scripts\python.exe scripts/verification/review_stage04_supply_chain.py site-packages
+& .\.venv-supply-chain\Scripts\python.exe -m pip_audit --strict --path $installed --vulnerability-service pypi --timeout 120 --progress-spinner off --format json --output "$e\vulnerabilities-retry.json"
+$auditExit = $LASTEXITCODE
+Write-Host "pip-audit exit: $auditExit"
+
+if (Test-Path -LiteralPath "$e\vulnerabilities-retry.json" -PathType Leaf) {
+    & .\.venv-review\Scripts\python.exe scripts/verification/review_stage04_supply_chain.py audit-status --inventory "$e\inventory.json" --audit "$e\vulnerabilities-retry.json"
+    Write-Host "report verification exit: $LASTEXITCODE"
+} else {
+    Write-Warning 'No complete audit report produced; Stage 04 remains OPEN'
+}
+```
+
+Do not interpret the `pip-audit` exit code alone as a vulnerability count; **valid JSON and full inventory coverage are mandatory**. If the audit report is complete and identifies vulnerabilities, address or explicitly risk-review them; do not ignore findings or run `--fix` automatically. If no vulnerabilities are reported, this only closes the advisory-scan subgate for the selected PyPI feed/date; license decisions, independent evidence review, and full Stage 04 acceptance are still required. The offline `evaluate` command in this runbook accepts `--audit "$e\vulnerabilities-retry.json"` while reusing all other `-03` artifacts once all 27 license reviews have been legitimately completed and recorded. Do **not** invent a reviewer name, license expression, signed attestation or APPROVED decision.
+
+For a later complete collector run, use a *new* unused EvidencePath such as `.stage04-evidence-20261024-04`; the original `-03` remains immutable historical evidence. No further corporate network/secret/production changes are authorized.
