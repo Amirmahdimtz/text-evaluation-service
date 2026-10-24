@@ -124,3 +124,27 @@ The PowerShell commands completed without HTTP errors; their formatted output di
 ## 2026-10-24 independent readiness review — NO_GO for Stage 05
 
 The reviewed sources and architecture were cross-checked against both mandatory Project Source documents. The initial Stage 04 delivery is not sufficient for gate closure due to a **High-severity upstream Starlette issue** (CVE-2026-54283 in resolved Starlette 0.50.0, CVSS 7.5), default-deny permission scoping and unsafe preinstalled logging-handler configuration. Code and dependency pins were corrected in a targeted change. Added 11 new tests: **11 PASSED in assistant isolated Python 3.13 environment**; compile and updated static safety guard PASS on the revised subset. Unlike the earlier 26/26 Windows results, the **updated FastAPI 0.148.0 + Starlette 1.9.0 + httpx2 2.16.0 combination was NOT installed or exercised** in this offline assistant container. No new full-suite PASS claim is made. A local-only dependency inventory/installed RECORD digest verifier now exists, but vulnerability database audit, CycloneDX SBOM, signed provenance, upstream wheel checksum and organizational license clearance are STILL OPEN. Stage 11's infrastructure-dependent security tests are deferred under D-017, not passed. Stage 04 remains IN_PROGRESS; Stage 05 entry is NOT APPROVED. See [review report](04_stage04_independent_review.md) for findings, revised commands and acceptance criteria.
+
+## Windows regression on updated dependency graph — 2026-10-24
+
+User-provided PowerShell evidence from full repository, commit `34b8720`, Python 3.12 fresh `.venv-review`:
+
+| Check | Observed | Verdict |
+|---|---|---|
+| `pip install -r requirements-dev.txt` | FastAPI 0.148.0, Starlette 1.9.0, httpx2 2.16.0 installed successfully | **PASS_USER_LOCAL** |
+| `pip check` | No broken requirements found | **PASS_USER_LOCAL** |
+| `python -m pytest -q tests` | **35 passed, 2 failed**, 11.83s | **FAIL_USER_LOCAL** before test fix |
+| Failed tests | `test_app_does_not_initialize_external_resources` and `test_controller_auto_discovery_with_synthetic_fixture` crashed while directly reading `route.path` on FastAPI `_IncludedRouter` | **CAUSE_IDENTIFIED** |
+| `compileall -q src tests scripts` | no errors | **PASS_USER_LOCAL** |
+| Stage 04 static safety | `PASS: 9 runtime source files; dependency pins; patched Starlette baseline; credential patterns; ignored secrets` | **PASS_USER_LOCAL** |
+| Stage 02 documentation check | **19/19 PASS** | **PASS_USER_LOCAL** |
+| Stage 02 regression unittest | **12/12 PASS** | **PASS_USER_LOCAL** |
+| Stage 03 benchmark validator tests | **38/38 PASS** | **PASS_USER_LOCAL** |
+| Offline dependency metadata/RECORD inventory | **`PASS_INSTALLED_METADATA_ONLY: 27 components`** | **PASS_METADATA_ONLY**, vulnerability/license approval remains OPEN |
+| Windows Uvicorn startup on 18080 | `WinError 10048`: port already in use by unidentified listener in this run | **BLOCKED_PORT_IN_USE**, not a runtime import/ASGI startup failure |
+
+**Fix committed in this follow-up:** only two Stage 04 foundation tests now validate the public ASGI HTTP contract with FastAPI `TestClient`, avoiding dependency on a flat `app.routes` list. The first test checks the absent feature route (404) under a blocked outbound socket monkeypatch; the second verifies that a synthetic discovered feature controller responds on `/api/v1/fixture/probe` with HTTP 200 and expected JSON, including router prefixes. This is strictly a test compatibility fix; no production router, security policy, dependency pin, or application configuration changed.
+
+**Post-fix verification boundary:** a representative nested-router `TestClient` smoke was executed in the assistant's isolated **older FastAPI** environment and passed, but **the complete 37-test suite on FastAPI 0.148.0/Starlette 1.9.0 has not been rerun since the change**; mark it `PENDING_USER_LOCAL`, **not PASS**. The earlier 35/37 results remain genuine pre-fix evidence. The independent source change was reviewed for scope, but user-local regression is required before Gate approval. To diagnose port occupation, inspect `Get-NetTCPConnection -LocalPort 18080 -State Listen` with process identity; stop only a known, user-controlled prior Uvicorn process, not Docker or arbitrary services. Otherwise use an OS-selected ephemeral port for smoke testing. No production operations authorized.
+
+**Stage status `IN_PROGRESS`; Stage 05 entry remains `NOT_APPROVED`.** Full transitive vulnerability scanning, license clearance, trusted wheel hash/provenance and standard SBOM are still outstanding; company-network No-Egress/SSO/Vault tests remain deferred to Stage 11 per D-017.

@@ -229,12 +229,16 @@ def test_app_does_not_initialize_external_resources(monkeypatch):
     reset_bootstrap_for_tests()
     app = create_app()
     assert app.state.ready is False
-    assert len([r for r in app.routes if "/api/v1/" in r.path]) == 0
+    # Route trees may contain included-router wrappers without a .path attribute.
+    # Check the public HTTP behavior instead of FastAPI routing internals.
+    with TestClient(app) as client:
+        assert client.get("/api/v1/evaluations").status_code == 404
+        assert client.get("/health/live").json() == {"status": "alive"}
 
 
 def test_controller_auto_discovery_with_synthetic_fixture(monkeypatch, tmp_path):
     from types import SimpleNamespace
-    from fastapi import APIRouter
+    from fastapi import APIRouter, FastAPI
     import src.application.web as web_module
     from src.application.web import WebService
 
@@ -262,7 +266,13 @@ def test_controller_auto_discovery_with_synthetic_fixture(monkeypatch, tmp_path)
     bootstrap_di()
     monkeypatch.setattr(web_module, "import_module", lambda _: SimpleNamespace(FixtureController=FixtureController))
     routes = resolve(WebService).api()
-    assert any(route.path == "/api/v1/fixture/probe" for route in routes.routes)
+    # Exercise real ASGI dispatch including both nested router prefixes.
+    app = FastAPI()
+    app.include_router(routes)
+    with TestClient(app) as client:
+        response = client.get("/api/v1/fixture/probe")
+    assert response.status_code == 200
+    assert response.json() == {"prefix": "/api/v1"}
 
 
 def test_controller_discovery_fails_closed(monkeypatch, tmp_path):
