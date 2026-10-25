@@ -67,3 +67,48 @@ The user ran a **read-only .NET ZipArchive walk** on the real immutable `.stage0
 **Next evidence handoff:** A bounded local read-only extraction of just the public `LICENSE`/`LICENCE`/`COPYING`/`NOTICE` entries from all 27 already SHA256-checked wheels, producing a **standalone local JSON document outside the Git repository** with filenames, entry paths, byte lengths, per-license SHA256 and exact UTF-8 text. Preserve the original wheelhouse, invent no reviewer identity or approval. The assistant may inspect the license text upon sharing this intentionally public-only evidence; it cannot determine company distribution/legal policy in place of a qualified reviewer. Actual internal-only usage vs delivery to another legal entity remains an unresolved input for downstream obligation review.
 
 **Stage04 `IN_PROGRESS`, Stage05 `NOT_STARTED / NOT_APPROVED`**; the `-06` OSV clean/supply-chain scans and 70/70 user-local Windows tests remain separately recorded. The real company-controlled No-Egress/SSO/model artifact provenance tests remain `DEFERRED_TO_STAGE_11` per D-017.
+
+
+## Full-text license analysis from user-supplied evidence — 2026-10-25
+
+**Evidence origin:** User pasted a JSON-shaped record containing `text`, wheel filename, archive entry, claimed SHA-256 and byte count for **29 LICENSE files across 27 exact-version Wheels**. This evidence was semantically read **from the submitted text**, not independently retrieved from the user's local ZIP/Wheel bytes. The 29 hex digests below were verified for expected SHA-256 *syntax* (64 lowercase hex characters) and coverage; they are **user-claimed values, NOT independently recomputed from the on-disk Wheel archives**. Do not confuse this with a cryptographically verified provenance or a signed license approval. Full copyrighted license text is deliberately **not** added to Git.
+
+**Text-to-metadata outcome:** `TEXT_TO_METADATA_PRELIMINARY_CONSISTENT_27_OF_27`. Thirteen MIT claimants include a MIT grant, copyright retention and warranty disclaimer. Eight BSD-3-Clause claimants include the non-endorsement provision. The BSD-2-Clause package `pygments` contains two redistribution conditions. `colorama`'s local generic BSD license classifier resolves **provisionally** to BSD-3-Clause based on actual submitted three-clause text. `packaging`'s `LICENSE` expressly offers a choice between Apache-2.0 and BSD-2-Clause (not both obligatorily for users), with both detailed terms in `LICENSE.APACHE` and `LICENSE.BSD`; the authorized organization has **not** selected an option. `opentelemetry-api` contains the Apache 2.0 grant, notice and redistribution sections. `certifi` contains an **MPL-2.0 notice and retrieval URL for Mozilla-derived CA bundle content**, rather than the entire MPL-2.0 text; recipients' rights, covered-source access and bundle provenance require distribution-scenario review. `typing-extensions` contains PSF-2.0 terms and historical Python license terms including Zero-Clause BSD; the presence of historical terms is **not evidence that all components in the current package are multiply licensed**.
+
+**General obligations, conditional on intended use:** MIT/BSD copyright, disclaimers and license text should be preserved on distribution; BSD-3-Clause includes non-endorsement. Apache-2.0 requires providing the license, identifying modified files and any relevant shipped NOTICE attributions. MPL-2.0 is file-level copyleft on covered content with source-availability obligations for distributions covered by its terms; it does not automatically force unrelated proprietary source disclosure. PSF terms include copyright/license retention and a brief change summary when applicable to distributions of qualifying derivative changes. SPDX `OR` means a license choice, not `AND`. These are textual/legal observations, **not an organizational legal approval**. Authoritative references: [Mozilla MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/), [SPDX OR meaning](https://spdx.github.io/spdx-spec/v2.2.2/SPDX-license-expressions/), [PSF 2 source](https://github.com/python/cpython/blob/main/Doc/license.rst).
+
+### License entry digest ledger — values reported by user, not on-disk independently verified
+
+| Package | License entry basename | Reported bytes | Reported SHA-256 |
+|---|---|---:|---|
+| `annotated-doc` | `LICENSE` | 1086 | `fff170779a6acbf65abdb405c087f1cee1786691e4a96a4034517e4a504a0cdf` |
+| `annotated-types` | `LICENSE` | 1083 | `fe1049884b1a0d9342901e88e07f32925d24b3121d9972b6a6805fb9824b095d` |
+| `anyio` | `LICENSE` | 1081 | `5361ac9dc58f2ef5fd2e9b09c68297c17f04950909bbc8023bdb82eacf22c2b0` |
+| `certifi` | `LICENSE` | 989 | `e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7` |
+| `click` | `LICENSE.txt` | 1475 | `9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d` |
+| `colorama` | `LICENSE.txt` | 1491 | `cac35c02686e5d04a5a7140bfb3b36e73aed496656e891102e428886d7930318` |
+| `fastapi` | `LICENSE` | 1086 | `4ec89ffc81485b97fec584b2d4a961032eeffe834453894fd9c1274906cc744e` |
+| `h11` | `LICENSE.txt` | 1124 | `37db5bb85926db28a427a25867f10b1232003aea1be69ccb851138adb8e6f361` |
+| `httpcore` | `LICENSE.md` | 1518 | `fdcb59154c74cbaba16a11242f7740bea9f23d6feb5547917d8c5f94a80392a5` |
+| `httpcore2` | `LICENSE.md` | 1599 | `c4df125c807b0613501e943a5c92496dd11d2c16604ce396097a8dde396304d9` |
+| `httpx` | `LICENSE.md` | 1508 | `4ec59d544f12b5f539a3a716fd321ac58ccd8030b465221f2c880200cdf28d8d` |
+| `httpx2` | `LICENSE.md` | 1589 | `7e7d6dbaf7fe160d39fd6e84fd02c33cab96bcbea34d36998d545bceb4a19c30` |
+| `idna` | `LICENSE.md` | 1541 | `1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04` |
+| `iniconfig` | `LICENSE` | 1098 | `3409fa91f7ace557894632676656e32264fe5ef7581535725dc9a23774551bd4` |
+| `opentelemetry-api` | `LICENSE` | 11357 | `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4` |
+| `packaging` | `LICENSE` | 197 | `cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48` |
+| `packaging` | `LICENSE.APACHE` | 10174 | `0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594` |
+| `packaging` | `LICENSE.BSD` | 1344 | `b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5` |
+| `pluggy` | `LICENSE` | 1110 | `d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606` |
+| `pydantic` | `LICENSE` | 1129 | `a9e186f3ca16b5eef84318e7a701721351a00cb7b8ae3a4394b67b49e3529ef3` |
+| `pydantic-core` | `LICENSE` | 1101 | `fbe7f615f18d135c07000e5a86325db27f42c7729699ef166ac1f7a3f4586bf4` |
+| `pygments` | `LICENSE` | 1331 | `a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17` |
+| `pytest` | `LICENSE` | 1091 | `ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b` |
+| `pyyaml` | `LICENSE` | 1101 | `8d3928f9dc4490fd635707cb88eb26bd764102a7282954307d3e5167a577e8a4` |
+| `starlette` | `LICENSE.md` | 1518 | `dcb95677a02240243187e964f941847d19b17821cf99e5afae684fab328c19bf` |
+| `truststore` | `LICENSE` | 1086 | `33be7b7e8fa4fd19b1760e1a8ed8a668bdab852c91b692dd41424bcb725a9fca` |
+| `typing-extensions` | `LICENSE` | 13936 | `3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf` |
+| `typing-inspection` | `LICENSE` | 1090 | `804b59b25f2c31bd278f9202a19ae49a3945aa2664387e2d0a128c7cacc61ec3` |
+| `uvicorn` | `LICENSE.md` | 1526 | `efe1acf3e62fb99c288b0ec73e5a773b7268ef4320fe757ea994214e4b63c371` |
+
+**Remaining real acceptance prerequisites:** (1) independently compare the user-created local license-text JSON against the exact `-06/wheelhouse` ZIP-entry bytes and recorded hashes; (2) review missing/nested 3rd-party notices, bundled data and software, particularly certifi certificate data and compiled distributions; (3) determine the company's **internal-only deployment vs redistribution to other legal entities**; (4) qualified company legal/security reviewer to record a real per-package SPDX determination, relevant chosen `packaging` license alternative, applicable obligations and evidence references; (5) preserve the original blank `-06/license-review.json`, only write approved legal decisions to a separately authorized and reviewed copy; (6) independently inspect original SBOM, CVE and digest JSON evidence if required by acceptance. All **27 authorizations remain `REVIEW_REQUIRED`**, no fictitious `reviewed_by` or `APPROVED` fields. Local tests and last OSV no-findings scan remain `PASS_USER_LOCAL_REPORTED`; **Stage04 `IN_PROGRESS` / Stage05 `NOT_STARTED / NOT_APPROVED`**, company tests `DEFERRED_TO_STAGE_11` under D-017.
