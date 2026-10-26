@@ -328,3 +328,16 @@ After qualified review, the existing offline `review_stage04_supply_chain.py eva
 ## 27 dependency license-metadata intake (2026-10-25)
 
 The corrected Windows repository working directory allowed reading the actual `.stage04-evidence-20261024-06/license-review.json`; reported file format and 27 entries passed a local check. The user provided all names, versions and author metadata. See [per-component OSS license matrix](04_stage04_license_triage.md), with public versioned references for special conditions. This intake **does not edit or approve the license template**. Qualified reviewer must inspect actual 27 pinned wheel LICENSE/COPYING/NOTICE contents, versioned sources and applicable redistribution scenarios, and record legitimate SPDX choice (including an OR alternative where applicable), binding notices and written decisions in a **separate reviewed copy**. If no approved distribution/license policy is available, record `PENDING_LEGAL` rather than inventing a reviewer. Existing offline `evaluate` is to be used only when all independent artifacts and authorized decisions genuinely exist; no internal server/provider data goes to public services.
+
+
+## Ubuntu shared-host dependency bootstrap DNS failure — 2026-10-26
+
+An independent Linux/Python 3.12 venv was created inside `/srv/projects/text-evaluation-service/.venv-review` (Git-ignored). A pip 26.2.2 bootstrap download from `files.pythonhosted.org` failed with `[Errno -3] Temporary failure in name resolution` after retries. The parent `bash` was fail-fast, so do **not** report dependency installation, `bootstrap-check`, `pip check` or any Ubuntu pytest suite as run/passed. Recorded as `BLOCKED_DNS_OR_PACKAGE_EGRESS_POLICY`, **not** `PASS` and not a company No-Egress verification.
+
+1. Reuse and inspect the already-created venv **read-only**; do not blindly run `python3 -m venv` over it or reinstall repeatedly.
+2. Inspect current DNS resolver and presence of proxy/index variables **without printing credentials or private URLs**; obtain server-owner decision whether PyPI outbound access is permitted.
+3. If policy allows a package index, ask the owner to resolve the DNS/proxy issue using approved network paths, then retry the same pinned and TLS-verified dependencies. **Never** disable TLS verification or change shared host DNS/firewall as an ad-hoc fix.
+4. Otherwise acquire approved, audited `manylinux`/Linux-x86_64 Python 3.12-compatible pinned Wheels from a controlled, internet-authorized workspace or authorized mirror, validate integrity, then install using an offline `--no-index --find-links` path with no resolver access. Windows `win_amd64` binary wheels cannot substitute for Linux platform wheels.
+5. Only after dependencies are truly installed and the pip bootstrap guard is satisfied may `python -m pip check` and `python -m pytest -q tests` run in the Linux environment. Record actual test counts and failed checks. Production/Stage11 networks, model and DB remain untouched.
+
+This operational blocker does not reclassify legitimate standalone local verification as `DEFERRED_TO_STAGE_11`; local Linux tests stay `NOT_RUN/BLOCKED` pending package acquisition. Preserve Windows `-06` historical evidence and keep license/legal signoff `REVIEW_REQUIRED`.
