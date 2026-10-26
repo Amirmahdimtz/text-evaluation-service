@@ -16,3 +16,8 @@ Status for EVERY entry below: `DEFERRED_TO_STAGE_11`, **not PASSED**. Generic ow
 | S04-S11-10 | Stage 04 / Operations | SRE + Security | Production-like performance/DR unavailable | Approved staging and load/synthetic dataset limits | Health/readiness fail correctly under dependency loss; sustained load and authorized restore meet approved SLO/RPO/RTO |
 
 Stage 07/09/10 will contribute provider/worker/API-specific ledger entries during their own implementation. This list does not imply those later components exist today. All server-only entries are acceptance dependencies for Stage 11, with Stage 12 reserved for authorized production release.
+
+
+## 2026-10-26 shared-host reconnaissance (NOT a deferred-test execution)
+
+The user supplied read-only `nvidia-smi`, privileged metadata-only `docker ps/inspect`, bridge membership and host-local unauthenticated `curl` HTTP status values for two vLLM routes. Observed: one RTX3090 with vLLM GPU memory allocation; `shared-postgres-postgres-1` healthy in internal bridge `simorgh-db-net`, alias `shared-postgres`; `ai-inference-vllm-1` on separate `ai-inference_default` bridge, alias `vllm`; host loopback HTTP 200 at model health and models routes. **No generation request, cross-container connectivity validation, external firewall packet test, secret-flow test, real resource benchmark, license authorization or security signoff occurred.** These inventory facts may inform the eventual Stage 11 preflight, but **ALL S04-S11-01..10 retain `DEFERRED_TO_STAGE_11`** and require the named organizational owners, safe fixtures and permits. No existing shared workloads should be stopped or reconfigured.
