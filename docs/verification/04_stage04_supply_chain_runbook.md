@@ -341,3 +341,15 @@ An independent Linux/Python 3.12 venv was created inside `/srv/projects/text-eva
 5. Only after dependencies are truly installed and the pip bootstrap guard is satisfied may `python -m pip check` and `python -m pytest -q tests` run in the Linux environment. Record actual test counts and failed checks. Production/Stage11 networks, model and DB remain untouched.
 
 This operational blocker does not reclassify legitimate standalone local verification as `DEFERRED_TO_STAGE_11`; local Linux tests stay `NOT_RUN/BLOCKED` pending package acquisition. Preserve Windows `-06` historical evidence and keep license/legal signoff `REVIEW_REQUIRED`.
+
+
+## Linux shared-host PyPI wheel CDN — A and AAAA DNS both timed out (2026-10-26)
+
+Additional user-local, **bounded read-only** evidence: `timeout 15s resolvectl query --type=A files.pythonhosted.org` exited `124`, and the equivalent `--type=AAAA` exited `124`. Exit 124 is **the shell deadline being exceeded**, not an explicit DNS `NXDOMAIN`. Public PyPI index domain `pypi.org` resolved in the previous check, so no single-stack record-family fix is justified from the evidence.
+
+**Stop point and choice:**
+- If the host/network owner authorizes direct public package egress, seek **operator-led** troubleshooting of the CDN DNS/HTTPS path; do not perform global DNS edits, disable TLS, change firewall or continue repeated bootstrap installation on the shared machine.
+- If external package egress is not approved, stage a project-scoped **offline wheelhouse** through an approved transfer path, with exact pinned Python 3.12 Linux x86_64 Wheel coverage, public upstream release SHA-256, scan/SBOM/license review and independent on-host digest validation. An allowed alternate internal package mirror may be an option under its own approval.
+- Once source is authorized and integrity is verified, install in existing `.venv-review` using `--no-index --find-links` with local vetted content. Then run the existing bootstrap guard, `pip check` and full `pytest -q tests`, recording real exit status and test counts.
+
+**State remains** `FAILED_DNS` for the requested pip 26.2.2 bootstrap; subsequent project dependency install/tests are `NOT_RUN/BLOCKED`. No permission to touch other projects or actual live model/DB is inferred.
