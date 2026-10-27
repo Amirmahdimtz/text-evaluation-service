@@ -544,3 +544,26 @@ sudo docker image inspect text-evaluation-service:stage04-pytest-d39e5f21c3c3 \
 **Interpretation:** if `trivy` or `grype` is available, first confirm its version, approved advisory database freshness and supported Debian trixie detection, then scope a local-image vulnerability scan to this exact ID and save evidence. A scanner can support OS-Package CVE matching but is not a substitute for trusted image provenance or legal approval. Scanners may automatically refresh their DB or pull images, so **do not run a full scan, install/pull a new scanner image, grant Docker socket access to an untrusted tool or access external sources** without an approved isolated/public-metadata workflow. If neither is present, record `PENDING_APPROVED_SCANNER`, not PASS. RepoDigests may be empty on locally built images; a local Docker image hash alone does not verify publisher identity.
 
 OS scan, authoritative upstream origin/attestation, and qualified licenses for all 26 Linux Python packages plus bootstrap pip remain OPEN. Stage04 IN_PROGRESS; Stage05 NOT_STARTED.
+
+### Scanner preflight: none installed, local RepoDigests not a publisher attestation (2026-10-27)
+
+Simorgh operator check: `trivy`, `grype`, `syft` are all **NOT_INSTALLED**; exact candidate image ID `sha256:7b3c7532a3e31f002ec1f8211c28d22148602b74ff1bfc51dd8edb4df5239785`; `RepoDigests=["text-evaluation-service@sha256:7b3c7532a3e31f002ec1f8211c28d22148602b74ff1bfc51dd8edb4df5239785"]`. That digest label uses the **locally built project image name**, not independent upstream publisher verification. **No scan of the 87 Debian OS packages has been performed.**
+
+Next read-only package-version capture, inside the exact existing image; no external connections, package manager updates, mounts, new scanner installation or Docker image pulls:
+
+~~~bash
+cd /srv/projects/text-evaluation-service
+sudo docker run --rm --pull never \
+  --network none --read-only \
+  --cap-drop ALL --security-opt no-new-privileges \
+  --user 65532:65532 \
+  --entrypoint dpkg-query \
+  text-evaluation-service:stage04-pytest-d39e5f21c3c3 \
+  -W '-f=${binary:Package}\t${Version}\t${Architecture}\n'
+~~~
+
+Treat its output as a local **dpkg inventory**, not a CVE scan or third-party SBOM attestation. Preserve original package version strings including epoch and Debian revision. Note that scanners often map binary packages to Debian source packages and release-specific advisories; do not use generic upstream NVD version comparison as proof of applicability.
+
+**Plan for approved vulnerability assessment, no execution implied:** obtain organization authorization for scanner supply chain and an isolated scanning environment; acquire an explicitly approved, version-pinned and digest/signature-verified Trivy or Grype binary/container and a dated, integrity-checked recent vulnerability DB including Debian trixie; use an offline scanner against a locally present image or a separately authorized image archive on an approved machine; prohibit auto-update/pull/telemetry and sending private image layers to third-party services; save full JSON report, OS package coverage, database timestamp, exact input image digest, findings/severities and treatment. Verify the result includes **OS** packages and does not merely repeat the existing Python dependency scan. Do not install scanners on the shared Simorgh host or mount `/var/run/docker.sock` inside unknown scanners without review. For Grype the official docs confirm a local cached DB can support offline scans, but its default DB update check and age policy must be managed explicitly (https://oss.anchore.com/docs/guides/vulnerability/database/). Debian's authoritative CVE status reference is https://security-tracker.debian.org/tracker/.
+
+Until scanned under that approved procedure, mark `PENDING_APPROVED_OS_SCANNER` (not PASSED). Reviewer-authorized redistribution/licensing decisions and upstream base image provenance remain separate open gates; no Stage05 work is authorized.
