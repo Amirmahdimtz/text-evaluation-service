@@ -426,3 +426,21 @@ The host evidence folder is owned by UID 65532 with mode 0700; its contents may 
 **Important limits:** matching official PyPI wheel SHA256 with downloaded local wheels is not by itself an attestation of original installed bytes; bootstrap pip is outside the 26-package closure and requires its own CVE/license review when shipped. A separate qualified review must approve actual license text and redistribution obligations, including the dual-license packaging case. Base-image/OS CVE scan, SBOM and attestation must be verified with an authorized tool. The existing offline evaluate command cannot independently authenticate reviewer identity or publisher signatures. Its PASS_LOCAL_EVIDENCE_ONLY marker is never Production clearance.
 
 New Linux collector test: syntax and 3 synthetic scoped checks PASS in assistant sandbox; Docker execution and the actual Linux CVE/SBOM/wheel evidence are NOT_RUN here. Stage04=IN_PROGRESS; Stage05=NOT_STARTED/NOT_APPROVED; organization-only verification=DEFERRED_TO_STAGE_11.
+
+
+### Simorgh Stage04 follow-up: Git absent in isolated test image; BuildKit rejects build --network bridge (2026-10-27)
+
+A fresh user log showed 73 tests PASS and one test-environment FAIL due to no Git in the slim container. The collector independently stopped before any CVE/SBOM scan because the BuildKit driver rejected build network mode bridge. The Stage04-only fix supplies Git behavior through a temporary synthetic test stub and changes **only the auditor image build** to --network default. Do not install Git or change host Docker networks or global system settings for this regression.
+
+After operator authorization for public-only advisory/mirror access, run on Simorgh from a clean main checkout:
+
+~~~bash
+cd /srv/projects/text-evaluation-service
+git status --short
+git pull --ff-only origin main
+bash -n scripts/verification/run_stage04_linux_supply_chain.sh
+bash scripts/verification/run_stage04_linux_container_tests.sh
+bash scripts/verification/run_stage04_linux_supply_chain.sh .stage04-evidence-linux-20261027-02
+~~~
+
+If the proposed result directory already exists, select another unused .stage04-evidence-linux-* name. Preserve previous artifacts and failed test images. No new actual Linux scan or legal approval has yet been confirmed after this fix.

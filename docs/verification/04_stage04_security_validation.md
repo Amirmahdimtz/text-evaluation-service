@@ -563,3 +563,14 @@ FROZEN_REQUIREMENTS_END
 - Collector uses an exact existing non-root Docker test image; auditor tools are separately isolated, installs happen only in a disposable derivative image from a previously accessed public PyPI mirror, and evidence is written under a new unique UID65532-owned Git-ignored directory. No source DB, vLLM, shared network or running-service operation is in its path; optional public package/advisory network traffic requires prior network-owner authorization.
 - Actual Ubuntu wheelhouse, official PyPI digest match, Linux OSV scan, CycloneDX 1.6 and trustworthy base image/OS scan/attestation remain **NOT_RUN / GATE OPEN** pending authorized user host execution. A completed Linux collector does NOT approve any of the 26 component licenses; separately review bootstrap pip and OS packages.
 - **Stage04 IN_PROGRESS**; Stage05 **NOT_STARTED / NOT_APPROVED**. Enterprise-only inference, internal IAM, real No-Egress remain **DEFERRED_TO_STAGE_11**, not passed.
+
+
+## 2026-10-27 — Simorgh Stage04 Git-in-container and BuildKit bridge-network failures
+
+User-supplied Simorgh evidence at HEAD c7235db8237bfe00ed3027aee5b6130a5578b43a: Stage04 Linux test image build and build-time pip check PASS. Full pytest ran 74 tests: **73 PASS / 1 FAIL**. The only failure was test_linux_supply_chain_runner_rejects_dirty_or_wrong_branch_without_docker, where the slim test image lacked an installed Git executable (FileNotFoundError). Because pytest exited non-zero, Stage02/03 regressions and subsequent runtime checks in this attempt were NOT_RUN.
+
+The separate Linux supply-chain collector stopped at Docker build before creating evidence because this host BuildKit driver rejects docker build --network bridge. No OSV, CycloneDX, Linux wheel or PyPI SHA results were generated.
+
+**Targeted remediation:** the negative-case test uses a temporary Git stub to exercise dirty checkout, wrong branch and missing baseline commit without requiring an OS package inside the test image. The real collector still runs actual Git on the host. Auditor image build uses docker build --network default, which previously worked for the Linux test runner; explicit docker run --network bridge remains limited to its public advisory/wheel phase and docker run --network none is retained for installed metadata inventory. No app/DB/model image changes and no shared service operation.
+
+**Assistant local execution:** bash -n PASS, targeted synthetic pytest 3/3 PASS, compileall PASS and 6 focused safety assertions PASS. Real Docker retest for these changes and full collector remains PENDING_USER_SERVER_RETEST. This is not a supply-chain approval or a legal signoff. Stage04 IN_PROGRESS; Stage05 NOT_STARTED / NOT_APPROVED; corporate controls DEFERRED_TO_STAGE_11.

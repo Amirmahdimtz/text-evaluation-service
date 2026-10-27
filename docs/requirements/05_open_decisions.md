@@ -512,3 +512,12 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Executed here:** assistant sandbox bash -n PASS, targeted synthetic pytest 3/3 PASS. **NOT RUN:** real Docker collector, current-image OSV/CycloneDX, independent Linux wheel digest results, image OS/base-package CVE/provenance, and qualified license approvals. Previously supplied real Linux 71/71, Stage03 38/38, Stage02 12/12, pip-check/non-root, and 1,147 RECORD checks remain separately evidenced on the previously reported test image; do not relabel as new tests.
 - **Decision record:** no new D-009..D-014 organizational approval; no legal signoff, certificate, OSV clearance or publisher-attested provenance granted. The Linux dependency closure includes 26 application+dev distributions; installed bootstrap pip is additional and must be reviewed. New scanner uses only public package metadata when authorized; no confidential document or API/DB/GPU services accessed.
 - **Current stage tracker:** Stage04 IN_PROGRESS (local supply-chain/legal evidence Gate OPEN), Stage05 NOT_STARTED/NOT_APPROVED. Stage11 real enterprise No-Egress/IAM/model tests DEFERRED_TO_STAGE_11. Stage04 can be marked DONE only after the independently collected real Linux wheel/SBOM/CVE and base-image results pass, reviewer-authorized license decisions exist, and technical evidence is validated. None of those unperformed checks is PASSED.
+
+
+### Stage04 Linux test preflight and BuildKit compatibility remediation — 2026-10-27
+
+- Real Simorgh log on c7235db8: test image built, build pip check PASS, full pytest **73 PASS / 1 FAIL** due to absent OS Git in the slim image. Stage02/03 and runtime checks were not reached in that attempt.
+- Supply-chain collector failed before artifact creation: BuildKit network mode bridge unsupported for docker build. OSV/SBOM/official SHA256 NOT_RUN, not PASS.
+- Fix: synthetic Git stub for test-only preflight and network default for auditor Docker build. No production source or Python dependency changes, no secret/DB/vLLM/network service operations.
+- Assistant isolated evidence: bash syntax PASS, 3/3 targeted pytest PASS, Python compilation PASS; complete Docker Linux suite and actual collector PENDING_USER_SERVER_RETEST.
+- Current gate: Stage04 IN_PROGRESS; Stage05 NOT_STARTED/NOT_APPROVED; Linux wheel/CVE/SBOM/license/base-image provenance OPEN; corporate-only checks DEFERRED_TO_STAGE_11.

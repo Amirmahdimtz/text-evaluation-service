@@ -66,7 +66,7 @@ DOCKERFILE
 
 # The known local base image is never pulled or overwritten. Build tools are isolated
 # in /opt/stage04-audit, outside the audited system site-packages.
-sudo docker build --pull=false --network bridge --progress plain --tag "$AUDITOR_IMAGE" "$CTX"
+sudo docker build --pull=false --network default --progress plain --tag "$AUDITOR_IMAGE" "$CTX"
 # This new output directory contains public package metadata only; UID 65532 owns it.
 sudo install -d -o 65532 -g 65532 -m 0700 "$EVIDENCE" "$EVIDENCE/wheelhouse"
 MOUNT="$ROOT/$EVIDENCE:/evidence:rw"

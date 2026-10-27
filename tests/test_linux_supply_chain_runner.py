@@ -1,6 +1,7 @@
 """Stage 04 Linux supply-chain runner fail-closed preflight and scope checks."""
 
 from pathlib import Path
+import os
 import subprocess
 
 RUNNER = Path(__file__).resolve().parents[1] / "scripts/verification/run_stage04_linux_supply_chain.sh"
@@ -14,7 +15,8 @@ def test_linux_supply_chain_runner_limits_shared_host_side_effects():
     source = RUNNER.read_text(encoding="utf-8")
     for required in (
         "git status --porcelain", "git diff --quiet", "docker image inspect",
-        "BASE_ID=sha256:", "--pull=false", "--network none", "--network bridge",
+        "BASE_ID=sha256:", "docker build --pull=false --network default",
+        "docker run --network bridge", "--network none",
         "--read-only", "--cap-drop ALL", "--security-opt no-new-privileges",
         "--user 65532:65532", "--pids-limit", "--memory", "--cpus",
         "--no-deps", "--only-binary=:all:", "--vulnerability-service osv",
@@ -31,26 +33,52 @@ def test_linux_supply_chain_runner_limits_shared_host_side_effects():
 
 
 def test_linux_supply_chain_runner_rejects_dirty_or_wrong_branch_without_docker(tmp_path):
+    """Simulate Git preflight without requiring git in the runtime image.
+
+    The real runner executes on the Git-equipped host; the test container
+    intentionally does not install OS Git or expand its supply-chain scope.
+    """
     repo = tmp_path / "repo"
     repo.mkdir()
-    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
-    subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=repo, check=True)
-    subprocess.run(["git", "config", "user.name", "Synthetic Test"], cwd=repo, check=True)
-    (repo / "marker.txt").write_text("synthetic", encoding="utf-8")
-    subprocess.run(["git", "add", "marker.txt"], cwd=repo, check=True)
-    subprocess.run(["git", "commit", "-q", "-m", "test"], cwd=repo, check=True)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    git_stub = bin_dir / "git"
+    git_stub.write_text(
+        "#!/bin/sh\n"
+        "case \"$1 $2\" in\n"
+        "  \"rev-parse --show-toplevel\") printf '%s\\n' \"$STUB_REPO\" ;;\n"
+        "  \"branch --show-current\") printf '%s\\n' \"$STUB_BRANCH\" ;;\n"
+        "  \"status --porcelain\") if [ \"$STUB_DIRTY\" = 1 ]; then printf '?? dirty.txt\\n'; fi ;;\n"
+        "  \"cat-file -e\") exit 1 ;;\n"
+        "  *) printf 'unexpected git invocation\\n' >&2; exit 2 ;;\n"
+        "esac\n",
+        encoding="utf-8",
+    )
+    git_stub.chmod(0o700)
 
-    # This script is not committed in the synthetic repo: its content remains
-    # immutable, and its preflight must refuse to touch Docker.
-    (repo / "dirty.txt").write_text("dirty", encoding="utf-8")
-    run = subprocess.run(["bash", str(RUNNER)], cwd=repo, text=True, capture_output=True, timeout=10)
-    assert run.returncode != 0 and "clean main checkout required" in run.stderr
-    (repo / "dirty.txt").unlink()
+    def invoke(*, branch: str, dirty: bool):
+        environment = os.environ.copy()
+        environment.update({
+            "PATH": str(bin_dir) + os.pathsep + environment.get("PATH", ""),
+            "STUB_REPO": str(repo),
+            "STUB_BRANCH": branch,
+            "STUB_DIRTY": "1" if dirty else "0",
+        })
+        return subprocess.run(
+            ["bash", str(RUNNER)],
+            cwd=repo,
+            env=environment,
+            text=True,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
 
-    subprocess.run(["git", "checkout", "-q", "-b", "not-main"], cwd=repo, check=True)
-    run = subprocess.run(["bash", str(RUNNER)], cwd=repo, text=True, capture_output=True, timeout=10)
-    assert run.returncode != 0 and "clean main checkout required" in run.stderr
-
-    subprocess.run(["git", "checkout", "-q", "main"], cwd=repo, check=True)
-    run = subprocess.run(["bash", str(RUNNER)], cwd=repo, text=True, capture_output=True, timeout=10)
-    assert run.returncode != 0 and "installed application/dependency pins differ" in run.stderr
+    for branch, dirty, expected in (
+        ("main", True, "clean main checkout required"),
+        ("not-main", False, "clean main checkout required"),
+        ("main", False, "installed application/dependency pins differ"),
+    ):
+        result = invoke(branch=branch, dirty=dirty)
+        assert result.returncode != 0
+        assert expected in result.stderr
