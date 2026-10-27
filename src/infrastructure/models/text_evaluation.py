@@ -48,7 +48,7 @@ class Evaluation(Base):
     owner_id: Mapped[str] = mapped_column(String(128), nullable=False)
     evaluation_type: Mapped[str] = mapped_column(String(16), nullable=False)
     rubric_version_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    protected_text_ref: Mapped[str] = mapped_column(String(512), nullable=False)
+    protected_text_ref: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", server_default="pending")
