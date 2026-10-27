@@ -69,9 +69,9 @@ class BaseRepository(Generic[T]):
                 )).one_or_none()
                 if found is None:
                     return None
-                await session.merge(entity)
-            await session.refresh(entity)  # session still open; identity retained on merge?
-        return entity
+                merged = await session.merge(entity)
+            await session.refresh(merged)
+        return merged
 
     async def delete_async(self, item_id: UUID, *, organization_id: str, owner_id: str | None = None) -> bool:
         scope = self._scope(organization_id, owner_id)
