@@ -8,7 +8,7 @@ from sqlalchemy import func, or_, select, update
 
 from src.infrastructure.context.sql_db.psql_dbcontext import PsqlDbContext
 from src.infrastructure.di.inject import inject
-from src.infrastructure.models.text_evaluation import EvaluationJob
+from src.infrastructure.models.text_evaluation import Evaluation, EvaluationJob
 from src.infrastructure.repositories.base.base_repository import BaseRepository
 
 
@@ -18,11 +18,12 @@ class EvaluationJobRepository(BaseRepository[EvaluationJob]):
         super().__init__(db_context, EvaluationJob)
 
     async def claim_next_async(
-        self, *, organization_id: str, worker_id: str, lease_duration: timedelta
+        self, *, organization_id: str, worker_id: str, lease_duration: timedelta, max_attempts: int
     ) -> EvaluationJob | None:
         """Commit claim before any model call. Lease time is policy-injected by caller."""
         self._scope(organization_id)
-        if not worker_id or not isinstance(lease_duration, timedelta) or lease_duration.total_seconds() <= 0:
+        if (not worker_id or not isinstance(lease_duration, timedelta) or lease_duration.total_seconds() <= 0
+                or type(max_attempts) is not int or not 1 <= max_attempts <= 32767):
             raise ValueError("DB_LEASE_POLICY_REQUIRED")
         async with self._db.session() as session:
             async with session.begin():
@@ -31,12 +32,20 @@ class EvaluationJobRepository(BaseRepository[EvaluationJob]):
                     select(EvaluationJob).where(
                         EvaluationJob.organization_id == organization_id,
                         EvaluationJob.status.in_(("pending", "failed_retryable")),
+                        EvaluationJob.attempts < max_attempts,
                         or_(EvaluationJob.retry_after.is_(None), EvaluationJob.retry_after <= now),
                     ).order_by(EvaluationJob.created_at, EvaluationJob.id)
                     .limit(1).with_for_update(skip_locked=True)
                 )).one_or_none()
                 if job is None:
                     return None
+                changed = await session.execute(update(Evaluation).where(
+                    Evaluation.id == job.evaluation_id,
+                    Evaluation.organization_id == organization_id,
+                    Evaluation.status.in_(("pending", "failed_retryable")),
+                ).values(status="processing"))
+                if changed.rowcount != 1:
+                    raise ValueError("DB_CLAIM_STATE_MISMATCH")
                 job.status = "processing"
                 job.attempts += 1
                 job.fencing_generation += 1
