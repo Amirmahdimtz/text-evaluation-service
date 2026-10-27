@@ -93,7 +93,7 @@ def upgrade() -> None:
                 REFERENCES evaluations(id,organization_id) ON DELETE RESTRICT
         )
     """)
-    op.execute("""CREATE INDEX ix_job_claim ON evaluation_jobs (created_at,id)
+    op.execute("""CREATE INDEX ix_job_claim ON evaluation_jobs (organization_id,created_at,id)
                   WHERE status IN ('pending','failed_retryable')""")
     op.execute("""
         CREATE TABLE criterion_results (
