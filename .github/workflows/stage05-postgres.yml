@@ -53,6 +53,8 @@ jobs:
           python scripts/verification/check_stage04_safety.py
       - name: Run actual PostgreSQL migration
         run: python -m scripts.verification.run_stage05_migrations upgrade
+      - name: Compare migrated PostgreSQL schema to ORM metadata
+        run: python -m scripts.verification.run_stage05_migrations check
       - name: Run real PostgreSQL scoped/concurrent integration suite
         run: python -m pytest -q -p no:cacheprovider tests/test_stage05_postgres.py
       - name: Run Stage02 and Stage03 regression suites
