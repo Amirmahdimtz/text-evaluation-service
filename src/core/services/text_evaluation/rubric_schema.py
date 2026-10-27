@@ -46,7 +46,7 @@ class RubricSnapshot(BaseModel):
     code: str = Field(min_length=2, max_length=100, pattern=r"^[a-z][a-z0-9_]*$")
     version: str = Field(min_length=5, max_length=50, pattern=r"^candidate-[0-9]+(?:\.[0-9]+){1,2}$")
     evaluation_type: Domain
-    criteria: tuple[RubricCriterion, ...] = Field(min_length=1, max_length=32)
+    criteria: tuple[RubricCriterion, ...] = Field(strict=False, min_length=1, max_length=32)
     coverage_policy: CoveragePolicy = Field(default_factory=CoveragePolicy)
 
     @model_validator(mode="after")
