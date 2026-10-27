@@ -384,3 +384,31 @@ drwx------ 3 root root 4096 ... /app/src/host
 **Confirmed root cause:** `/app/src/host` is owned by UID 0 / GID 0 with mode **0700**, so the configured unprivileged UID **65532** cannot traverse it and cannot read `src.host.app`. The earlier root-user BuildKit import `APP_IMPORT_PASS` was therefore an insufficient runtime-privilege gate; later runtime failure `ModuleNotFoundError: No module named 'src.host.app'` is consistent with this permission denial. Other source subdirectories could share restrictive modes; correcting only the `host` directory is not a complete remedy. Earlier temp-build context extraction under `umask 077` is consistent with these permissions but the precise file creation sequence was not independently witnessed.
 
 **Proposed, NOT YET RUN FIX:** In an isolated temporary allowlisted Git build context, derive a distinct candidate tag from the prior local Stage04 image, `COPY --chown=65532:65532 src/ ./src/`, and add `RUN python -m pip check` and `RUN python -c 'import os; from src.host.app import app; assert os.getuid()==65532; ...'` after `USER 65532:65532`. Use `docker build --network none --pull=false` with the original image as the sole local base, avoiding new downloads and no existing-image overwrite. Follow with the same offline/read-only/non-root runtime smoke check to confirm. No `chmod 777`, no modification of tracked repository source, project networks, global DNS or other shared services. **Do not change stage acceptance based on the proposed fix**: corrected build and corrected runtime smoke `NOT_RUN`; original candidate runtime smoke `FAIL_USER_SERVER_REPORTED`; Stage04 `IN_PROGRESS`; Stage05 `NOT_STARTED`; D-017 `DEFERRED_TO_STAGE_11`.
+
+
+## 2026-10-27 — Offline Stage04 non-root permission fix image: build and runtime smoke PASS (user-reported)
+
+**Input:** The same previously built and locally verified Stage04 image `text-evaluation-service:stage04-mirror-07f47f10fc0c` (Docker index digest `sha256:ca7fd9f851bda6e3dbcb116ec256c21ec7356d6d283b76a0bb9bc05c4fc9948c`). A Dockerfile **generated in temporary `/tmp/tes-nonrootfix.*` context, not committed to Git**, used `FROM text-evaluation-service:stage04-mirror-07f47f10fc0c`, `USER root`, and the following specific group-only repair:
+```dockerfile
+RUN chgrp -R 65532 /app/src \
+    && chmod -R g-w,o-rwx /app/src \
+    && chmod -R g+rX /app/src
+USER 65532:65532
+RUN python -m pip check \
+    && python -c 'import os; from src.host.app import app; assert os.getuid() == 65532; assert app.title == "text-evaluation-service"; print("NON_ROOT_BUILD_SMOKE_PASS")'
+```
+This **supersedes the earlier proposed `COPY --chown` approach**; it kept the existing root-owned source files and granted runtime group 65532 read/traverse permission without group write or public access. `docker build --network none --pull=false --no-cache` rebuilt solely from the local image, without fetching fresh Python packages. It did not rebuild / change the original image tag. Docker BuildKit emitted `No broken requirements found.`, `NON_ROOT_BUILD_SMOKE_PASS`, and successfully tagged **`text-evaluation-service:stage04-nonrootfix-07f47f10fc0c`**.
+
+**Offline runtime test:** A disposable `sudo docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 64 --memory 256m --cpus 0.5 --entrypoint python` container from the corrected image ran `from src.host.app import app`, asserted `os.getuid() == 65532` and application title, and printed **`NON_ROOT_RUNTIME_SMOKE_PASS`**. It was not the full application server or HTTP test. Image inspect in the user's terminal gave `ID=sha256:f0ba5ac4e7321cc6d1999e1a97de460e18815ab5ac7aa8e400cbedd770f2505a`, `User=65532:65532`, `Architecture=amd64`. The script then printed `STAGE04_NONROOT_IMAGE_PASS`.
+
+**Results and scope:**
+- `CORRECTED_IMAGE_BUILD=PASS_USER_SERVER_REPORTED`.
+- `NONROOT_BUILD_PIP_CHECK=PASS_USER_SERVER_REPORTED`.
+- `NONROOT_BUILD_APP_IMPORT=PASS_USER_SERVER_REPORTED`.
+- `NONROOT_RUNTIME_OFFLINE_READONLY_APP_IMPORT=PASS_USER_SERVER_REPORTED`.
+- `IMAGE_INSPECT_NONROOT_AMD64=PASS_USER_SERVER_REPORTED`.
+- **`pip check` inside the corrected runtime container was NOT_RUN**: the check was performed during non-root Docker Build, not during `docker run`.
+- The output included `WARNING: The directory '/.cache/pip' ... is not owned or is not writable ... cache has been disabled`; that is a pip cache permission warning, **not** a dependency validation failure. No password/secret has been recorded in this evidence.
+- Prior broken candidate still exists separately, and its prior non-root smoke remains **FAIL** as a historical fact. No old Image cleanup or replacement occurred. No source tracked in Git was changed, no global DNS/network policies changed, no app service was launched, and no explicit connections to other project networks or services were made. This does not independently prove all unrelated containers unchanged; the shared services' status was separately recorded in the preceding inspection.
+
+**Open gates remain:** Full 70-test suite **NOT_RUN on Ubuntu** (historically 70/70 on user-local Windows only); host venv pip upgrade **FAILED_DNS**; approved per-Linux-wheel SHA256/provenance, frozen transitive dependency closure, image-base CVE review, SBOM/pip-audit, and qualified OSS license approval still pending. `--network none` in this *smoke* is not a Stage11 proof of actual production No-Egress. **Stage04=IN_PROGRESS**, **Stage05=NOT_STARTED**; real internal model, organizational isolation and server security gates **DEFERRED_TO_STAGE_11** under D-017. This remains a candidate image, **not approved for Production deployment**.
