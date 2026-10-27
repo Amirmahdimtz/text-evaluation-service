@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("current", "upgrade"))
+    parser.add_argument("action", choices=("current", "upgrade", "check"))
     args = parser.parse_args()
     # Fail before running Alembic, even when action=current.
     get_test_database_url()
@@ -22,8 +22,10 @@ def main() -> int:
     config.set_main_option("script_location", str(ROOT / "src/infrastructure/alembic"))
     if args.action == "current":
         command.current(config, verbose=True)
-    else:
+    elif args.action == "upgrade":
         command.upgrade(config, "head")
+    else:
+        command.check(config)
     return 0
 
 
