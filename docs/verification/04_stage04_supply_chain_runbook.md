@@ -499,3 +499,19 @@ print("STAGE04_TECHNICAL_EVIDENCE_CONSISTENT_26; LICENSE_REVIEW_PENDING")
 ~~~
 
 An error is **FAIL or INCONCLUSIVE** for this independent validation, not a reason to edit the old evidence files. Even success cannot certify the origin of installed bytes, guarantee advisory freshness or grant approval for license/OS artifacts. Version-exact human license review and approved base image/OS scan remain OPEN. Stage04 IN_PROGRESS and Stage05 NOT_STARTED.
+
+### Follow-up for truncated terminal copy: narrow PyPI manifest + blank license template verification
+
+The operator's latest paste ended in a malformed-looking fragment near the final `print` but reported `STAGE04_TECHNICAL_EVIDENCE_CONSISTENT_26; LICENSE_REVIEW_PENDING`. Preserve this as user-reported evidence; **do not assert** that the missing displayed lines executed. The previously logged collector already downloaded/hashes 26 Wheels and the previous full 74-test suite PASS still stands. The following shorter command reads only preserved files and checks exactly the PyPI digest manifest and the presence of an **unapproved** 26-row license review template; it does not review or approve any license. It sends no data to the internet and does not modify prior artifacts.
+
+~~~bash
+cd /srv/projects/text-evaluation-service
+sudo docker run --rm --network none --read-only \
+  --tmpfs /tmp:rw,nosuid,nodev,noexec,size=64m \
+  --cap-drop ALL --security-opt no-new-privileges \
+  --pids-limit 128 --memory 512m --cpus 2 --user 65532:65532 \
+  --mount "type=bind,src=$PWD/.stage04-evidence-linux-20261027-02,dst=/evidence,readonly" \
+  --entrypoint python text-evaluation-service:stage04-linux-audit-186b041e4ced -c 'from pathlib import Path; from scripts.verification import review_stage04_supply_chain as r; p=Path("/evidence"); i=r._read(p/"inventory.json"); expected=r._inventory(i); assert len(expected)==26; h=r._read(p/"wheel-hashes.json"); r._validate_pypi_digests(r._read(p/"pypi-digests.json"),h); l=r._read(p/"license-review.json"); assert l.get("format")=="stage04-license-review-v1"; assert r._identities(l["decisions"],source="LICENSE")==expected; assert all(d.get("decision")=="REVIEW_REQUIRED" for d in l["decisions"]); print("STAGE04_PYPI_LICENSE_TEMPLATE_MATCH_26; LEGAL_APPROVAL_PENDING")'
+~~~
+
+Only the literal `STAGE04_PYPI_LICENSE_TEMPLATE_MATCH_26; LEGAL_APPROVAL_PENDING` output plus a zero exit code counts as success for this narrow cross-check. If it fails, do not edit the evidence directory. Regardless of output, authorized license decisions, shipped pip review and base OS/provenance verification remain independent Stage04 Gate blockers.
