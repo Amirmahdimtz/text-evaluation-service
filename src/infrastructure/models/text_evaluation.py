@@ -96,7 +96,7 @@ class EvaluationJob(Base):
         CheckConstraint("status IN ('pending','processing','completed','failed_retryable','failed_terminal')", name="ck_job_status"),
         CheckConstraint("attempts >= 0 AND fencing_generation >= 0", name="ck_job_attempts"),
         CheckConstraint("(status <> 'processing') OR (lease_until IS NOT NULL AND worker_id IS NOT NULL AND attempt_token IS NOT NULL)", name="ck_job_processing_lease"),
-        Index("ix_job_claim", "created_at", "id", postgresql_where=text("status IN ('pending','failed_retryable')")),
+        Index("ix_job_claim", "organization_id", "created_at", "id", postgresql_where=text("status IN ('pending','failed_retryable')")),
     )
 
 
