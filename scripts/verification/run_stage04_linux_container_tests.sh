@@ -41,14 +41,14 @@ cleanup() {
 trap cleanup EXIT
 
 # Archive tracked test tooling and manifests only; the source is already in BASE_IMAGE.
-git archive HEAD requirements.txt requirements-dev.txt scripts tests | \
+git archive HEAD .gitignore requirements.txt requirements-dev.txt scripts tests | \
   tar -xf - -C "$CTX"
 
 cat > "$CTX/Dockerfile" <<'DOCKERFILE'
 FROM text-evaluation-service:stage04-nonrootfix-07f47f10fc0c
 WORKDIR /app
 USER root
-COPY requirements.txt requirements-dev.txt ./
+COPY .gitignore requirements.txt requirements-dev.txt ./
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 RUN python -m pip install --disable-pip-version-check --root-user-action=ignore \
@@ -56,6 +56,8 @@ RUN python -m pip install --disable-pip-version-check --root-user-action=ignore 
       --index-url https://pypi.tuna.tsinghua.edu.cn/simple \
       -r requirements-dev.txt \
     && python -m pip check \
+    && chgrp 65532 /app/.gitignore /app/requirements.txt /app/requirements-dev.txt \
+    && chmod 0640 /app/.gitignore /app/requirements.txt /app/requirements-dev.txt \
     && chgrp -R 65532 /app/tests /app/scripts \
     && chmod -R g-w,o-rwx /app/tests /app/scripts \
     && chmod -R g+rX /app/tests /app/scripts
