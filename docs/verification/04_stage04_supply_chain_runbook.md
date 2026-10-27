@@ -444,3 +444,21 @@ bash scripts/verification/run_stage04_linux_supply_chain.sh .stage04-evidence-li
 ~~~
 
 If the proposed result directory already exists, select another unused .stage04-evidence-linux-* name. Preserve previous artifacts and failed test images. No new actual Linux scan or legal approval has yet been confirmed after this fix.
+
+### Simorgh Linux Supply Chain succeeded; tmpfs-safe regression retest (2026-10-27)
+
+- At commit 186b041e4ced, the **Supply Chain collector completed**: OSV pip-audit reported zero known issues in its scanned Python environment, 26 exact pinned Linux wheels were downloaded, the local wheel hashes and official PyPI digests verified, and CycloneDX 1.6 was generated. The evidence directory is .stage04-evidence-linux-20261027-02, owned by UID 65532 and ignored by Git. This evidence is operator-supplied stdout; the assistant has not independently inspected the evidence artifact bytes.
+- The separate test runner reported **73 PASS / 1 FAIL**. The test-only Git stub executable in /tmp received Permission denied. The fix uses a readable non-executable Bash-function script injected through BASH_ENV, so no code is executed from /tmp. The real collector continues using actual host Git.
+- Do **not rerun the completed network-enabled collector** solely because the test runner failed. Keep .stage04-evidence-linux-20261027-02 and existing immutable Docker image tags intact.
+- From a clean main checkout on Simorgh, run this minimal Stage04 regression command:
+
+~~~bash
+cd /srv/projects/text-evaluation-service
+git status --short
+git pull --ff-only origin main
+bash -n scripts/verification/run_stage04_linux_supply_chain.sh
+bash scripts/verification/run_stage04_linux_container_tests.sh
+~~~
+
+- The test runner must finish with STAGE04_LINUX_CONTAINER_TESTS_PASS and complete pytest, Stage03/Stage02, safety check, pip check and non-root smoke checks. Otherwise preserve output and keep Gate OPEN. When all pass, record exact count and image SHA from the host. The collector is NOT a replacement for legal approval.
+- Later approved local review: compare inventory, pinned closure, sbom.cdx.json, wheel-hashes.json and pypi-digests.json in the preserved evidence directory using the existing offline evaluator, after independent qualified license decisions have been recorded; perform an authorized base-image/OS scanner review. If no reviewer attestation is available, leave license-review.json at REVIEW_REQUIRED and Stage04 IN_PROGRESS.
