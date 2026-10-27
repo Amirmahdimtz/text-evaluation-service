@@ -366,3 +366,21 @@ After the documented successful candidate Docker Build, the user ran `sudo docke
 User executed the previously supplied exploratory `sudo docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 64 --memory 256m --cpus 0.5 --entrypoint python text-evaluation-service:stage04-mirror-07f47f10fc0c -c ...` against the **existing** Stage04 candidate. It terminated at the top-level `from src.host.app import app` with `ModuleNotFoundError: No module named 'src.host.app'` (Traceback at `<string>`, line 6). Therefore **`STAGE04_OFFLINE_CONTAINER_SMOKE=FAIL_USER_SERVER_REPORTED`**; the subsequent `os.getuid()` assertion, `pip check` and success sentinel were **NOT_RUN** in that container invocation. **Do not extrapolate the prior BuildKit root-user `APP_IMPORT_PASS` into a non-root runtime PASS.** The image identity and non-root `Config.User` metadata had previously been inspected, but effective execution still fails this import.
 
 **Diagnosis still pending:** Check container cwd, `sys.path`, exact file presence, directory/file modes, UID and package resolution using a **read-only non-root container** on `--network none`. A private Build Context was created under a restrictive umask; this suggests permission issues but is **not proven** by the traceback alone (GNU tar extraction may restore archive modes). Do not change global permissions, launch exposed application, attach DB/LLM networks, delete the candidate, or change production configuration before diagnosis. No files, volumes or secrets were mounted in the reported failure. Existing Docker candidate Build remains `PASS_USER_SERVER_REPORTED`, but runtime smoke is a **distinct FAIL**. Host Python `.venv-review` tests remain `NOT_RUN/BLOCKED`; Stage04 `IN_PROGRESS`; Stage05 `NOT_STARTED`; D-017 enterprise gates `DEFERRED_TO_STAGE_11`.
+
+
+## 2026-10-27 — Non-root import failure root cause confirmed by file modes (user-reported)
+
+A subsequent **read-only, offline, ephemeral** Docker probe ran the existing candidate with `--network none --read-only --cap-drop ALL --security-opt no-new-privileges` and `--entrypoint /bin/sh`, then displayed `id; pwd; ls -ld /app /app/src /app/src/host /app/src/host/app.py`. The provided terminal result was:
+
+```text
+uid=65532 gid=65532 groups=65532
+/app
+ls: cannot access '/app/src/host/app.py': Permission denied
+drwxr-xr-x 1 root root 4096 ... /app
+drwxr-xr-x 5 root root 4096 ... /app/src
+drwx------ 3 root root 4096 ... /app/src/host
+```
+
+**Confirmed root cause:** `/app/src/host` is owned by UID 0 / GID 0 with mode **0700**, so the configured unprivileged UID **65532** cannot traverse it and cannot read `src.host.app`. The earlier root-user BuildKit import `APP_IMPORT_PASS` was therefore an insufficient runtime-privilege gate; later runtime failure `ModuleNotFoundError: No module named 'src.host.app'` is consistent with this permission denial. Other source subdirectories could share restrictive modes; correcting only the `host` directory is not a complete remedy. Earlier temp-build context extraction under `umask 077` is consistent with these permissions but the precise file creation sequence was not independently witnessed.
+
+**Proposed, NOT YET RUN FIX:** In an isolated temporary allowlisted Git build context, derive a distinct candidate tag from the prior local Stage04 image, `COPY --chown=65532:65532 src/ ./src/`, and add `RUN python -m pip check` and `RUN python -c 'import os; from src.host.app import app; assert os.getuid()==65532; ...'` after `USER 65532:65532`. Use `docker build --network none --pull=false` with the original image as the sole local base, avoiding new downloads and no existing-image overwrite. Follow with the same offline/read-only/non-root runtime smoke check to confirm. No `chmod 777`, no modification of tracked repository source, project networks, global DNS or other shared services. **Do not change stage acceptance based on the proposed fix**: corrected build and corrected runtime smoke `NOT_RUN`; original candidate runtime smoke `FAIL_USER_SERVER_REPORTED`; Stage04 `IN_PROGRESS`; Stage05 `NOT_STARTED`; D-017 `DEFERRED_TO_STAGE_11`.
