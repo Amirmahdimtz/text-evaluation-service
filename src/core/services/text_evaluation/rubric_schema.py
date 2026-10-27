@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -45,7 +44,7 @@ class RubricSnapshot(BaseModel):
     schema_version: Literal["rubric-candidate-v1"] = "rubric-candidate-v1"
     approval_status: Literal["PROPOSED"] = "PROPOSED"
     code: str = Field(min_length=2, max_length=100, pattern=r"^[a-z][a-z0-9_]*$")
-    version: str = Field(min_length=5, max_length=50, pattern=r"^candidate-[0-9]+(?:\\.[0-9]+){1,2}$")
+    version: str = Field(min_length=5, max_length=50, pattern=r"^candidate-[0-9]+(?:\.[0-9]+){1,2}$")
     evaluation_type: Domain
     criteria: tuple[RubricCriterion, ...] = Field(min_length=1, max_length=32)
     coverage_policy: CoveragePolicy = Field(default_factory=CoveragePolicy)
