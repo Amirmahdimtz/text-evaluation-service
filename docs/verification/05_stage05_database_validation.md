@@ -202,3 +202,19 @@ python3 -m venv .venv
 - **Scope limitation:** This operator command did **not** run `tests/test_stage05_postgres.py`, Alembic upgrade, PostgreSQL integration, full-suite regression or OSV CVE audit on Simorgh. Do **not** infer it tested the shared PostgreSQL server. The isolated GitHub Actions CI 40512243347 remains the separate completed successful evidence for actual synthetic PostgreSQL 17 migration and 4 integration tests and 91-total-test regression suite.
 - **Mirror provenance boundary:** Using the public university PyPI mirror to install publicly available code is not equivalent to verifying publisher signatures/independent Wheel SHA256 or receiving legal/enterprise authorization for deployment. No confidential application text, real credentials, private model inputs or private database connection appeared in the submitted command. No change to global pip/DNS/Docker/DB is reported.
 - **Stage05 remains `DONE` for local gates.** Stage06 `NOT_STARTED`; protected infrastructure and final organizational supply-chain acceptance remain under the established D-017 ledgers. Do not repeat package installation or migrate any Simorgh shared database merely to close a gate already confirmed in CI.
+
+## 2026-10-27 — Simorgh independent Stage05 non-PostgreSQL regression suite: 87/87 PASS
+
+**Operator-supplied terminal evidence:** From `/srv/projects/text-evaluation-service` in the previously provisioned Python 3.12 Git-ignored `.venv`, executed:
+
+```bash
+.venv/bin/python -m pytest -q \
+  -p no:cacheprovider \
+  tests --ignore=tests/test_stage05_postgres.py
+```
+
+Observed output: **`87 passed in 1.90s`**, no reported failures or skips. Record `PASS_USER_SERVER_REPORTED_SIMORGH_NON_DB_87_OF_87`. This broader run includes the previously separately executed **13 Stage05 schema tests** and the existing non-PostgreSQL regression tests in `tests/`; **do not sum 13 and 87 as disjoint results**.
+
+**Scope/limitations:** The command explicitly **excluded** `tests/test_stage05_postgres.py`, so no real PostgreSQL transactional, migration, concurrency or DB integration result is claimed for Simorgh. Separately, GitHub Actions [run 40512243347](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40512243347) had already passed **4 real PostgreSQL integration tests** on an isolated synthetic PostgreSQL 17 and reported **91 total pytest tests** on the reviewed Stage05 code SHA `52f7c57f752037c453a544ea6690d9863b38e6ef`. The arithmetic **87 non-DB + 4 DB = 91** is consistent with those two scopes, not a claim that both were run in one Simorgh command. Stage02/Stage03 standalone `unittest` suites remain separately evidenced from CI and previous Stage04 runs; this latest command does not independently rerun them.
+
+**Current gate:** Stage05 remains `DONE` for the local design/DB acceptance gates per independent CI and independent Simorgh non-DB regression evidence. Enterprise database confidentiality, encryption, authorization, retained Stage04 artifact security requirements and organizational tests remain OPEN or `PENDING_SERVER` under D-017. Stage06 `NOT_STARTED`, to begin only on explicit user request. No application source, test implementation, migration, shared database, Docker network or secrets were changed for this evidence recording.
