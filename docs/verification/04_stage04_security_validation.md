@@ -508,3 +508,49 @@ TOTAL_PACKAGES=27
 **What this proves:** the precise installed package/version list, as emitted by the user-observed package metadata API, and that 26 overlap with the previously recorded Windows snapshot. It does **not** itself verify installed-wheel RECORD hashes, Wheel contents or their independent official PyPI digests, approved exact transitive lockfile, CycloneDX SBOM, OSV vulnerability scan, Linux base-image CVEs, actual license obligations, or provenance from the third-party Tsinghua mirror. The user did **not** run `audit_stage04_dependencies.py` in this interaction: `LINUX_INSTALLED_RECORD_VALIDATION=NOT_RUN`. `LINUX_SBOM=NOT_RUN`; `LINUX_INDEPENDENT_WHEEL_SHA256=NOT_RUN`; `LINUX_CVE=NOT_RUN`; `LEGAL_LICENSE_APPROVAL=OPEN`, including an explicit review of `pip` where included in shipped images and OS layer license obligations. Do not confuse previously reported Windows Wheel 27/27 / OSV-clean with a Linux Wheel + base-image review.
 
 **Status:** local Stage04 Linux Python/regression/safety test runner remains `PASS_USER_SERVER_REPORTED` from previous evidence. Stage04 `IN_PROGRESS` for remaining accessible-artifact Supply Chain and qualified OSS legal review; Stage05 `NOT_STARTED`; on-prem internal-network/model/Credential acceptance remains `DEFERRED_TO_STAGE_11` under D-017.
+
+
+## 2026-10-27 — Offline installed RECORD integrity and exact Linux dependency closure (user-reported)
+
+**Input provenance:** The user ran a `sudo docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 64 --memory 768m --cpus 1 --user 65532:65532 --entrypoint python` probe against the existing **development/test** image `text-evaluation-service:stage04-pytest-d39e5f21c3c3`. Despite partially duplicated/garbled *echoed* terminal paste, the final Python output included all expected sentinel markers and the full 26-line exact dependency closure, with no Python exception. The actual executed command exact bytes were not independently audited, so evidence is `USER_SERVER_REPORTED`, not assistant-executed.
+
+The probe imported the existing repository's `scripts.verification.audit_stage04_dependencies.build_inventory(include_dev=True)`, `bootstrap_pip_status`, and `frozen_requirements`. User output:
+
+```text
+DEPENDENCY_CLOSURE_COUNT= 26
+INSTALLED_RECORD_SHA256_VERIFIED= 1147
+LICENSE_REVIEW_REQUIRED= 26
+PASS_BOOTSTRAP_PIP_VERSION: 26.2.2 (version floor only; CVE scan still required)
+FROZEN_REQUIREMENTS_BEGIN
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+certifi==2026.10.23
+click==8.5.0
+fastapi==0.148.0
+h11==0.16.0
+httpcore==1.0.9
+httpcore2==2.16.0
+httpx==0.28.1
+httpx2==2.16.0
+idna==3.20
+iniconfig==2.3.1
+opentelemetry-api==1.45.1
+packaging==26.3
+pluggy==1.7.0
+pydantic==2.13.5
+pydantic-core==2.46.5
+pygments==2.21.0
+pytest==9.0.3
+pyyaml==6.0.3
+starlette==1.9.0
+truststore==0.10.5
+typing-extensions==4.16.0
+typing-inspection==0.4.4
+uvicorn==0.48.0
+FROZEN_REQUIREMENTS_END
+```
+
+**Evidence interpretation:** `26` is the installed **runtime+development dependency closure** resolved from pinned top-level `requirements.txt` and `requirements-dev.txt`, not all installed Python distributions. The preceding image enumeration gave `27`, whose additional `pip==26.2.2` is a bootstrap tool rather than a declared app dependency; the existing Windows 27-Wheel evidence included `colorama` instead of pip. The `build_inventory` verifier recomputed **1,147 installed file SHA-256 digests against their local wheel `RECORD` entries** across the 26 dependencies and found no mismatch reported. `RECORD` is installation-local; a matching `RECORD` is **NOT evidence of authenticity or unmodified publisher original**, and the tool does not scan files not listed in `RECORD`. The 26 `REVIEW_REQUIRED` entries affirm **zero approved license decisions** in this invocation. The pip bootstrap version floor check is **not an OSV scan**. The printed lock list is a **snapshot of exact installed versions**, not a hash-locked dependency resolution, and was **not written into a committed lockfile**.
+
+**Actual outcome:** `LINUX_DEVELOPMENT_CLOSURE=26_USER_SERVER_REPORTED`, `INSTALLED_RECORD_SHA256=PASS_USER_SERVER_REPORTED_1147`, `PIP_BOOTSTRAP_VERSION=PASS_USER_SERVER_REPORTED_26_2_2`, `LICENSE_26_OF_26=REVIEW_REQUIRED`. No new Docker Build, code changes, network calls, container service deployment or shared DB/LLM interaction occurred. Actual Linux distribution wheel-byte SHA256 versus official PyPI, frozen/hash-bound reproducible build, live Linux OSV audit, CycloneDX SBOM and base-image vulnerability/license review remain `NOT_RUN/OPEN`; the previously obtained Windows OSV/Wheel/license information remains evidence scoped to Windows only. Continue to treat the installation as **Stage04 candidate, not certified Production**. Stage04 `IN_PROGRESS`, Stage05 `NOT_STARTED`, D-017 organization-only gates `DEFERRED_TO_STAGE_11`.
