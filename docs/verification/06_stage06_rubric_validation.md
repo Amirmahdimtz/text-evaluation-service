@@ -70,3 +70,20 @@ Real database integration tests only on a separately provisioned, explicitly aut
 ```
 
 Do **not** use the shared Simorgh PostgreSQL or modify corporate Secrets/Networking/Production to run these commands. The GitHub Actions isolated CI evidence already proves the Stage06 local integration gate.
+
+## 2026-10-27 — Simorgh independent Stage06 non-database tests: 20/20 and 107/107 PASS
+
+**Source:** operator-provided Simorgh terminal transcript from `/srv/projects/text-evaluation-service`. `git pull --ff-only origin main` succeeded, fast-forwarding local checkout `556625d` to `03ca994` with Stage06 code, fixtures, tests and documents.
+
+```text
+.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage06_rubric_schema.py
+20 passed in 0.57s
+
+.venv/bin/python -m pytest -q -p no:cacheprovider tests --ignore=tests/test_stage05_postgres.py --ignore=tests/test_stage06_rubric_postgres.py
+107 passed in 1.76s
+```
+
+- **Classification:** `PASS_USER_SERVER_REPORTED_STAGE06_SCHEMA_20_OF_20` and `PASS_USER_SERVER_REPORTED_NON_DB_SUITE_107_OF_107`; the output showed no failures or skips. The separate 20 Stage06 tests are **included within** the broader 107, not an additional group to sum.
+- **Scope:** Both PostgreSQL test modules were explicitly excluded from the 107-test run, so **no real PostgreSQL transaction, Alembic migration or integration test was executed on Simorgh** by these commands. The isolated [GitHub Actions PostgreSQL 17 run 40519890093](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40519890093) separately passed 3 Stage06 DB tests, 4 Stage05 DB tests and 114 total pytest tests. The difference of 7 tests is consistent with the explicitly excluded DB modules; the environments and executions must not be conflated.
+- **Security and deployment:** No corporate/shared DB, secrets, Production deployment, GPU/LLM runtime, customer data or official Rubric publication were accessed or authorized. The Stage06 local acceptance gate remains `DONE` on accumulated CI and operator evidence, with corporate IAM/approval, Rubric business policy (`OD-03/04/06`) and protected-data tests `OPEN/PENDING_SERVER` under D-015/D-017. Stage07 remains `NOT_STARTED`.
+- **No re-execution claim:** This is a documentation-only recording of the user-run test transcript; the assistant did not run tests on Simorgh.
