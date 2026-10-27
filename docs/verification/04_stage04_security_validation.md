@@ -588,3 +588,23 @@ Evidence source: user-supplied terminal output for repository HEAD 186b041e4cedc
 - New targeted fix: load an in-process synthetic Bash Git function from a readable but non-executable BASH_ENV file (0400), avoiding invocation of executables from /tmp. Assistant synthetic local Bash preflight and 3/3 negative-case smoke scenarios PASS. Complete hardened Docker test suite after this fix **PENDING_USER_RETEST**.
 - Still OPEN: complete local Linux test gate, evidence validation, authorized license reviews for 26 closure packages and separately shipped pip, base-image OS vulnerability scan/attestation and trusted provenance. No unperformed check is marked PASS.
 - Stage04 IN_PROGRESS; Stage05 NOT_STARTED/NOT_APPROVED; genuine organization-only runtime and No-Egress DEFERRED_TO_STAGE_11.
+
+## 2026-10-27 — Simorgh hardened Stage04 Linux regression fully passed (user-reported)
+
+**Observed repository HEAD:** `e90d8d4550296152a6cb0085fe3639190a40ffe2` (clean main before fast-forward; user explicitly showed Git update and commit ID). A new isolated Docker test image was built and ran under non-root UID/GID 65532:65532, architecture amd64.
+
+| Gate evidence from the exact user-supplied terminal stdout | Status |
+|---|---|
+| Full Python pytest suite | **PASS 74/74**, 4.67s; no failures |
+| Stage03 benchmark validator regressions | **PASS 38/38**, 0.172s |
+| Stage02 documentation contract regressions | **PASS 12/12**, 0.001s |
+| Stage04 static security guard | **PASS**, checks 9 runtime source files, pins, Starlette baseline, credentials and secret ignores |
+| Docker build-time and runtime `pip check` | **PASS**, 'No broken requirements found' |
+| Non-root import smoke | **PASS**, `NON_ROOT_IMPORT_PASS` |
+| Runner completion marker | **PASS**, `STAGE04_LINUX_CONTAINER_TESTS_PASS` |
+
+- Immutable test image reference: `text-evaluation-service:stage04-pytest-e90d8d455029`; Docker-reported image ID `sha256:e8e55a716888d85cc5e91ad629059657868cb44de7614f61eeb6679b2cd1599c`. This is a locally generated development test image, **not** a signed upstream/Production provenance attestation.
+- The formerly failing noexec-sensitive synthetic Git preflight test now passes within the full suite. Stage04 **local code/test regression gate PASS_USER_SERVER_REPORTED**; the assistant did not independently log into Simorgh or execute this Docker suite.
+- Preserve the separately completed Linux supply-chain artifacts in `.stage04-evidence-linux-20261027-02` (user-reported earlier): OSV returned no reported Python-package vulnerabilities, 26 exact-version Linux Wheels and official PyPI release SHA256 matches collected, CycloneDX 1.6 SBOM generated. **Do not rerun/download merely to clear a passed code test.** Those files have not been byte-reviewed by the assistant, and the final offline cross-artifact consistency check remains **PENDING**.
+- Legal and security reservations are unchanged: 26 version-exact Linux package license decisions plus separately installed pip remain `REVIEW_REQUIRED`; base image/OS vulnerability scan and artifact provenance are unverified. Corporate server-only controls are `DEFERRED_TO_STAGE_11` under D-017. Do not infer a production release or network No-Egress PASS from Docker `--network none`.
+- **Stage04 remains IN_PROGRESS**, local regression gate PASSED, independent evidence/License/Base-OS gates OPEN; **Stage05 NOT_STARTED / NOT_APPROVED**.
