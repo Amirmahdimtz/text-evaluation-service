@@ -411,13 +411,13 @@ New opt-in Linux runner: [run_stage04_linux_supply_chain.sh](../../scripts/verif
 
 **Authorization prerequisite:** the host/network owner must allow only public PyPI-mirror, PyPI metadata and OSV advisory queries. No confidential text, secrets, model artifacts, external AI, internal Docker networks, shared services or published app ports. A third-party mirror is not proof of publisher provenance. The new scanner image uses the existing local test image as a base without pulling or modifying it. Evidence containers are non-root and read-only outside a new private evidence bind mount and an isolated temporary filesystem.
 
-Run the following on the authorized Simorgh checkout, using a fresh unique result directory:
+Run the following on the authorized Simorgh checkout, using a fresh unique result directory. The existing Docker test runner also executes the newly added local regression tests without relying on the host's incomplete Python venv:
 
 ~~~bash
 git pull --ff-only origin main
 git status --short
 bash -n scripts/verification/run_stage04_linux_supply_chain.sh
-python -m pytest -q tests/test_linux_supply_chain_runner.py
+bash scripts/verification/run_stage04_linux_container_tests.sh
 bash scripts/verification/run_stage04_linux_supply_chain.sh .stage04-evidence-linux-20261027-01
 ~~~
 
