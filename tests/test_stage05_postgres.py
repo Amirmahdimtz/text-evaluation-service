@@ -185,3 +185,110 @@ def test_stage05_upgrade_is_idempotent_with_existing_synthetic_data(isolated_pos
         finally:
             await ctx.close()
     asyncio.run(check())
+
+
+def test_stage05_concurrent_idempotency_rollback_and_scope_fk(isolated_postgres_schema):
+    """Concurrent submissions cannot double-create; failed multi-row writes roll back."""
+    from sqlalchemy.exc import IntegrityError
+
+    async def exercise():
+        ctx = PsqlDbContext()
+        try:
+            org, other = "synthetic-" + uuid4().hex, "synthetic-other-" + uuid4().hex
+            owner, rubric_id = "fixture-owner", uuid4()
+            async with ctx.session() as session:
+                async with session.begin():
+                    session.add(RubricVersion(
+                        id=rubric_id, organization_id=org, evaluation_type="speech",
+                        code="fixture", version="fixture-v1", status="published",
+                        criteria_snapshot={"criteria": []}, checksum="a" * 64,
+                        published_at=datetime.now(timezone.utc),
+                    ))
+            repo = EvaluationRepository(ctx)
+            key = "concurrent-" + uuid4().hex
+
+            def submission(*, invalid=False):
+                evaluation_id = uuid4()
+                return (
+                    Evaluation(id=evaluation_id, organization_id=org, owner_id=owner,
+                               evaluation_type="speech", rubric_version_id=rubric_id,
+                               protected_text_ref=uuid4(), idempotency_key=key,
+                               request_fingerprint="b" * 64),
+                    EvaluationJob(id=uuid4(), organization_id=org,
+                                  evaluation_id=evaluation_id,
+                                  attempts=-1 if invalid else 0),
+                )
+
+            async def submit():
+                a, b = submission()
+                return await repo.create_with_job_async(
+                    a, b, organization_id=org, owner_id=owner,
+                    correlation_id=uuid4(),
+                )
+
+            results = await asyncio.gather(submit(), submit())
+            assert {tuple(r[:2]) for r in results}.__len__() == 1
+            assert sorted(r[2] for r in results) == [False, True]
+            async with ctx.session() as session:
+                assert await session.scalar(select(func.count()).select_from(Evaluation).where(
+                    Evaluation.organization_id == org)) == 1
+                assert await session.scalar(select(func.count()).select_from(EvaluationJob).where(
+                    EvaluationJob.organization_id == org)) == 1
+                assert await session.scalar(select(func.count()).select_from(AuditEvent).where(
+                    AuditEvent.organization_id == org)) == 1
+
+            failed_key = "rollback-" + uuid4().hex
+            a, b = submission(invalid=True)
+            a.idempotency_key = failed_key
+            with pytest.raises(ValueError, match="DB_CONSTRAINT_CONFLICT"):
+                await repo.create_with_job_async(
+                    a, b, organization_id=org, owner_id=owner,
+                    correlation_id=uuid4(),
+                )
+            async with ctx.session() as session:
+                assert await session.scalar(select(func.count()).select_from(Evaluation).where(
+                    Evaluation.organization_id == org,
+                    Evaluation.idempotency_key == failed_key)) == 0
+
+            # Direct DB insert cannot evade the composite organization/type rubric FK.
+            with pytest.raises(IntegrityError):
+                async with ctx.session() as session:
+                    async with session.begin():
+                        session.add(Evaluation(
+                            id=uuid4(), organization_id=other, owner_id=owner,
+                            evaluation_type="speech", rubric_version_id=rubric_id,
+                            protected_text_ref=uuid4(), idempotency_key="cross-" + uuid4().hex,
+                            request_fingerprint="c" * 64,
+                        ))
+            assert ctx._engine.sync_engine.pool.checkedout() == 0
+        finally:
+            await ctx.close()
+
+    asyncio.run(exercise())
+
+
+def test_stage05_query_plans_and_exact_indices_exist(isolated_postgres_schema):
+    """Read actual plan/index metadata; small synthetic tables need not use an index."""
+    import json
+
+    async def inspect():
+        ctx = PsqlDbContext()
+        try:
+            async with ctx.session() as session:
+                names = (await session.execute(text(
+                    "SELECT indexname FROM pg_indexes WHERE schemaname=current_schema()"
+                ))).scalars().all()
+                names = set(names)
+                assert {"ix_job_claim", "ix_evaluation_scoped_read", "ix_audit_scoped_time"} <= names
+                plan = await session.scalar(text(
+                    "EXPLAIN (FORMAT JSON) SELECT id FROM evaluation_jobs "
+                    "WHERE organization_id=:org AND status='pending' "
+                    "ORDER BY created_at,id LIMIT 1"
+                ), {"org": "synthetic-no-match"})
+                if isinstance(plan, str):
+                    plan = json.loads(plan)
+                assert isinstance(plan, list) and plan and "Plan" in plan[0]
+            assert ctx._engine.sync_engine.pool.checkedout() == 0
+        finally:
+            await ctx.close()
+    asyncio.run(inspect())
