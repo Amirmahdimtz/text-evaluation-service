@@ -466,3 +466,45 @@ The **identical Git blob `12aabb950b7bc896136a1d9a1aabb6131edb99ef`** was checke
 **Execution conditions** (from reviewed committed runner): disposable runtime container launched `--rm --network none --read-only --tmpfs /tmp`, `--cap-drop ALL --security-opt no-new-privileges --user 65532:65532` with bounded PIDs/memory/CPU and no volume mounts or published ports. This is **local no-network smoke/test evidence, not organizational Network No-Egress certification**. Prior test attempt at HEAD `53072ff` passed 70+38+12 tests but failed checker manifest permissions; **that failure has been corrected and the entire revised runner passed**. Preserve both historical facts.
 
 **Final local-test gate statement:** `FULL_LINUX_PYTEST=PASS_USER_SERVER_REPORTED_71_OF_71`, `STAGE03_LINUX_REGRESSION=PASS_38_OF_38`, `STAGE02_LINUX_REGRESSION=PASS_12_OF_12`, `STAGE04_STATIC_SAFETY=PASS`, `RUNTIME_NONROOT_IMPORT=PASS`, `RUNTIME_PIP_CHECK=PASS`, `STAGE04_LINUX_CONTAINER_TESTS_PASS=CONFIRMED_USER_LOG`. Existing Windows `70/70` is separate pre-new-test evidence. **Not executed:** CI promotion/Production image test, real model/DB end-to-end, on-prem network policies (D-017 `DEFERRED_TO_STAGE_11`), actual Linux Wheel official digest comparison, Linux SBOM + advisories scoped to final image/base layers, qualified license approvals (existing 27 Windows evidence decisions `REVIEW_REQUIRED`). Successful import/tests alone do not authorize unsafe third-party mirror packages or Stage 05. **Stage04 remains `IN_PROGRESS`; Stage05 `NOT_STARTED / NOT_APPROVED`.**
+
+
+## 2026-10-27 — Simorgh Linux installed package-version inventory (user-observed, NOT a provenance audit)
+
+The operator ran a **read-only, no-network, non-root** `importlib.metadata.distributions()` listing inside the previously passing Stage 04 Docker **development test Image** `text-evaluation-service:stage04-pytest-d39e5f21c3c3`. The user reported 27 installed distributions (names normalized for comparison below; package values and versions otherwise unchanged):
+
+```text
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+certifi==2026.10.23
+click==8.5.0
+fastapi==0.148.0
+h11==0.16.0
+httpcore==1.0.9
+httpcore2==2.16.0
+httpx==0.28.1
+httpx2==2.16.0
+idna==3.20
+iniconfig==2.3.1
+opentelemetry-api==1.45.1
+packaging==26.3
+pip==26.2.2
+pluggy==1.7.0
+pydantic==2.13.5
+pydantic_core==2.46.5
+pygments==2.21.0
+pytest==9.0.3
+pyyaml==6.0.3
+starlette==1.9.0
+truststore==0.10.5
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+uvicorn==0.48.0
+TOTAL_PACKAGES=27
+```
+
+**Independent cross-check against the Git-reviewed Windows license-triage metadata:** all **26 Linux application + development dependency closure names/versions** match corresponding entries in the Windows 27-package list exactly after standardizing separator spelling (`pydantic_core` ↔ `pydantic-core`; `typing_extensions` ↔ `typing-extensions`). The different 27th entry is `pip==26.2.2` in Linux **as a separately installed packaging/bootstrap tool** versus `colorama==0.4.6` in the Windows closure (not installed in this Linux Image). Therefore **Linux `TOTAL_PACKAGES=27` is not equivalent to a new all-dependencies/all-wheels license approval**, and the existing Windows 27-component license review metadata does not cover Linux's installed pip distribution. Actual **runtime-only** image closure is smaller than this development test Image; no app runtime SBOM can be inferred from the dev Image count.
+
+**What this proves:** the precise installed package/version list, as emitted by the user-observed package metadata API, and that 26 overlap with the previously recorded Windows snapshot. It does **not** itself verify installed-wheel RECORD hashes, Wheel contents or their independent official PyPI digests, approved exact transitive lockfile, CycloneDX SBOM, OSV vulnerability scan, Linux base-image CVEs, actual license obligations, or provenance from the third-party Tsinghua mirror. The user did **not** run `audit_stage04_dependencies.py` in this interaction: `LINUX_INSTALLED_RECORD_VALIDATION=NOT_RUN`. `LINUX_SBOM=NOT_RUN`; `LINUX_INDEPENDENT_WHEEL_SHA256=NOT_RUN`; `LINUX_CVE=NOT_RUN`; `LEGAL_LICENSE_APPROVAL=OPEN`, including an explicit review of `pip` where included in shipped images and OS layer license obligations. Do not confuse previously reported Windows Wheel 27/27 / OSV-clean with a Linux Wheel + base-image review.
+
+**Status:** local Stage04 Linux Python/regression/safety test runner remains `PASS_USER_SERVER_REPORTED` from previous evidence. Stage04 `IN_PROGRESS` for remaining accessible-artifact Supply Chain and qualified OSS legal review; Stage05 `NOT_STARTED`; on-prem internal-network/model/Credential acceptance remains `DEFERRED_TO_STAGE_11` under D-017.
