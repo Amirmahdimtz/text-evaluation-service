@@ -6,7 +6,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
-    CheckConstraint, ForeignKeyConstraint, Index, Numeric, SmallInteger, String,
+    CheckConstraint, DateTime, ForeignKeyConstraint, Index, Numeric, SmallInteger, String,
     UniqueConstraint, func, text,
 )
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID as PGUUID
@@ -19,10 +19,6 @@ def _pk():
     return mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
 
 
-def _at():
-    return mapped_column(nullable=False, server_default=func.now())
-
-
 class RubricVersion(Base):
     __tablename__ = "rubric_versions"
     id: Mapped[UUID] = _pk()
@@ -33,8 +29,8 @@ class RubricVersion(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft", server_default="draft")
     criteria_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
     checksum: Mapped[str] = mapped_column(String(64), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
-    published_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     __table_args__ = (
         UniqueConstraint("organization_id", "evaluation_type", "code", "version", name="uq_rubric_version"),
         UniqueConstraint("id", "organization_id", "evaluation_type", name="uq_rubric_id_scope_type"),
@@ -60,9 +56,9 @@ class Evaluation(Base):
     coverage: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
     model_revision: Mapped[str | None] = mapped_column(String(128), nullable=True)
     prompt_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
-    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     __table_args__ = (
         ForeignKeyConstraint(
             ["rubric_version_id", "organization_id", "evaluation_type"],
@@ -90,11 +86,11 @@ class EvaluationJob(Base):
     fencing_generation: Mapped[int] = mapped_column(nullable=False, default=0, server_default="0")
     attempt_token: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
     worker_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    lease_until: Mapped[datetime | None] = mapped_column(nullable=True)
-    retry_after: Mapped[datetime | None] = mapped_column(nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    retry_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     __table_args__ = (
         ForeignKeyConstraint(["evaluation_id", "organization_id"], ["evaluations.id", "evaluations.organization_id"], name="fk_job_evaluation_scope", ondelete="RESTRICT"),
         CheckConstraint("status IN ('pending','processing','completed','failed_retryable','failed_terminal')", name="ck_job_status"),
@@ -113,7 +109,7 @@ class CriterionResult(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     score: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     encrypted_details: Mapped[bytes] = mapped_column(BYTEA, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     __table_args__ = (
         ForeignKeyConstraint(["evaluation_id", "organization_id"], ["evaluations.id", "evaluations.organization_id"], name="fk_criterion_evaluation_scope", ondelete="RESTRICT"),
         UniqueConstraint("evaluation_id", "criterion_code", name="uq_criterion_eval_code"),
@@ -131,7 +127,7 @@ class EvaluationFeedback(Base):
     revision: Mapped[int] = mapped_column(nullable=False)
     decision_code: Mapped[str] = mapped_column(String(64), nullable=False)
     encrypted_details: Mapped[bytes] = mapped_column(BYTEA, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     __table_args__ = (
         ForeignKeyConstraint(["evaluation_id", "organization_id"], ["evaluations.id", "evaluations.organization_id"], name="fk_feedback_evaluation_scope", ondelete="RESTRICT"),
         UniqueConstraint("evaluation_id", "revision", name="uq_feedback_eval_revision"),
@@ -149,5 +145,5 @@ class AuditEvent(Base):
     resource_kind: Mapped[str] = mapped_column(String(32), nullable=False)
     resource_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
     correlation_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     __table_args__ = (Index("ix_audit_scoped_time", "organization_id", "created_at"),)
