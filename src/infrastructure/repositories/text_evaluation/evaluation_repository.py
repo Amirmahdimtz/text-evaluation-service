@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -32,8 +31,12 @@ class EvaluationRepository(BaseRepository[Evaluation]):
                 or job.organization_id != organization_id or job.evaluation_id != evaluation.id
                 or not isinstance(evaluation.protected_text_ref, UUID)
                 or not evaluation.idempotency_key or len(evaluation.request_fingerprint) != 64
-                or job.status != "pending" or evaluation.status != "pending"):
+                or not isinstance(evaluation.id, UUID) or not isinstance(job.id, UUID)
+                or job.status not in (None, "pending")
+                or evaluation.status not in (None, "pending")):
             raise ValueError("DB_SUBMISSION_INVALID")
+        evaluation.status = "pending"
+        job.status = "pending"
         try:
             async with self._db.session() as session:
                 async with session.begin():
