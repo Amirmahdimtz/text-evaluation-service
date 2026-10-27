@@ -353,3 +353,8 @@ Additional user-local, **bounded read-only** evidence: `timeout 15s resolvectl q
 - Once source is authorized and integrity is verified, install in existing `.venv-review` using `--no-index --find-links` with local vetted content. Then run the existing bootstrap guard, `pip check` and full `pytest -q tests`, recording real exit status and test counts.
 
 **State remains** `FAILED_DNS` for the requested pip 26.2.2 bootstrap; subsequent project dependency install/tests are `NOT_RUN/BLOCKED`. No permission to touch other projects or actual live model/DB is inferred.
+
+
+## User-reported container-only Tsinghua PyPI mirror response — 2026-10-27
+
+For `python:3.12.12-slim` in a disposable default-bridge Docker container, user obtained **HTTP 200** from `https://pypi.tuna.tsinghua.edu.cn/simple/setuptools/`. This is **index HTTP connectivity only**. To avoid Dockerfile/Compose source modifications, a scoped exploratory Stage 04 candidate may use a temp context from `git archive HEAD requirements.txt src` and a temporary Dockerfile, with `pip --index-url https://pypi.tuna.tsinghua.edu.cn/simple --only-binary=:all:` and the existing pinned runtime requirements. **No such build or integrity review has run at documentation time**. Never include repo-root untracked files, secrets or private staging configuration in a Docker build context. Do not connect to shared DB/vLLM networks or deploy this candidate. Use official PyPI release digests/approved distribution manifests to independently validate the exact downloaded Linux Wheel hashes before any software supply-chain Gate PASS; a non-production import smoke check cannot substitute. Preserve host `.venv-review` DNS blocker `FAILED_DNS` and Ubuntu pytest `NOT_RUN/BLOCKED` until separate tests actually execute.
