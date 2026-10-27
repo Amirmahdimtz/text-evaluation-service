@@ -11,6 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 
@@ -184,13 +185,12 @@ def test_stage06_duplicate_version_and_invalid_draft_fail_without_publication(is
                 async with session.begin():
                     row = await session.get(RubricVersion, rid)
                     row.criteria_snapshot = {"criteria": []}
-            with pytest.raises((ValueError, Exception)) as exc:
+            with pytest.raises(ValidationError):
                 await service.publish_candidate_async(
                     organization_id=org, actor_id="synthetic-curator",
                     correlation_id=uuid4(), evaluation_type="research",
                     code=source.code, version=source.version,
                 )
-            assert exc.value is not None
             async with db.session() as session:
                 assert (await session.get(RubricVersion, rid)).status == "draft"
                 assert (await session.scalar(select(func.count()).select_from(AuditEvent).where(
