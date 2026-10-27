@@ -462,3 +462,40 @@ bash scripts/verification/run_stage04_linux_container_tests.sh
 
 - The test runner must finish with STAGE04_LINUX_CONTAINER_TESTS_PASS and complete pytest, Stage03/Stage02, safety check, pip check and non-root smoke checks. Otherwise preserve output and keep Gate OPEN. When all pass, record exact count and image SHA from the host. The collector is NOT a replacement for legal approval.
 - Later approved local review: compare inventory, pinned closure, sbom.cdx.json, wheel-hashes.json and pypi-digests.json in the preserved evidence directory using the existing offline evaluator, after independent qualified license decisions have been recorded; perform an authorized base-image/OS scanner review. If no reviewer attestation is available, leave license-review.json at REVIEW_REQUIRED and Stage04 IN_PROGRESS.
+
+### Simorgh 74/74 Linux regression PASS and offline evidence-consistency review (2026-10-27)
+
+Simorgh operator stdout confirms at HEAD e90d8d4550296152a6cb0085fe3639190a40ffe2: pytest **74/74 PASS**, Stage03 **38/38 PASS**, Stage02 **12/12 PASS**, static guard PASS, runtime `pip check` PASS, non-root import PASS and `STAGE04_LINUX_CONTAINER_TESTS_PASS` for image `text-evaluation-service:stage04-pytest-e90d8d455029` (ID `sha256:e8e55a716888d85cc5e91ad629059657868cb44de7614f61eeb6679b2cd1599c`, amd64, UID 65532). Prior Git-stub noexec failure is resolved; do **not** rebuild or rerun passed tests without a new change.
+
+The separate successful Linux Supply Chain collector's evidence is **.stage04-evidence-linux-20261027-02**. It has NOT been independently cross-validated byte-for-byte. The commands below are **read-only**, use the existing auditor image, make **zero network requests** and leave prior evidence untouched. They check the exact inventory, OSV advisory report, CycloneDX coverage, wheelhouse binary hashes, PyPI release digest manifest and exact closure agreement **without inventing license signoffs**.
+
+~~~bash
+cd /srv/projects/text-evaluation-service
+sudo docker image inspect text-evaluation-service:stage04-linux-audit-186b041e4ced >/dev/null
+sudo docker run --rm --network none --read-only \
+  --tmpfs /tmp:rw,nosuid,nodev,noexec,size=64m \
+  --cap-drop ALL --security-opt no-new-privileges \
+  --pids-limit 128 --memory 512m --cpus 2 --user 65532:65532 \
+  --mount "type=bind,src=$PWD/.stage04-evidence-linux-20261027-02,dst=/evidence,readonly" \
+  --entrypoint python text-evaluation-service:stage04-linux-audit-186b041e4ced -c '
+from pathlib import Path
+from scripts.verification import review_stage04_supply_chain as r
+p = Path("/evidence")
+inventory = r._read(p / "inventory.json")
+expected = r._inventory(inventory)
+assert len(expected) == 26, "EXPECTED_26_COMPONENTS"
+assert r.frozen_requirements(inventory) == (p / "pinned-closure.txt").read_text(encoding="utf-8"), "CLOSURE_MISMATCH"
+r._validate_audit(r._read(p / "vulnerabilities.osv.json"), expected)
+r._validate_sbom(r._read(p / "sbom.cdx.json"), expected)
+hashes = r._read(p / "wheel-hashes.json")
+r._validate_hash_manifest(hashes, expected, p / "wheelhouse")
+r._validate_pypi_digests(r._read(p / "pypi-digests.json"), hashes)
+licenses = r._read(p / "license-review.json")
+assert licenses["format"] == "stage04-license-review-v1"
+assert r._identities(licenses["decisions"], source="LICENSE") == expected
+assert all(d["decision"] == "REVIEW_REQUIRED" for d in licenses["decisions"]), "LEGAL_REVIEW_NOT_AN_UNAPPROVED_TEMPLATE"
+print("STAGE04_TECHNICAL_EVIDENCE_CONSISTENT_26; LICENSE_REVIEW_PENDING")
+'
+~~~
+
+An error is **FAIL or INCONCLUSIVE** for this independent validation, not a reason to edit the old evidence files. Even success cannot certify the origin of installed bytes, guarantee advisory freshness or grant approval for license/OS artifacts. Version-exact human license review and approved base image/OS scan remain OPEN. Stage04 IN_PROGRESS and Stage05 NOT_STARTED.
