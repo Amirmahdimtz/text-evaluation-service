@@ -43,7 +43,7 @@ def upgrade() -> None:
             evaluation_type varchar(16) NOT NULL
                 CONSTRAINT ck_evaluation_type CHECK (evaluation_type IN ('speech','media','research')),
             rubric_version_id uuid NOT NULL,
-            protected_text_ref varchar(512) NOT NULL,
+            protected_text_ref uuid NOT NULL,
             idempotency_key varchar(128) NOT NULL,
             request_fingerprint varchar(64) NOT NULL
                 CONSTRAINT ck_evaluation_fingerprint CHECK (length(request_fingerprint)=64),
