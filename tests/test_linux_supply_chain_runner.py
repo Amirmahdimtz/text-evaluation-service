@@ -40,26 +40,29 @@ def test_linux_supply_chain_runner_rejects_dirty_or_wrong_branch_without_docker(
     """
     repo = tmp_path / "repo"
     repo.mkdir()
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    git_stub = bin_dir / "git"
-    git_stub.write_text(
-        "#!/bin/sh\n"
-        "case \"$1 $2\" in\n"
-        "  \"rev-parse --show-toplevel\") printf '%s\\n' \"$STUB_REPO\" ;;\n"
-        "  \"branch --show-current\") printf '%s\\n' \"$STUB_BRANCH\" ;;\n"
-        "  \"status --porcelain\") if [ \"$STUB_DIRTY\" = 1 ]; then printf '?? dirty.txt\\n'; fi ;;\n"
-        "  \"cat-file -e\") exit 1 ;;\n"
-        "  *) printf 'unexpected git invocation\\n' >&2; exit 2 ;;\n"
-        "esac\n",
+    # The Linux test container may mount /tmp with noexec. Source a readable
+    # non-executable Bash function instead of executing a stub from /tmp.
+    # BASH_ENV is loaded by the non-interactive Bash process running RUNNER.
+    git_functions = tmp_path / "git-preflight-functions.bash"
+    git_functions.write_text(
+        "git() {\n"
+        "  case \"$1 $2\" in\n"
+        "    \"rev-parse --show-toplevel\") printf '%s\\n' \"$STUB_REPO\" ;;\n"
+        "    \"branch --show-current\") printf '%s\\n' \"$STUB_BRANCH\" ;;\n"
+        "    \"status --porcelain\") if [ \"$STUB_DIRTY\" = 1 ]; then printf '?? dirty.txt\\n'; fi ;;\n"
+        "    \"cat-file -e\") return 1 ;;\n"
+        "    *) printf 'unexpected git invocation\\n' >&2; return 2 ;;\n"
+        "  esac\n"
+        "}\n",
         encoding="utf-8",
     )
-    git_stub.chmod(0o700)
+    git_functions.chmod(0o400)
+
 
     def invoke(*, branch: str, dirty: bool):
         environment = os.environ.copy()
         environment.update({
-            "PATH": str(bin_dir) + os.pathsep + environment.get("PATH", ""),
+            "BASH_ENV": str(git_functions),
             "STUB_REPO": str(repo),
             "STUB_BRANCH": branch,
             "STUB_DIRTY": "1" if dirty else "0",
