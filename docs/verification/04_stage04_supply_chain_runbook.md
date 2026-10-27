@@ -521,3 +521,26 @@ Only the literal `STAGE04_PYPI_LICENSE_TEMPLATE_MATCH_26; LEGAL_APPROVAL_PENDING
 - **Observed user-run command and exact output:** `STAGE04_PYPI_LICENSE_TEMPLATE_MATCH_26; LEGAL_APPROVAL_PENDING`. The untruncated submitted command ran the existing auditor image offline under UID 65532 with a read-only mount of `.stage04-evidence-linux-20261027-02` and validated the 26-component installed inventory against the preserved PyPI Wheel digest manifest, then confirmed all 26 entries of the corresponding license-review template are intentionally `REVIEW_REQUIRED`.
 - **Status:** `PASS_USER_SERVER_REPORTED` for **the offline PyPI manifest and unapproved license-template consistency check**. This supersedes the earlier need to re-run the final two checks after a truncated paste. The check made no fresh public network request, did not validate original installed artifacts against publisher signatures, and did not grant any license authorization. No further collector/test reruns needed solely to verify this output.
 - **Remaining acceptance items:** obtain authorized legal review with actual terms and obligations for the 26 Linux dependency-closure packages **and separately installed `pip`**, determine internal-use vs redistribution/shipping policy, run authorized OS/base-container package inventory + CVE/SBOM/provenance review (without changing shared Docker/network services), and verify the origin of shipped images/installed dependency bytes. Keep original raw evidence preserved and unmodified. Stage04 IN_PROGRESS; Stage05 NOT_STARTED; organization-only tests DEFERRED_TO_STAGE_11.
+
+### Debian 13.3 base OS inventory and safe scanner discovery (2026-10-27)
+
+Read-only user-run inspection of the existing Stage04 reviewed test image reported Debian 13 (trixie) **13.3**, 87 installed dpkg packages, linux/amd64, UID/GID 65532:65532, and exact image ID `sha256:7b3c7532a3e31f002ec1f8211c28d22148602b74ff1bfc51dd8edb4df5239785`. This is an **inventory-only** observation. No Debian OS-layer advisory scan has yet been run. The official Debian Project released 13.7 on 2026-09-12 (https://www.debian.org/News/2026/20260912); a 13.3 release label is not by itself a CVE finding. It cannot establish the status of individual Debian packages without their exact installed versions and advisory matching.
+
+Before selecting a scanner or approving any internet/database access, the Simorgh operator can run the following non-mutating discovery commands. No project services, Docker images, containers, secrets, system packages, scanner DB, or firewall settings need changing:
+
+~~~bash
+cd /srv/projects/text-evaluation-service
+for tool in trivy grype syft; do
+  if command -v "$tool" >/dev/null 2>&1; then
+    printf '%s=AVAILABLE (%s)\n' "$tool" "$(command -v "$tool")"
+  else
+    printf '%s=NOT_INSTALLED\n' "$tool"
+  fi
+done
+sudo docker image inspect text-evaluation-service:stage04-pytest-d39e5f21c3c3 \
+  --format 'ImageID={{.Id}} RepoDigests={{json .RepoDigests}}'
+~~~
+
+**Interpretation:** if `trivy` or `grype` is available, first confirm its version, approved advisory database freshness and supported Debian trixie detection, then scope a local-image vulnerability scan to this exact ID and save evidence. A scanner can support OS-Package CVE matching but is not a substitute for trusted image provenance or legal approval. Scanners may automatically refresh their DB or pull images, so **do not run a full scan, install/pull a new scanner image, grant Docker socket access to an untrusted tool or access external sources** without an approved isolated/public-metadata workflow. If neither is present, record `PENDING_APPROVED_SCANNER`, not PASS. RepoDigests may be empty on locally built images; a local Docker image hash alone does not verify publisher identity.
+
+OS scan, authoritative upstream origin/attestation, and qualified licenses for all 26 Linux Python packages plus bootstrap pip remain OPEN. Stage04 IN_PROGRESS; Stage05 NOT_STARTED.
