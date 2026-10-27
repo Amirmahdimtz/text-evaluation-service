@@ -1,3 +1,4 @@
+> **Historical review notice (2026-10-27):** The `NO_GO_STAGE_05` finding below was the accurate **2026-10-24 snapshot** before later dependency fixes, 74/74 Linux regression passes and 26-package OSV/Wheel/PyPI collection. The authoritative **current** Stage04 local-gate status is `DONE` under confirmed `D-017`; see [Stage04 closure](04_stage04_closure_report.md). All original findings, failed runs and documentation remain as historical evidence; real Debian image CVE scanning, publisher/installed-byte provenance and licensed distribution approval are **still OPEN** for `S04-S11-06` and cannot be treated as passed or as permission to deploy.
 # Stage 04 — Independent Security and Architecture Review
 
 Date: 2026-10-24. Repository: `Amirmahdimtz/text-evaluation-service`, branch `main`. Review is scoped exclusively to Stage 04; no Stage 05 database/schema/migration feature was started.
