@@ -403,3 +403,26 @@ User's offline container `importlib.metadata.distributions()` output for `text-e
 User-supplied **offline non-root test-image** audit: `build_inventory(include_dev=True)` resolved **26** installed project runtime+development dependencies and successfully verified **1,147 installation-local SHA256 RECORD entries**. A separate installed-distribution enumeration previously found 27 total because `pip==26.2.2` is installed but not a declared application dependency. `bootstrap_pip_status` printed `PASS_BOOTSTRAP_PIP_VERSION: 26.2.2`, which is a minimum version check, **not a CVE scan**. `frozen_requirements` produced 26 exact installed pins (all normalized versions match the previously cross-referenced Windows dependency closure), **not a committed hash-lockfile**. All **26** machine-generated application-dependency license decisions are `REVIEW_REQUIRED`, without an authorized reviewer sign-off. The installer, source RECORD manifest and installed files could all originate from the same unapproved third-party mirror; local RECORD equality is **not independent publisher Wheel authenticity**.
 
 **Next evidence scope:** Preserve a separate immutable exact Linux-Wheel acquisition source, match binary SHA-256 to independently acquired official PyPI release digests, verify platform compatibility and complete closure against the 26 exact pins, audit installed package versions (including separately shipped `pip`) against a complete advisory source, generate a correct Linux test and runtime SBOM including OS base-image contents, and track actual qualified OSS license signoffs. Do not silently promote the development test Image to production. No latest Linux `pip-audit`/OSV, canonical Wheel-hash comparison or qualified legal approval occurred during this command.
+
+
+## Linux Stage 04 fixed-image Supply Chain collector (2026-10-27)
+
+New opt-in Linux runner: [run_stage04_linux_supply_chain.sh](../../scripts/verification/run_stage04_linux_supply_chain.sh). It requires a clean main checkout, unchanged runtime files and pinned requirements since commit d39e5f21c3c37a8fbeb03a599c0c3f6b8d407e73, exact pre-existing Docker test-image SHA256 7b3c7532a3e31f002ec1f8211c28d22148602b74ff1bfc51dd8edb4df5239785, amd64, and UID/GID 65532. It never overwrites existing audit images or evidence directories. Scanner tools reside in a separate auditor virtualenv, not in the reviewed application environment.
+
+**Authorization prerequisite:** the host/network owner must allow only public PyPI-mirror, PyPI metadata and OSV advisory queries. No confidential text, secrets, model artifacts, external AI, internal Docker networks, shared services or published app ports. A third-party mirror is not proof of publisher provenance. The new scanner image uses the existing local test image as a base without pulling or modifying it. Evidence containers are non-root and read-only outside a new private evidence bind mount and an isolated temporary filesystem.
+
+Run the following on the authorized Simorgh checkout, using a fresh unique result directory:
+
+~~~bash
+git pull --ff-only origin main
+git status --short
+bash -n scripts/verification/run_stage04_linux_supply_chain.sh
+python -m pytest -q tests/test_linux_supply_chain_runner.py
+bash scripts/verification/run_stage04_linux_supply_chain.sh .stage04-evidence-linux-20261027-01
+~~~
+
+The host evidence folder is owned by UID 65532 with mode 0700; its contents may require scoped sudo for inspection. Keep historical evidence intact. A successful collector generates: inventory.json, pinned-closure.txt, license-review.json (unapproved template), vulnerabilities.osv.json, sbom.cdx.json (CycloneDX 1.6), wheelhouse/, wheel-hashes.json and pypi-digests.json. Partial output is retained when network, vulnerabilities, version mismatches, or hash checks fail.
+
+**Important limits:** matching official PyPI wheel SHA256 with downloaded local wheels is not by itself an attestation of original installed bytes; bootstrap pip is outside the 26-package closure and requires its own CVE/license review when shipped. A separate qualified review must approve actual license text and redistribution obligations, including the dual-license packaging case. Base-image/OS CVE scan, SBOM and attestation must be verified with an authorized tool. The existing offline evaluate command cannot independently authenticate reviewer identity or publisher signatures. Its PASS_LOCAL_EVIDENCE_ONLY marker is never Production clearance.
+
+New Linux collector test: syntax and 3 synthetic scoped checks PASS in assistant sandbox; Docker execution and the actual Linux CVE/SBOM/wheel evidence are NOT_RUN here. Stage04=IN_PROGRESS; Stage05=NOT_STARTED/NOT_APPROVED; organization-only verification=DEFERRED_TO_STAGE_11.
