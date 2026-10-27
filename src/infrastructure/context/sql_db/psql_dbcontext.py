@@ -1,9 +1,10 @@
-"""Lazy per-process PostgreSQL async engine; local Stage 05 isolation is mandatory."""
+"""Stage05 tenant-safe lazy async PostgreSQL context; never share AsyncSession."""
 
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator
 
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
@@ -18,7 +19,7 @@ class Base(DeclarativeBase):
 
 
 def get_test_database_url() -> str:
-    """Fail closed: migrations and tests may access only an explicitly isolated local DB."""
+    """Only explicitly isolated loopback development databases may be migrated."""
     if os.environ.get("TES_ENVIRONMENT", "development") != "development":
         raise ValueError("STAGE05_LOCAL_DATABASE_ONLY")
     raw = os.environ.get("TES_STAGE05_DATABASE_URL", "")
@@ -36,7 +37,7 @@ def get_test_database_url() -> str:
 
 @inject
 class PsqlDbContext:
-    """Singleton engine/factory; a new AsyncSession is created per operation."""
+    """Singleton engine and factory, one async session per repository operation."""
 
     __di_singleton__ = True
 
@@ -44,16 +45,29 @@ class PsqlDbContext:
         self._engine = None
         self._factory: async_sessionmaker[AsyncSession] | None = None
 
-    def session(self) -> AsyncSession:
+    def _ensure_factory(self) -> async_sessionmaker[AsyncSession]:
         if self._factory is None:
-            # Deliberately lazy: starting the Stage04 app never connects to a DB.
             url = get_test_database_url()
             self._engine = create_async_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=0)
-            self._factory = async_sessionmaker(self._engine, expire_on_commit=False)
-        return self._factory()
+            self._factory = async_sessionmaker(self._engine, expire_on_commit=False, autoflush=False)
+        return self._factory
+
+    @asynccontextmanager
+    async def session(self) -> AsyncIterator[AsyncSession]:
+        async with self._ensure_factory()() as session:
+            yield session
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[AsyncSession]:
+        """Optional short compound-operation transaction; no LLM calls inside."""
+        async with self._ensure_factory().begin() as session:
+            yield session
 
     async def close(self) -> None:
         if self._engine is not None:
             await self._engine.dispose()
             self._engine = None
             self._factory = None
+
+    async def dispose_async(self) -> None:
+        await self.close()
