@@ -1,7 +1,7 @@
 # Stage 05 — PostgreSQL Schema, Migration and Transaction Verification
 
 **Started:** 2026-10-27  
-**Status:** `IN_PROGRESS` pending evidence-backed local PostgreSQL acceptance. This file is a living Stage05-only report; it does **not** authorize Stage06 or shared/Production migrations.
+**Final Stage05 local Gate:** `DONE / PASS` under D-017, based on real synthetic PostgreSQL CI at code SHA `52f7c57f752037c453a544ea6690d9863b38e6ef` (workflow run `40512243347`, job `122216854430`, success). **NOT** an organizational database, confidential-data encryption or Production approval. Later evidence below supersedes earlier PENDING snapshots. Stage06 NOT_STARTED.
 
 ## Sources and architecture
 
@@ -91,3 +91,32 @@ A GitHub Actions workflow `.github/workflows/stage05-postgres.yml` provisions ep
 6. Remaining company-only controls explicitly `PENDING_SERVER` for Stage11, not fabricated PASS.
 
 **Stage05 shall remain `IN_PROGRESS` or `BLOCKED` until every locally executable Gate above is actually evidenced. Do not automatically start Stage06.**
+
+## Final locally executed Stage05 acceptance — 2026-10-27
+
+**Source:** GitHub Actions run [40512243347](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40512243347), job `122216854430`, code commit `52f7c57f752037c453a544ea6690d9863b38e6ef`, conclusion **SUCCESS**. Assistant retrieved both step-level results and the actual job log. Runner: GitHub-hosted Ubuntu 24.04, Python 3.12, temporary isolated PostgreSQL 17 service with **synthetic credentials and synthetic records only**. No Simorgh or corporate DB access.
+
+| Acceptance evidence | Executed result |
+|---|---|
+| Python syntax, ORM metadata, UUID/FK/Unique/Check, UTC and DB URL fail-closed | **13/13 PASS** |
+| Real PostgreSQL Alembic `upgrade head` | **PASS** |
+| Real PostgreSQL `alembic check` ORM/DDL drift comparison | **PASS:** `No new upgrade operations detected.` |
+| Real PostgreSQL concurrency/idempotency, rollback, cross-org FK, Claim SKIP LOCKED, lease/fencing, immutable Rubric, append-only audit, bounded reads/index/query plan | **4/4 PASS** |
+| Complete `pytest tests` | **91/91 PASS** (the 13+4 above are **included** in these 91; do not add twice) |
+| Stage03 regression suite | **38/38 PASS** |
+| Stage02 regression suite | **12/12 PASS** |
+| `python -m pip check` | **PASS:** No broken requirements found |
+| Stage04 static/safety scan against Stage05 source | **PASS: 20 Python runtime files, pinned versions, redaction/secret source guards** |
+| CI environment public Python package OSV audit | **PASS for tested dependency graph**, `No known vulnerabilities found` at execution time; scanner is *not* a Debian OS/image provenance review |
+
+**Negative-case evidence:** PostgreSQL logged expected constraint/trigger errors for attempted duplicate key, invalid attempts, cross-scope FK, published Rubric update and append-only feedback mutation. Those statements were **intentional tests** and all Python tests passed; they are not application failures.
+
+**Concurrency and transaction evidence:** two simultaneous claimers returned at most one leased job; two simultaneous same-org/owner/key submissions returned one new object and one idempotent replay; invalid multi-entity write left no Evaluation row; stale/mismatched fencing token and second completion failed; transaction contexts released their pooled sessions. The Query Plan was read and required scoped indexes exist. This small synthetic workload is not a Production throughput proof.
+
+**Migration safety:** initial baseline revision `20261027_05` successfully installed in an empty isolated PostgreSQL schema, and `upgrade head` was rerun with synthetic records present without dropping records. Deliberately destructive downgrade remains blocked. No company PostgreSQL, shared service, secrets, real text, KMS or live AI data was touched.
+
+**Concurrent repository change resolved:** An independently pushed commit `88321c5` briefly replaced the lazy test-only DbContext and introduced duplicate ORM models with plaintext columns, temporarily failing CI at test collection. Follow-on forward commits reconciled the conflict without force push or database operations; the canonical models are `src/infrastructure/models/text_evaluation.py`, compatibility import `evaluation_models.py` re-exports them, and the DbContext retains lazy test-only URL safeguards. The final code SHA above **passed** the full CI verification.
+
+**D-017/Stage11 scope (NOT PASSED):** qualified company DBA/IAM/KMS owners must still validate the real DB TLS, encryption/backup/retention, identity/tenant isolation, Production-like multi-worker performance, and staging migration release plan. The five explicit pending IDs and approval oracles are in [Stage05 server ledger](05_stage05_deferred_stage11_ledger.md). `OD-07/08/10/11/12/13/15` remain OPEN. The physical candidate schema is tested, **not** an approved confidential-text storage policy; `protected_text_ref` is only an opaque UUID and the current `encrypted_details` columns do not implement encryption themselves. Production storage/use is blocked until approved crypto/key management and downstream services exist. Full OS CVE, source-image provenance and licenses remain separate open Stage04-to-Stage11 prerequisites.
+
+**Gate verdict:** Stage05 `DONE / PASS_LOCAL` under confirmed D-017. Stage06 `NOT_STARTED`; its work requires a **new explicit user request**. Stage11/12 remain NOT_STARTED; no test or security gate marked PASS beyond actual execution.
