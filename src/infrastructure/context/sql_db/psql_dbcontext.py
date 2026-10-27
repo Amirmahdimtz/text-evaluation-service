@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -28,7 +29,7 @@ def get_test_database_url() -> str:
                 or not url.database or not url.database.startswith("tes_stage05_")
                 or not url.username or url.query):
             raise ValueError
-    except (ValueError, AttributeError):
+    except (ValueError, AttributeError, ArgumentError):
         raise ValueError("STAGE05_ISOLATED_DATABASE_URL_REQUIRED") from None
     return raw
 
