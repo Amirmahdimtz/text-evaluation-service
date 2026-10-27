@@ -105,7 +105,7 @@ def test_stage05_migration_has_guarded_ddl_and_no_destructive_downgrade():
     assert "FOR UPDATE" not in source or "SKIP LOCKED" not in source
     assert "STAGE05_DESTRUCTIVE_DOWNGRADE_REQUIRES_EXPLICIT_APPROVAL" in source
     runner = (ROOT / "scripts/verification/run_stage05_migrations.py").read_text()
-    assert 'choices=("current", "upgrade")' in runner
+    assert 'choices=("current", "upgrade", "check")' in runner
     assert 'get_test_database_url()' in runner
 
 
