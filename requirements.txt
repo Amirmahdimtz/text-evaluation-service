@@ -3,3 +3,6 @@ starlette==1.9.0
 pydantic==2.13.5
 PyYAML==6.0.3
 uvicorn==0.48.0
+SQLAlchemy==2.0.50
+alembic==1.18.4
+asyncpg==0.32.0
