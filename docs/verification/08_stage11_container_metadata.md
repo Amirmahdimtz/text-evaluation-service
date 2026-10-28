@@ -54,3 +54,11 @@ printf 'docker_inspect_exit=%s\n' "$?"
 ```
 
 A successful command reports `true` or `false`, followed by `docker_inspect_exit=0`. A nonzero exit indicates the query did not succeed, **not why**; likely causes include a wrong container identifier, missing Docker daemon access or a `sudo -n` permission/prompt requirement. The operator must resolve failures privately with their authorized SRE/Platform owner, without changing sudoers, Docker group permissions, disabling gateway controls or pasting sensitive stderr into public reports. Do not attempt Docker exec or alternate privilege routes if not explicitly authorized.
+
+## Simorgh focused Docker-inspect diagnostic — 2026-10-28
+
+- The operator successfully fast-forwarded local `main` to commit `3aa8755`.
+- The exact approved-name Docker-state query `sudo -n docker inspect --type container --format '{{.State.Running}}' <approved-container>` produced **no stdout** and the shell reported `docker_inspect_exit=1` (stderr intentionally discarded).
+- Interpretation: **`UNVERIFIED / QUERY_FAILED`**, not evidence that the container is stopped or absent, that vLLM is not installed, or that a security control passed/failed. The exit code alone cannot distinguish noninteractive sudo authorization, Docker daemon availability, or name mismatch.
+- **Next low-exposure triage:** where authorized, separately run `sudo -n true` and `sudo -n docker version --format '{{.Server.Version}}'` with stdout+stderr suppressed and record **only exit codes**. If both succeed, run a minimal exact-name filtered `docker ps -a` query without exposing the full container list. Do not change sudoers, Docker group, service/network settings or inspect environment/logs. Share only sanitized exit codes.
+- Real runtime version and model artifact metadata remain `UNVERIFIED`; all 56 enterprise Stage11 tests stay `PENDING_SERVER`; Stage11 `BLOCKED`.

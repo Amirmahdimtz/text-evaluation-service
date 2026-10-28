@@ -731,3 +731,9 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Loopback-only metadata:** `GET /v1/models` returned `OBSERVED_LOOPBACK_METADATA` with `model_count=1`; the one advertised ID was redacted because it did not match either exact public candidate string. This is **not** evidence that model weights are not Qwen (aliases are possible), that inference succeeded, or that the endpoint is safely isolated.
 - **Next diagnosis:** operator-approved read-only Docker state query with exit code only, no environment/log inspection or credentials: see [Container metadata runbook](../verification/08_stage11_container_metadata.md). Do not alter sudoers/Docker group, stop any service, run generation/load tests or disclose Docker stderr/registry details in the public repository.
 - **Gate:** `S07-S11-01` and `S11-AI-01..04` remain `PENDING_SERVER`; **all 56 organization tests still PENDING_SERVER**. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`. Real deployed vLLM version, model artifact and legal provenance remain `UNVERIFIED`.
+
+### Stage11 — Simorgh Docker state diagnosis incomplete — 2026-10-28
+
+- **Operator-provided result:** local `git pull --ff-only origin main` reached `3aa8755`. A scoped read-only `sudo -n docker inspect` for the previously identified vLLM container returned **exit code 1** with no stdout and suppressed stderr.
+- **Classification:** `DOCKER_INSPECT_FAILED_CAUSE_UNVERIFIED`. No verified runtime version or stopped/running state can be deduced. Possible causes (not verified): sudo noninteractive permission, Docker daemon reachability or stale container name. Next step is bounded status-only triage, not changes to permissions or Docker.
+- **Stage11:** all 56 enterprise IDs remain `PENDING_SERVER`; GPU inference and any E2E, security, load or no-egress acceptance `NOT_RUN`. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`. [Runbook](../verification/08_stage11_container_metadata.md).
