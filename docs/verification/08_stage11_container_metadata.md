@@ -1,6 +1,6 @@
 # Stage 11 — Bounded Container vLLM Metadata Inspection
 
-**Status:** `LOCAL_SCRIPT_TESTED / SIMORGH_NOT_RUN / ENTERPRISE_GATE_BLOCKED` (2026-10-28). An explicit request for read-only inspection authorizes preparing this bounded probe, **not** modifying any shared running container, using internal model artifacts or running inference, network scanning, stress tests or altering production/enterprise secrets.
+**Status:** `OPERATOR_SIMORGH_METADATA_OBSERVED_PARTIAL / ENTERPRISE_GATE_BLOCKED` (2026-10-28). An explicit request for read-only inspection authorizes preparing this bounded probe, **not** modifying any shared running container, using internal model artifacts or running inference, network scanning, stress tests or altering production/enterprise secrets.
 
 ## Scope and data minimization
 
@@ -36,3 +36,21 @@ The container name is operator-supplied and **never echoed by the tool**. If you
 - No GPU workload, throughput, No-Egress, TLS, KMS, IAM, private artifact hash, model load, inference or validation of external requests took place. The Stage 11 test `S07-S11-01`, `S11-AI-01..04`, supply chain and all other 56 enterprise test IDs remain `PENDING_SERVER` pending separate approved evidence and owners.
 
 The accepted output format is `stage11-container-metadata-v1`; test the parser and commands offline before any authorized metadata probe. [Host inventory](07_stage11_readonly_preflight.md), [complete traceability](01_test_strategy_and_traceability.md), [release blockers](06_release_blockers.md).
+
+## Simorgh operator result — 2026-10-28 (partial, not enterprise PASS)
+
+- Fast-forwarded to commit `095f318`; `tests/test_stage11_container_metadata.py` **30 passed in 0.06 s**. This is a test suite for the metadata tool only.
+- Authorized metadata probe returned `container_running: UNVERIFIED`, `installed_vllm_version: UNVERIFIED`, `version_evidence: NOT_OBSERVED`. These values do **not** mean the container is stopped or that vLLM is absent. The implementation suppresses stderr and does not expose the inspect failure cause; it also cannot confirm an `exec` call took place.
+- The host-local loopback `GET /v1/models` returned `OBSERVED_LOOPBACK_METADATA`: **one** model advertised; it matched neither of the two exact known public candidate IDs, so **one ID remained redacted**. Exact name mismatch may be a serving alias; there is no proof of underlying model revision, loaded weights, license or successful generation. The response is not bound by this probe to any specific Docker container.
+- No network egress, SSO/KMS, TLS, GPU inference, service health, load, artifact checksums, or real end-to-end tests were performed. All 56 organization gates remain `PENDING_SERVER`; Stage11 remains `BLOCKED`.
+
+### Minimal local diagnostic (only with Docker metadata permission)
+
+For the **approved exact container name**, run the following locally. This only queries `State.Running` and shows a shell exit code. Docker errors are suppressed to avoid copying daemon details into shared/public logs:
+
+```bash
+sudo -n docker inspect --type container --format '{{.State.Running}}' APPROVED_CONTAINER_NAME 2>/dev/null
+printf 'docker_inspect_exit=%s\n' "$?"
+```
+
+A successful command reports `true` or `false`, followed by `docker_inspect_exit=0`. A nonzero exit indicates the query did not succeed, **not why**; likely causes include a wrong container identifier, missing Docker daemon access or a `sudo -n` permission/prompt requirement. The operator must resolve failures privately with their authorized SRE/Platform owner, without changing sudoers, Docker group permissions, disabling gateway controls or pasting sensitive stderr into public reports. Do not attempt Docker exec or alternate privilege routes if not explicitly authorized.
