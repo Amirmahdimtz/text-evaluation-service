@@ -121,7 +121,9 @@ class EvaluationWorkerService:
     async def recover_async(self, *, organization_id: str, policy: WorkerPolicy) -> int:
         return await self._jobs.recover_expired_async(
             organization_id=organization_id, max_attempts=policy.max_attempts,
-            retry_delay=policy.retry_delay(1), batch_size=policy.recovery_batch_size,
+            retry_delay=timedelta(seconds=policy.retry_base_seconds),
+            retry_delay_cap=timedelta(seconds=policy.retry_cap_seconds),
+            batch_size=policy.recovery_batch_size,
         )
 
     async def process_once_async(
@@ -273,7 +275,7 @@ class EvaluationWorkerService:
     ) -> None:
         """Bounded concurrency, cooperative drain, and lease-expiry crash recovery."""
         if (not isinstance(stop_event, asyncio.Event) or not isinstance(worker_id, str)
-                or not 1 <= len(worker_id) <= 112 or not organization_id):
+                or not 1 <= len(worker_id) <= 95 or not organization_id):
             raise ValueError("WORKER_STOP_EVENT_REQUIRED")
         tasks: set[asyncio.Task] = set()
         try:
@@ -299,10 +301,9 @@ class EvaluationWorkerService:
                         raise RuntimeError("WORKER_TASK_FAILED") from None
                 tasks.difference_update(finished)
                 while len(tasks) < policy.max_inflight and not stop_event.is_set():
-                    index = len(tasks)
                     task = asyncio.create_task(self.process_once_async(
                         organization_id=organization_id,
-                        worker_id=f"{worker_id}-{index}",
+                        worker_id=f"{worker_id}-{uuid4().hex}",
                         policy=policy, executor=executor,
                     ))
                     tasks.add(task)

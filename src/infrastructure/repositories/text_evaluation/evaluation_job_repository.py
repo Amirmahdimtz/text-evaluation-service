@@ -93,11 +93,15 @@ class EvaluationJobRepository(BaseRepository[EvaluationJob]):
     async def recover_expired_async(
         self, *, organization_id: str, max_attempts: int,
         retry_delay: timedelta, batch_size: int = 100,
+        retry_delay_cap: timedelta | None = None,
     ) -> int:
         """Reclaim after crash by DB clock, invalidate old tokens and record retry/terminal."""
         self._scope(organization_id)
         if (type(max_attempts) is not int or not 1 <= max_attempts <= 32767
                 or not isinstance(retry_delay, timedelta) or retry_delay.total_seconds() < 0
+                or (retry_delay_cap is not None and (
+                    not isinstance(retry_delay_cap, timedelta)
+                    or retry_delay_cap < retry_delay))
                 or type(batch_size) is not int or not 1 <= batch_size <= 100):
             raise ValueError("DB_RECOVERY_POLICY_INVALID")
         async with self._db.session() as session:
@@ -120,7 +124,13 @@ class EvaluationJobRepository(BaseRepository[EvaluationJob]):
                     next_status = "failed_terminal" if terminal else "failed_retryable"
                     job.status = next_status
                     job.error_code = "LEASE_EXPIRED"
-                    job.retry_after = None if terminal else now + retry_delay
+                    delay = retry_delay
+                    if retry_delay_cap is not None:
+                        delay = min(
+                            retry_delay_cap,
+                            retry_delay * (2 ** min(max(job.attempts - 1, 0), 20)),
+                        )
+                    job.retry_after = None if terminal else now + delay
                     job.lease_until = None
                     job.worker_id = None
                     job.attempt_token = None
