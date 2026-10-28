@@ -26,7 +26,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install pinned development tests
-        run: python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements-dev.txt
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements-dev.txt
       - name: Run synthetic-only safety tests (not Simorgh GPU tests)
         env:
           PYTHONDONTWRITEBYTECODE: "1"

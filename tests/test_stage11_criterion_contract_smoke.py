@@ -243,3 +243,23 @@ def test_module_cli_dry_run_without_pythonpath():
     assert not result.stderr
     assert json.loads(result.stdout)["status"] == "DRY_RUN_NO_NETWORK"
 
+
+
+@pytest.mark.parametrize("workflow_name", [
+    "stage11-preflight.yml",
+    "stage11-synthetic-smoke.yml",
+    "stage11-criterion-contract.yml",
+])
+def test_stage11_workflow_yaml_is_valid(workflow_name):
+    """Reject invalid YAML before publishing a non-starting GitHub workflow."""
+    from pathlib import Path
+    import yaml
+
+    root = Path(__file__).resolve().parents[1]
+    workflow = yaml.safe_load((root / ".github" / "workflows" / workflow_name).read_text())
+    assert workflow["permissions"]["contents"] == "read"
+    jobs = workflow["jobs"]
+    assert jobs
+    runs = [step.get("run", "") for job in jobs.values() for step in job["steps"]]
+    assert any("--only-binary=:all:" in command for command in runs)
+    assert all("--execute-approved" not in command for command in runs)
