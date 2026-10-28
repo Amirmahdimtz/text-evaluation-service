@@ -13,6 +13,7 @@ from typing import Awaitable, Callable
 from uuid import UUID, uuid4
 
 from src.infrastructure.di.inject import inject
+from src.infrastructure.providers.llm.local_llm_provider import LlmProviderError
 from src.infrastructure.models.text_evaluation import CriterionResult
 from src.infrastructure.repositories.text_evaluation.evaluation_job_repository import (
     EvaluationJobRepository, QueueMetrics,
@@ -99,10 +100,15 @@ class EvaluationWorkerService:
         self._jobs = job_repository
         self._evaluations = evaluation_repository
         self._last_processing_seconds: float | None = None
+        self._last_error_code: str | None = None
 
     @property
     def last_processing_seconds(self) -> float | None:
         return self._last_processing_seconds
+
+    @property
+    def last_error_code(self) -> str | None:
+        return self._last_error_code
 
     async def metrics_async(self, *, organization_id: str) -> QueueMetrics:
         return await self._jobs.queue_metrics_async(organization_id=organization_id)
@@ -125,18 +131,31 @@ class EvaluationWorkerService:
         if (not organization_id or not worker_id or len(worker_id) > 128
                 or not isinstance(policy, WorkerPolicy) or not callable(executor)):
             raise ValueError("WORKER_CONFIGURATION_INVALID")
-        job = await self._jobs.claim_next_async(
-            organization_id=organization_id, worker_id=worker_id,
-            lease_duration=timedelta(seconds=policy.lease_seconds),
-            max_attempts=policy.max_attempts,
-        )
+        try:
+            job = await self._jobs.claim_next_async(
+                organization_id=organization_id, worker_id=worker_id,
+                lease_duration=timedelta(seconds=policy.lease_seconds),
+                max_attempts=policy.max_attempts,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            self._last_error_code = "WORKER_DATABASE_UNAVAILABLE"
+            return "claim_unavailable"
         if job is None:
             return "idle"
-        context = await self._evaluations.worker_context_async(
-            organization_id=organization_id, job_id=job.id,
-            worker_id=worker_id, attempt_token=job.attempt_token,
-            fencing_generation=job.fencing_generation,
-        )
+        try:
+            context = await self._evaluations.worker_context_async(
+                organization_id=organization_id, job_id=job.id,
+                worker_id=worker_id, attempt_token=job.attempt_token,
+                fencing_generation=job.fencing_generation,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            self._last_error_code = "WORKER_DATABASE_UNAVAILABLE"
+            # The held lease will expire and be recovered with fencing.
+            return "context_unavailable"
         if context is None:
             return "lost_lease"
         stop_heartbeat = asyncio.Event()
@@ -210,19 +229,33 @@ class EvaluationWorkerService:
                 retryable, error_code = False, "RESULT_REJECTED"
             except (asyncio.TimeoutError, TimeoutError):
                 retryable, error_code = True, "INFERENCE_TIMEOUT"
+            except LlmProviderError as exc:
+                if str(exc) in (
+                    "LLM_RETRY_EXHAUSTED", "LLM_CIRCUIT_OPEN",
+                    "LLM_ADMISSION_TIMEOUT",
+                ):
+                    retryable, error_code = True, "INFERENCE_TRANSIENT"
+                else:
+                    retryable, error_code = False, "INFERENCE_INVALID"
             except (WorkerRetryableError, MemoryError):
                 retryable, error_code = True, "RESOURCE_UNAVAILABLE"
             except Exception:
                 # Unknown failures may be permanent/security-sensitive.
                 # Never retry arbitrary poisoned work indefinitely.
                 retryable, error_code = False, "EXECUTION_FAILED"
-            applied = await self._jobs.fail_attempt_async(
-                organization_id=organization_id, job_id=job.id,
-                worker_id=worker_id, attempt_token=job.attempt_token,
-                fencing_generation=job.fencing_generation,
-                max_attempts=policy.max_attempts, retryable=retryable,
-                error_code=error_code, retry_delay=policy.retry_delay(job.attempts),
-            )
+            try:
+                applied = await self._jobs.fail_attempt_async(
+                    organization_id=organization_id, job_id=job.id,
+                    worker_id=worker_id, attempt_token=job.attempt_token,
+                    fencing_generation=job.fencing_generation,
+                    max_attempts=policy.max_attempts, retryable=retryable,
+                    error_code=error_code, retry_delay=policy.retry_delay(job.attempts),
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                self._last_error_code = "WORKER_DATABASE_UNAVAILABLE"
+                return "failure_persist_unavailable"
             return ("retry_scheduled" if retryable and job.attempts < policy.max_attempts
                     else "terminal") if applied else "lost_lease"
         finally:
@@ -245,7 +278,17 @@ class EvaluationWorkerService:
         tasks: set[asyncio.Task] = set()
         try:
             while not stop_event.is_set():
-                await self.recover_async(organization_id=organization_id, policy=policy)
+                try:
+                    await self.recover_async(organization_id=organization_id, policy=policy)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    self._last_error_code = "WORKER_DATABASE_UNAVAILABLE"
+                    try:
+                        await asyncio.wait_for(stop_event.wait(), policy.poll_seconds)
+                    except asyncio.TimeoutError:
+                        pass
+                    continue
                 finished = {task for task in tasks if task.done()}
                 for task in finished:
                     try:
