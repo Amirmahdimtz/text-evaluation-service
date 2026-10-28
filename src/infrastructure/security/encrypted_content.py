@@ -37,7 +37,7 @@ class EncryptedContentService:
                 owner_id: str, resource_id: UUID, kind: str) -> bytes:
         if (not isinstance(value, str) or not value or not organization_id
                 or not owner_id or not isinstance(resource_id, UUID)
-                or kind not in ("original", "feedback")):
+                or kind not in ("original", "feedback", "criterion")):
             raise ValueError("ENCRYPTION_INPUT_INVALID")
         aad = self._aad(organization_id, owner_id, resource_id, kind)
         nonce = os.urandom(12)

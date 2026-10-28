@@ -74,7 +74,8 @@ class EvaluationApiService:
 
     async def authenticate_action_async(self, identity: Identity, operation: str) -> None:
         settings = self._settings()
-        if not is_allowed(identity, operation):
+        if (identity is None or not identity.is_authenticated
+                or operation not in identity.permissions):
             raise AccessDenied("API_OPERATION_DENIED")
         try:
             allowed = await self._rate.consume_async(
@@ -175,7 +176,7 @@ class EvaluationApiService:
         for row in rows:
             content = self._crypto.decrypt(
                 ciphertext=row.encrypted_details, organization_id=identity.organization_id,
-                owner_id=evaluation.owner_id, resource_id=evaluation.id, kind="original",
+                owner_id=evaluation.owner_id, resource_id=evaluation.id, kind="criterion",
             )
             # Details in production are typed structured outputs, never assumed
             # trustworthy JSON or echoed by exception handlers.
