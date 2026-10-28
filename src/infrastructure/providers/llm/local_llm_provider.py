@@ -179,7 +179,7 @@ class LocalLlmProvider:
                 except LlmProviderError as exc:
                     if str(exc) != "LLM_TRANSIENT_HTTP":
                         raise
-                except (httpx.TimeoutException, httpx.TransportError):
+                except httpx.RequestError:
                     pass
                 except (ValueError, UnicodeError, RecursionError):
                     raise LlmProviderError("LLM_INVALID_RESPONSE") from None
