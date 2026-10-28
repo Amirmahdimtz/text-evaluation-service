@@ -794,3 +794,12 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Reproduced root cause:** the unquoted inline `run: python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements-dev.txt` is invalid YAML because the `: ` after `--only-binary=:all:` creates an illegal mapping delimiter. The same configuration predated this commit in all three Stage11 workflow files; GitHub therefore created no jobs. Python `yaml.safe_load` reproduced the `ScannerError`.
 - **Resolution:** change the 3 install steps to YAML block scalars (`run: |`) without modifying dependency choices; add parameterized YAML syntax/permissions/no-inference guard regression tests for all 3 workflows. Local assistant-host verification: **75 passed in 2.08s** (72 existing + 3 workflow syntax tests), and all 3 YAML workflows parse as a one-job map.
 - **Gate distinction:** local YAML/test PASS is not GitHub Actions PASS until the new workflow runs complete successfully; Stage11 mandatory 56 server tests still `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+### Stage11 — verified GitHub Actions recovery after YAML correction — 2026-10-28
+
+- **Final verified CI source:** `82595099e3ea67023b61e424542da16748403e75` on `main`. Three separate GitHub Actions runs completed with `conclusion=success` and all recorded job steps successful:
+  - `40696993930` criterion-contract-offline: offline Python schema/mock tests, direct isolated CLI and module-mode CLI all succeeded.
+  - `40696993921` offline-preflight-script: synthetic metadata/inventory safety tests, no-GPU host CLI and no-Docker container dry-run all succeeded.
+  - `40696993968` synthetic-offline-contract: mocked synthetic HTTP contract tests and network-free dry-run succeeded.
+- **Independent assistant-host regression:** 75 passed in 1.75s in final local re-run, both direct and module CLIs output `DRY_RUN_NO_NETWORK`. The earlier Simorgh **70 passed / direct import CLI failed** remains a valid historical observation on the older source, not the final state. **User retest on Simorgh of fixed CLI is still `PENDING_USER_RETEST`**; successful public CI does not establish server GPU result.
+- **Stage 11 gate unchanged:** full real-model criterion test `NOT_RUN`, 56 original enterprise tests `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`. No new real inference was executed or authorized.
