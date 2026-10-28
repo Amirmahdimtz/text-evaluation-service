@@ -737,3 +737,9 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Operator-provided result:** local `git pull --ff-only origin main` reached `3aa8755`. A scoped read-only `sudo -n docker inspect` for the previously identified vLLM container returned **exit code 1** with no stdout and suppressed stderr.
 - **Classification:** `DOCKER_INSPECT_FAILED_CAUSE_UNVERIFIED`. No verified runtime version or stopped/running state can be deduced. Possible causes (not verified): sudo noninteractive permission, Docker daemon reachability or stale container name. Next step is bounded status-only triage, not changes to permissions or Docker.
 - **Stage11:** all 56 enterprise IDs remain `PENDING_SERVER`; GPU inference and any E2E, security, load or no-egress acceptance `NOT_RUN`. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`. [Runbook](../verification/08_stage11_container_metadata.md).
+
+### Stage11 — noninteractive sudo prevents Docker metadata verification — 2026-10-28
+
+- **New operator evidence:** `sudo -n true` exited 1; `sudo -n docker version` exited 1; filtered `sudo -n docker ps -a | grep -Fxq` reported 1. The user provided **no Docker state or package metadata** and did not execute inference. Generic sudo denial makes downstream Docker results non-diagnostic; no claim of stopped/missing vLLM or failed daemon can be made.
+- **Next bounded action:** only with existing organizational authorization, an operator may authenticate `sudo -v` privately on Simorgh and re-run a Boolean-only `docker inspect`; otherwise obtain sanitized metadata from Infra/SRE. No secret disclosure, sudoers change, credential collection or privilege escalation by the assistant.
+- **Gate:** `DOCKER_RUNTIME_UNVERIFIED / NONINTERACTIVE_SUDO_UNAVAILABLE`, all **56 Stage11 organization tests `PENDING_SERVER`**. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; [safe diagnostic](../verification/08_stage11_container_metadata.md).
