@@ -644,3 +644,10 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - Stage08 NOT_STARTED; explicit user request required to start it. No real server changes or secrets performed.
 
 - Stage07 DONE local acceptance does not discharge enterprise test cases **S07-S11-01..S07-S11-06** (model artifact, IAM/TLS/full-path vLLM gateway, No-Egress, privacy-safe engine logs, tokenizer/context and real schema behavior, load/circuit/cancellation, licenses/provenance). **Each remains `PENDING_SERVER / DEFERRED_TO_STAGE_11`, never PASSED.** These are organization-only prerequisites before any release approval; see [Stage07 deferred ledger](../verification/07_stage07_deferred_stage11_ledger.md).
+
+### Stage07 independent Simorgh HTTP Stub & non-DB regression PASS — 2026-10-28
+
+- Operator fast-forwarded `/srv/projects/text-evaluation-service` from `03ca994` to `7f5f122` on `main`; `.venv/bin/python -m pip check` printed **`No broken requirements found`** (installed dependency consistency only).
+- `.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage07_local_llm.py` returned **`52 passed in 0.77s`**; complete synthetic offline tests excluding the two existing PostgreSQL test modules returned **`159 passed in 1.95s`**. Record `PASS_USER_SERVER_REPORTED_STAGE07_STUB_52_OF_52` and `PASS_USER_SERVER_REPORTED_NON_DB_159_OF_159`. The 52 Stage07 tests are a subset of 159.
+- These commands did **not** run Stage05/06 PostgreSQL integration on Simorgh and did not invoke a live vLLM/GPU. Existing Stage05/06 database acceptance remains evidenced by separate isolated GitHub Actions; Stage07 online model/auth/network/corpus/performance tests **S07-S11-01..06** remain `PENDING_SERVER`, not PASSED.
+- **Stage07 remains `DONE` (local gates); Stage08 `NOT_STARTED`.** This update logs operator-supplied evidence; no new test execution by the assistant, production connection, migration, model download or code change was performed. See [Stage07 validation record](../verification/07_stage07_local_llm_validation.md).
