@@ -15,7 +15,7 @@ from src.infrastructure.models import text_evaluation  # noqa: F401
 
 MODELS = {
     "rubric_versions", "evaluations", "evaluation_jobs",
-    "criterion_results", "evaluation_feedback", "audit_events", "protected_texts",
+    "criterion_results", "evaluation_feedback", "audit_events", "protected_texts", "http_rate_limits",
 }
 ROOT = Path(__file__).resolve().parents[1]
 

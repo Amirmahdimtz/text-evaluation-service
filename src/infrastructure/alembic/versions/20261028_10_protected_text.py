@@ -31,5 +31,17 @@ def upgrade() -> None:
       FOR EACH ROW EXECUTE FUNCTION stage05_append_only()
     """)
 
+    op.execute("""
+      CREATE TABLE http_rate_limits (
+        id uuid PRIMARY KEY,
+        organization_id varchar(128) NOT NULL,
+        user_id varchar(128) NOT NULL,
+        window_start timestamptz NOT NULL,
+        hits integer NOT NULL CONSTRAINT ck_http_rate_limit_hits CHECK(hits>0),
+        CONSTRAINT uq_http_rate_limit_window UNIQUE (organization_id,user_id,window_start)
+      )
+    """)
+
+
 def downgrade() -> None:
     raise RuntimeError("STAGE10_DESTRUCTIVE_DOWNGRADE_REQUIRES_EXPLICIT_APPROVAL")

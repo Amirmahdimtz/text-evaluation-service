@@ -36,6 +36,21 @@ class ProtectedText(Base):
     )
 
 
+class HttpRateLimit(Base):
+    """Cross-process, tenant/user scoped minute-window admission ledger."""
+
+    __tablename__ = "http_rate_limits"
+    id: Mapped[UUID] = _pk()
+    organization_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    hits: Mapped[int] = mapped_column(nullable=False, default=1)
+    __table_args__ = (
+        UniqueConstraint("organization_id", "user_id", "window_start", name="uq_http_rate_limit_window"),
+        CheckConstraint("hits > 0", name="ck_http_rate_limit_hits"),
+    )
+
+
 class RubricVersion(Base):
     __tablename__ = "rubric_versions"
     id: Mapped[UUID] = _pk()
