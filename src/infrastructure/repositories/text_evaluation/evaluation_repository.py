@@ -35,6 +35,7 @@ class EvaluationRepository(BaseRepository[Evaluation]):
     async def create_with_job_async(
         self, evaluation: Evaluation, job: EvaluationJob, *,
         organization_id: str, owner_id: str, correlation_id: UUID,
+        max_active_jobs: int | None = None,
     ) -> tuple[UUID, UUID, bool]:
         """Committed together; duplicate key returns scoped same-fingerprint prior job."""
         self._scope(organization_id, owner_id)
@@ -52,6 +53,43 @@ class EvaluationRepository(BaseRepository[Evaluation]):
         try:
             async with self._db.session() as session:
                 async with session.begin():
+                    if max_active_jobs is not None:
+                        if (type(max_active_jobs) is not int
+                                or not 1 <= max_active_jobs <= 100000):
+                            raise ValueError("DB_QUEUE_CAPACITY_INVALID")
+                        # Serialize admission for this tenant across ALL worker/
+                        # API processes. A hash collision only serializes extra
+                        # tenants; it cannot disclose or mix their data.
+                        await session.execute(select(func.pg_advisory_xact_lock(
+                            func.hashtextextended(organization_id, 9009),
+                        )))
+                        prior = (await session.scalars(select(Evaluation).where(
+                            Evaluation.organization_id == organization_id,
+                            Evaluation.owner_id == owner_id,
+                            Evaluation.idempotency_key == evaluation.idempotency_key,
+                        ))).one_or_none()
+                        if prior is not None:
+                            if prior.request_fingerprint != evaluation.request_fingerprint:
+                                raise ValueError("DB_IDEMPOTENCY_CONFLICT")
+                            existing_job_id = (await session.scalars(
+                                select(EvaluationJob.id).where(
+                                    EvaluationJob.evaluation_id == prior.id,
+                                    EvaluationJob.organization_id == organization_id,
+                                )
+                            )).one_or_none()
+                            if existing_job_id is None:
+                                raise ValueError("DB_CONSTRAINT_CONFLICT")
+                            return prior.id, existing_job_id, True
+                        active = await session.scalar(
+                            select(func.count()).select_from(EvaluationJob).where(
+                                EvaluationJob.organization_id == organization_id,
+                                EvaluationJob.status.in_((
+                                    "pending", "processing", "failed_retryable",
+                                )),
+                            )
+                        )
+                        if active >= max_active_jobs:
+                            raise ValueError("DB_QUEUE_CAPACITY_EXCEEDED")
                     rubric = (await session.scalars(select(RubricVersion.id).where(
                         RubricVersion.id == evaluation.rubric_version_id,
                         RubricVersion.organization_id == organization_id,
