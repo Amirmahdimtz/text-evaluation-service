@@ -25,3 +25,7 @@
 - Record no numeric quality, throughput or No-Egress status as passed.
 - Preserve existing 240 CI and 226 operator-reported Simorgh offline passes as historical *local* evidence, not Stage11 results.
 - Stage12 is not authorized and cannot start without the independent Stage11 acceptance gate.
+ 
+## Bounded synthetic smoke authorization and remaining boundary — 2026-10-28
+
+The user authorized exactly one minimal synthetic-only inference against the existing internal service. A [one-shot bounded probe](09_stage11_single_inference_smoke.md) with 35 assistant-host synthetic tests has been prepared; **no real inference has yet been observed or executed by the assistant**. This narrowly authorizes requesting the single synthetic inference at the approved loopback endpoint; it does not resolve B11-01 (enterprise staging/security/data approval), B11-02/03 (artifact and gold dataset), B11-06 (protected Worker), B11-07 (No-Egress), or B11-08 (capacity/SLO). No acceptance test is marked `PASS` in advance; all 56 organization tests remain `PENDING_SERVER` and Stage11 stays `BLOCKED`.
