@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, localcontext
 from src.core.services.text_evaluation.rubric_schema import RubricSnapshot
 from src.infrastructure.di.inject import inject
 
@@ -27,6 +27,8 @@ class ScoringOutcome:
     publishable_as_official_score: bool
     rounding_policy: str
     required_missing: tuple[str, ...]
+    exact_score_ratio: tuple[int, int] | None
+    exact_coverage_ratio: tuple[int, int]
 
 
 @inject
@@ -68,17 +70,20 @@ class ScoringService:
                 provisional_score_0_100=None, coverage_fraction=Decimal(0),
                 result_status="not_assessed", needs_human_review=True,
                 publishable_as_official_score=False,
-                rounding_policy="UNAPPROVED_EXACT_DECIMAL",
+                rounding_policy="UNAPPROVED_DECIMAL_64_DIGITS",
                 required_missing=tuple(required_missing),
+                exact_score_ratio=None, exact_coverage_ratio=(0, 100),
             )
         # Exact rational computation via Decimal; NO implicit business rounding.
-        raw = D100 * weighted_score / (D5 * assessed_weight)
+        # Fraction is preserved as integer ratio; a recurring decimal is NOT exact.\n        numerator = int(D100 * weighted_score)\n        denominator_score = int(D5 * assessed_weight)\n        with localcontext() as ctx:\n            ctx.prec = 64\n            raw = Decimal(numerator) / Decimal(denominator_score)
         # The Stage01 candidate threshold and rounding policy remain OPEN.
         return ScoringOutcome(
             provisional_score_0_100=raw, coverage_fraction=coverage,
             result_status="needs_human_review" if assessed_weight == denominator
                           else "partial",
             needs_human_review=True, publishable_as_official_score=False,
-            rounding_policy="UNAPPROVED_EXACT_DECIMAL",
+            rounding_policy="UNAPPROVED_DECIMAL_64_DIGITS",
             required_missing=tuple(required_missing),
+            exact_score_ratio=(numerator, denominator_score),
+            exact_coverage_ratio=(int(assessed_weight), int(denominator)),
         )

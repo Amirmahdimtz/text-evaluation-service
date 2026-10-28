@@ -41,6 +41,8 @@ class EvaluationReport:
     publishable_as_official_score: bool
     rounding_policy: str
     required_missing: tuple[str, ...]
+    exact_score_ratio: tuple[int, int] | None
+    exact_coverage_ratio: tuple[int, int]
 
 
 @inject
@@ -124,4 +126,6 @@ class TextEvaluationService:
             publishable_as_official_score=score.publishable_as_official_score,
             rounding_policy=score.rounding_policy,
             required_missing=score.required_missing,
+            exact_score_ratio=score.exact_score_ratio,
+            exact_coverage_ratio=score.exact_coverage_ratio,
         )
