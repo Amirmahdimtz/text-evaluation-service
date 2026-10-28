@@ -53,3 +53,19 @@ Stage08: **DONE_LOCAL**, Stage09: **NOT_STARTED** until explicit request. See `d
     .venv/bin/python -m pytest -q -p no:cacheprovider tests --ignore=tests/test_stage05_postgres.py --ignore=tests/test_stage06_rubric_postgres.py
 
 These Simorgh tests remain NOT_RUN until an operator supplies actual shell output. Do not touch shared Simorgh PostgreSQL, Docker, vLLM/GPU or corporate Secrets.
+
+## 2026-10-28 — Independent Simorgh Stage08 local test evidence
+
+**Source:** Operator-provided terminal transcript from `/srv/projects/text-evaluation-service` on Simorgh. `git pull --ff-only origin main` succeeded as a fast-forward from `7f5f122` to `272bfe7` (reviewed Stage08 code). Existing `.venv` was reused; no dependency installation, PostgreSQL migration, vLLM invocation or GPU operation was shown.
+
+| Command | Actual observed result | Classification |
+|---|---|---|
+| `.venv/bin/python -m pip check` | `No broken requirements found.` | `PASS_USER_SERVER_REPORTED_DEPENDENCY_CONSISTENCY` (not a security/provenance audit) |
+| `.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage08_engine.py` | `37 passed in 0.69s` | `PASS_USER_SERVER_REPORTED_STAGE08_37_OF_37` |
+| `.venv/bin/python -m pytest -q -p no:cacheprovider tests --ignore=tests/test_stage05_postgres.py --ignore=tests/test_stage06_rubric_postgres.py` | `196 passed in 2.03s` | `PASS_USER_SERVER_REPORTED_NON_DB_196_OF_196` |
+
+The 37 focused tests are a **subset** of the 196 non-database tests, not an additional disjoint set. Neither PostgreSQL integration module was run on Simorgh in this invocation. CI [run 40646409387](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40646409387) separately passed 37/37 and 196/196 on Python 3.12 with synthetic fixtures. This operator run independently confirms the same counts without a live LLM.
+
+**Trust and release boundary:** These are synthetic validation/algorithm tests; they do not verify AI quality, trusted corpus, real inference, model revision, company-network No-Egress, tenant IAM, TLS, GPU or PostgreSQL integration. Stage11 S08-S11-01..06 are still `PENDING_SERVER`; unresolved OD-03/04/09/11 and Stage12 final business signoff are unchanged. No official scoring approval or authorization for protected customer data is implied.
+
+**Stage status:** Stage08 `DONE` for local gates; Stage09 `NOT_STARTED`. This entry records **user-executed terminal evidence** only. The assistant did not execute these tests on Simorgh and this documentation-only update did not modify program code, model, secrets or database.
