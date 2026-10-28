@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from uuid import UUID
+from dataclasses import dataclass
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -13,6 +14,17 @@ from src.infrastructure.models.text_evaluation import (
     AuditEvent, CriterionResult, Evaluation, EvaluationJob, RubricVersion,
 )
 from src.infrastructure.repositories.base.base_repository import BaseRepository
+
+
+@dataclass(frozen=True)
+class WorkerEvaluationContext:
+    evaluation_id: UUID
+    job_id: UUID
+    organization_id: str
+    owner_id: str
+    evaluation_type: str
+    rubric_version_id: UUID
+    protected_text_ref: UUID
 
 
 @inject
@@ -78,15 +90,19 @@ class EvaluationRepository(BaseRepository[Evaluation]):
         self, *, organization_id: str, owner_id: str,
         evaluation_id: UUID, job_id: UUID, worker_id: str,
         attempt_token: UUID, fencing_generation: int,
-        results: list[CriterionResult], overall_score: float,
+        results: list[CriterionResult], overall_score: float | None,
         coverage: float, model_revision: str, prompt_version: str,
-        correlation_id: UUID,
+        correlation_id: UUID, result_status: str = "completed",
     ) -> bool:
         """Atomic short transaction, never held across an inference call."""
         self._scope(organization_id, owner_id)
         if (not worker_id or not isinstance(attempt_token, UUID)
                 or not isinstance(fencing_generation, int) or fencing_generation < 1
-                or not 0 <= overall_score <= 100 or not 0 <= coverage <= 1
+                or (overall_score is not None and not 0 <= overall_score <= 100)
+                or (result_status == "completed" and overall_score is None)
+                or (result_status != "completed" and overall_score is not None)
+                or result_status not in ("completed", "partial", "needs_human_review")
+                or not 0 <= coverage <= 1
                 or not model_revision or not prompt_version
                 or not results or any(
                     result.evaluation_id != evaluation_id
@@ -119,7 +135,7 @@ class EvaluationRepository(BaseRepository[Evaluation]):
                     return False
                 for result in results:
                     session.add(result)
-                evaluation.status = "completed"
+                evaluation.status = result_status
                 evaluation.overall_score = overall_score
                 evaluation.coverage = coverage
                 evaluation.model_revision = model_revision
@@ -135,3 +151,41 @@ class EvaluationRepository(BaseRepository[Evaluation]):
                     resource_id=evaluation_id, correlation_id=correlation_id,
                 ))
         return True
+
+    async def worker_context_async(
+        self, *, organization_id: str, job_id: UUID,
+        worker_id: str, attempt_token: UUID, fencing_generation: int,
+    ) -> WorkerEvaluationContext | None:
+        """Scoped immutable metadata only; never fetch or decrypt confidential text."""
+        if (not organization_id or not worker_id or not isinstance(job_id, UUID)
+                or not isinstance(attempt_token, UUID) or type(fencing_generation) is not int
+                or fencing_generation < 1):
+            raise ValueError("DB_WORKER_CONTEXT_INVALID")
+        async with self._db.session() as session:
+            now = await session.scalar(select(func.clock_timestamp()))
+            pair = (await session.execute(
+                select(Evaluation, EvaluationJob).join(
+                    EvaluationJob, EvaluationJob.evaluation_id == Evaluation.id
+                ).where(
+                    EvaluationJob.id == job_id,
+                    EvaluationJob.organization_id == organization_id,
+                    Evaluation.organization_id == organization_id,
+                    EvaluationJob.status == "processing",
+                    Evaluation.status == "processing",
+                    EvaluationJob.worker_id == worker_id,
+                    EvaluationJob.attempt_token == attempt_token,
+                    EvaluationJob.fencing_generation == fencing_generation,
+                    EvaluationJob.lease_until > now,
+                )
+            )).one_or_none()
+            if pair is None:
+                return None
+            evaluation, job = pair
+            return WorkerEvaluationContext(
+                evaluation_id=evaluation.id, job_id=job.id,
+                organization_id=evaluation.organization_id,
+                owner_id=evaluation.owner_id,
+                evaluation_type=evaluation.evaluation_type,
+                rubric_version_id=evaluation.rubric_version_id,
+                protected_text_ref=evaluation.protected_text_ref,
+            )
