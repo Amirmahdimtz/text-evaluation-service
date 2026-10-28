@@ -8,3 +8,5 @@ api:
   prefix: "/api/v1"
 security:
   deny_external_egress: true
+llm:
+  enabled: false

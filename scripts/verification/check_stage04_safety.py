@@ -5,7 +5,9 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-FORBIDDEN = frozenset({"requests", "httpx", "aiohttp", "urllib.request", "huggingface_hub", "boto3", "subprocess"})
+FORBIDDEN = frozenset({"requests", "aiohttp", "urllib.request", "huggingface_hub", "boto3", "subprocess"})
+_NETWORK_CLIENTS = frozenset({"httpx", "httpx2"})
+_APPROVED_CLIENT_SOURCE = Path("src/infrastructure/providers/llm/local_llm_provider.py")
 SECRET_PATTERNS = (re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
                    re.compile(r"(?i)aws_secret_access_key\s*[:=]\s*['\"]?[^\s'\"]+"))
 
@@ -37,8 +39,13 @@ def main() -> int:
                 names = [node.module or ""]
             else:
                 continue
+            relative = path.relative_to(ROOT)
             if any(name in FORBIDDEN or name.split(".")[0] in FORBIDDEN for name in names):
-                raise SystemExit(f"FAIL: unapproved network/command dependency in {path.relative_to(ROOT)}")
+                raise SystemExit(f"FAIL: unapproved network/command dependency in {relative}")
+            if relative != _APPROVED_CLIENT_SOURCE and any(
+                name.split(".")[0] in _NETWORK_CLIENTS for name in names
+            ):
+                raise SystemExit(f"FAIL: network client outside reviewed local LLM adapter in {relative}")
         if any(p.search(contents) for p in SECRET_PATTERNS):
             raise SystemExit(f"FAIL: suspicious credential in {path.relative_to(ROOT)}")
     runtime = _pinned_versions(ROOT / "requirements.txt")

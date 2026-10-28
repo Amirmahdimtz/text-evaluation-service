@@ -56,11 +56,40 @@ class _Security(_StrictSettings):
         return value
 
 
+class _Llm(_StrictSettings):
+    """Disabled until an explicitly approved on-premise endpoint is configured."""
+    enabled: bool = False
+    endpoint: str | None = None
+    model_id: str | None = None
+    model_revision: str | None = None
+    credential_ref: str | None = None
+    max_input_characters: int | None = Field(default=None, ge=1, le=2000000)
+    max_context_tokens: int | None = Field(default=None, ge=1, le=1048576)
+    max_output_tokens: int | None = Field(default=None, ge=1, le=65536)
+    timeout_seconds: float | None = Field(default=None, gt=0, le=300)
+    max_concurrency: int | None = Field(default=None, ge=1, le=1024)
+    max_attempts: int | None = Field(default=None, ge=1, le=10)
+    retry_backoff_seconds: float | None = Field(default=None, ge=0, le=30)
+    circuit_failures: int | None = Field(default=None, ge=1, le=100)
+    circuit_reset_seconds: float | None = Field(default=None, gt=0, le=3600)
+    temperature: float | None = Field(default=None, ge=0, le=2)
+    thinking_mode: str | None = None
+    contract_version: str = "openai-chat-json-schema-v1"
+
+    @field_validator("thinking_mode")
+    @classmethod
+    def validate_thinking_mode(cls, value: str | None) -> str | None:
+        if value is not None and value not in ("runtime_default", "disabled", "enabled"):
+            raise ValueError("LLM_THINKING_MODE_INVALID")
+        return value
+
+
 class Settings(_StrictSettings):
     app: _App
     server: _Server
     api: _Api
     security: _Security
+    llm: _Llm = Field(default_factory=_Llm)
 
 
 @inject
