@@ -17,7 +17,7 @@
 
 **Approval conditions:** A user's request to start Stage11 authorizes planning, not unbounded privileged execution, moving proprietary artifacts, exposing confidential data, altering shared containers/network/secrets, applying migrations to organizational DB, downloading models or starting GPU load. Do not request credentials in chat or store them in GitHub.
 
-**First permitted next action:** receive approved **nonsecret** staging readiness metadata and role/approval references, or have an authorized operator execute only separately approved private preflight and return sanitized results. If mandatory approvals remain absent, retain `BLOCKED`. All 56 tests remain `PENDING_SERVER`.
+**First permitted next action:** receive approved **nonsecret** staging readiness metadata and role/approval references. A bounded, no-network/no-Docker [host-local read-only inventory script](07_stage11_readonly_preflight.md) has been prepared and tested off-host; a permitted operator may run it on Simorgh and share only a sanitized summary. No Simorgh run has yet been observed by the assistant. If mandatory approvals remain absent, retain `BLOCKED`. All 56 tests remain `PENDING_SERVER`.
 
 ## Decision/Progress policy
 
