@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from src.infrastructure.context.sql_db.psql_dbcontext import PsqlDbContext
 from src.infrastructure.di.inject import inject
 from src.infrastructure.models.text_evaluation import (
-    AuditEvent, CriterionResult, Evaluation, EvaluationJob, RubricVersion,
+    AuditEvent, CriterionResult, Evaluation, EvaluationJob, RubricVersion, ProtectedText,
 )
 from src.infrastructure.repositories.base.base_repository import BaseRepository
 
@@ -36,6 +36,8 @@ class EvaluationRepository(BaseRepository[Evaluation]):
         self, evaluation: Evaluation, job: EvaluationJob, *,
         organization_id: str, owner_id: str, correlation_id: UUID,
         max_active_jobs: int | None = None,
+        encrypted_source: bytes | None = None,
+        source_key_id: str | None = None,
     ) -> tuple[UUID, UUID, bool]:
         """Committed together; duplicate key returns scoped same-fingerprint prior job."""
         self._scope(organization_id, owner_id)
@@ -48,6 +50,11 @@ class EvaluationRepository(BaseRepository[Evaluation]):
                 or job.status not in (None, "pending")
                 or evaluation.status not in (None, "pending")):
             raise ValueError("DB_SUBMISSION_INVALID")
+        if encrypted_source is not None and (
+            not isinstance(encrypted_source, bytes) or len(encrypted_source) < 30
+            or not isinstance(source_key_id, str) or not 1 <= len(source_key_id) <= 128
+        ):
+            raise ValueError("DB_ENCRYPTED_SOURCE_INVALID")
         evaluation.status = "pending"
         job.status = "pending"
         try:
@@ -98,6 +105,14 @@ class EvaluationRepository(BaseRepository[Evaluation]):
                     ))).one_or_none()
                     if rubric is None:
                         raise ValueError("DB_RUBRIC_NOT_PUBLISHED")
+                    if encrypted_source is not None:
+                        session.add(ProtectedText(
+                            id=evaluation.protected_text_ref,
+                            organization_id=organization_id,
+                            owner_id=owner_id,
+                            key_id=source_key_id,
+                            ciphertext=encrypted_source,
+                        ))
                     session.add_all([evaluation, job, AuditEvent(
                         organization_id=organization_id, actor_id=owner_id,
                         action_code="EVALUATION_SUBMITTED", resource_kind="evaluation",
@@ -227,3 +242,21 @@ class EvaluationRepository(BaseRepository[Evaluation]):
                 rubric_version_id=evaluation.rubric_version_id,
                 protected_text_ref=evaluation.protected_text_ref,
             )
+
+    async def read_scoped_report_async(self, *, organization_id: str,
+                                       evaluation_id: UUID):
+        """Read only within authenticated tenant; caller must enforce ownership."""
+        self._scope(organization_id)
+        async with self._db.session() as session:
+            evaluation = (await session.scalars(select(Evaluation).where(
+                Evaluation.id == evaluation_id,
+                Evaluation.organization_id == organization_id,
+            ))).one_or_none()
+            if evaluation is None:
+                return None
+            rows = (await session.scalars(select(CriterionResult).where(
+                CriterionResult.organization_id == organization_id,
+                CriterionResult.evaluation_id == evaluation_id,
+            ).order_by(CriterionResult.criterion_code))).all()
+            return evaluation, tuple(rows)
+
