@@ -84,12 +84,30 @@ class _Llm(_StrictSettings):
         return value
 
 
+class _Worker(_StrictSettings):
+    """Disabled until a trusted encrypted-source executor has been approved."""
+    enabled: bool = False
+    organization_id: str | None = Field(default=None, min_length=1, max_length=128)
+    lease_seconds: float | None = Field(default=None, gt=0, le=3600)
+    heartbeat_seconds: float | None = Field(default=None, gt=0, le=3600)
+    execution_timeout_seconds: float | None = Field(default=None, gt=0, le=3600)
+    max_attempts: int | None = Field(default=None, ge=1, le=32767)
+    retry_base_seconds: float | None = Field(default=None, ge=0, le=3600)
+    retry_cap_seconds: float | None = Field(default=None, ge=0, le=3600)
+    max_inflight: int | None = Field(default=None, ge=1, le=128)
+    max_queue_depth: int | None = Field(default=None, ge=1, le=100000)
+    poll_seconds: float | None = Field(default=None, gt=0, le=3600)
+    recovery_batch_size: int | None = Field(default=None, ge=1, le=100)
+    drain_seconds: float | None = Field(default=None, gt=0, le=3600)
+
+
 class Settings(_StrictSettings):
     app: _App
     server: _Server
     api: _Api
     security: _Security
     llm: _Llm = Field(default_factory=_Llm)
+    worker: _Worker = Field(default_factory=_Worker)
 
 
 @inject
