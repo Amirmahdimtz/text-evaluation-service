@@ -1,7 +1,6 @@
 """Stage 04 API composition root; no product endpoints are exposed."""
 
 from contextlib import asynccontextmanager
-import json
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
@@ -9,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from src.application.web import WebService
+from src.host.request_body_guard import RequestBodyGuard
 from src.infrastructure.di.bootstrap import bootstrap_di
 from src.infrastructure.di.inject import resolve
 from src.infrastructure.utils.config_reader import ConfigReader
@@ -43,59 +43,6 @@ def create_app() -> FastAPI:
         request_id = str(uuid4())  # Never trust arbitrary externally supplied identifiers.
         request.state.correlation_id = request_id
         try:
-            if request.url.path.startswith(config.get_api_prefix() + "/text_evaluation"):
-                if request.method in ("POST", "PUT", "PATCH"):
-                    settings = config.settings.http_security
-                    limit = settings.max_request_bytes or 65536
-                    if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
-                        return JSONResponse(
-                            status_code=415, content={
-                                "error_code": "UNSUPPORTED_MEDIA_TYPE",
-                                "correlation_id": request_id,
-                            }, headers={"Cache-Control": "no-store", "X-Correlation-ID": request_id},
-                        )
-                    length = request.headers.get("content-length")
-                    if length is not None and (not length.isdecimal() or int(length) > limit):
-                        return JSONResponse(
-                            status_code=413, content={
-                                "error_code": "REQUEST_TOO_LARGE",
-                                "correlation_id": request_id,
-                            }, headers={"Cache-Control": "no-store", "X-Correlation-ID": request_id},
-                        )
-                    # Enforce upper bound even with chunked transfer or forged Content-Length.
-                    data = bytearray()
-                    async for chunk in request.stream():
-                        if len(data) + len(chunk) > limit:
-                            return JSONResponse(
-                                status_code=413, content={
-                                    "error_code": "REQUEST_TOO_LARGE",
-                                    "correlation_id": request_id,
-                                }, headers={"Cache-Control": "no-store", "X-Correlation-ID": request_id},
-                            )
-                    def unique_json_pairs(pairs):
-                        result = {}
-                        for key, value in pairs:
-                            if key in result:
-                                raise ValueError("AMBIGUOUS_JSON")
-                            result[key] = value
-                        return result
-
-                    def reject_constant(_):
-                        raise ValueError("NONFINITE_JSON")
-                    try:
-                        json.loads(
-                            bytes(data).decode("utf-8"),
-                            object_pairs_hook=unique_json_pairs,
-                            parse_constant=reject_constant,
-                        )
-                    except (ValueError, UnicodeError, RecursionError):
-                        return JSONResponse(
-                            status_code=422, content={
-                                "error_code": "VALIDATION_ERROR",
-                                "correlation_id": request_id,
-                            }, headers={"Cache-Control": "no-store", "X-Correlation-ID": request_id},
-                        )
-                    request._body = bytes(data)
             response = await call_next(request)
         except Exception:
             log_event(logger, "REQUEST_FAILED", request_id)
@@ -132,6 +79,7 @@ def create_app() -> FastAPI:
         return {"status": "ready"}
 
     app.include_router(resolve(WebService).api())
+    app.add_middleware(RequestBodyGuard, config_reader=config)
     return app
 
 
