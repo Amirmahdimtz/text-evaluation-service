@@ -79,3 +79,13 @@ The local loopback one-model metadata observation remains separate from Docker. 
 - The prior three noninteractive sudo/Docker exit-1 outcomes do **not** establish the daemon was down; this later successful invocation resolves only the running state. No installed `vllm` version, model artifact revision, inference quality, network No-Egress, token identity, Docker image provenance, or service association to the host loopback endpoint was verified.
 - **If separately approved to run a metadata-only subprocess in the shared container:** rerun `stage11_container_metadata.py --container APPROVED_CONTAINER_NAME --sudo-docker` without `--port` to avoid a redundant HTTP request. If this returns `UNVERIFIED`, do not run exploratory Docker inspection or scrape entrypoints/environment/logs; request a privileged operator's approved package manifest instead.
 - As with all host observations, retain only the nonsecret Boolean status and vetted version metadata in public documentation. All 56 real organizational Stage11 acceptance test IDs remain `PENDING_SERVER`; Stage11 remains `BLOCKED`.
+
+
+## Version observed on Simorgh — 2026-10-28 (operator-reported, bounded metadata only)
+
+- Operator fast-forwarded the local checkout to `86f7d87` and reran the existing `stage11-container-metadata-v1` probe (with `--sudo-docker`, **without** `--port`). The target returned `container_running=true`, `installed_vllm_version=0.10.2`, and `version_evidence=PACKAGE_METADATA_INSIDE_RUNNING_CONTAINER`.
+- **Meaning:** the Python interpreter invoked inside the running container reported installed `vllm` distribution version **0.10.2**. It does not establish the effective serving process's pinned executable/image digest, exact model/tokenizer revision, deployment approval or successful inference.
+- The endpoint probe returned `SKIPPED_BY_OPERATOR` in this run. Its earlier single redacted model-list observation is separate and not securely bound to this container; do not infer a specific Qwen version, even from an alias.
+- No raw model identities, private paths, access tokens, environment variables, image/registry references, logs, processes, API prompts or results were collected in the reported output.
+- Next authenticated private attestation by approved owners should cover immutable serving image/runtime + model/tokenizer hashes, license and evidence of any request/schema compatibility for installed 0.10.2. **Do not** alter the shared container, start another model or run unapproved inference / load, and do not export private manifests to public GitHub.
+- **Gate:** No real Stage11 acceptance oracle has been satisfied in full. `S07-S11-01`, `S11-AI-01..04` and all remaining enterprise test IDs stay `PENDING_SERVER`; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
