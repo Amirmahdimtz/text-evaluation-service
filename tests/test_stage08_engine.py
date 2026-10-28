@@ -285,8 +285,8 @@ def test_stage08_prevents_engine_limit_bypass_of_provider_limits():
 
 def test_stage08_two_pass_document_synthesis_maps_quotes_to_original():
     provider = SyntheticProvider()
-    text = ("متن ساختگی آزمایش هر بخش. " * 6) + "\n\n" + (
-        "Second document section synthetic. " * 4
+    text = ("متن ساختگی آزمایش هر بخش. " * 3) + "\n\n" + (
+        "Second document section synthetic. " * 2
     )
     report = evaluate(provider, text=text, chunk_size=90, max_input=100)
     assert len(report.chunk_ranges) > 1
