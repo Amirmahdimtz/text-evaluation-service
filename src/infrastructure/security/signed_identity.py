@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from uuid import UUID
 
 import jwt
 from jwt.exceptions import PyJWTError
@@ -59,6 +60,10 @@ class SignedIdentityVerifier:
                         r"[0-9a-fA-F]{8}-[0-9a-fA-F-]{28,36}", v,
                     ) for v in assigned)):
                 raise AuthenticationError("AUTH_INVALID")
+            try:
+                assigned = [str(UUID(item)) for item in assigned]
+            except (ValueError, TypeError):
+                raise AuthenticationError("AUTH_INVALID") from None
             return Identity(
                 user_id=user, organization_id=org, is_authenticated=True,
                 permissions=frozenset(permissions),

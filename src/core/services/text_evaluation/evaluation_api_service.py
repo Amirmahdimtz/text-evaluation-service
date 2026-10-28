@@ -1,7 +1,6 @@
 """Stage10 authenticated business flow, without HTTP or direct SQL code."""
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
@@ -112,11 +111,12 @@ class EvaluationApiService:
             value=text, organization_id=identity.organization_id,
             owner_id=identity.user_id, resource_id=source_ref, kind="original",
         )
-        fingerprint = hashlib.sha256(json.dumps({
+        fingerprint_input = json.dumps({
             "text": text, "evaluation_type": evaluation_type,
             "rubric_id": str(rubric.id), "target_audience": target_audience,
             "purpose": purpose,
-        }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        fingerprint = self._crypto.fingerprint(canonical_input=fingerprint_input)
         evaluation_id, job_id = uuid4(), uuid4()
         try:
             saved_id, saved_job, repeated = await self._evaluations.create_with_job_async(

@@ -2,10 +2,14 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import os
 from uuid import UUID
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives import hashes
 
 from src.infrastructure.di.inject import inject
 from src.infrastructure.security.secrets import SecretResolver
@@ -32,6 +36,16 @@ class EncryptedContentService:
         if len(raw) != 32:
             raise ValueError("ENCRYPTION_UNAVAILABLE")
         return raw
+
+    def fingerprint(self, *, canonical_input: bytes) -> str:
+        """HMAC under an HKDF-separated key; no dictionary-searchable plain hash."""
+        if not isinstance(canonical_input, bytes) or not canonical_input:
+            raise ValueError("FINGERPRINT_INVALID")
+        key = HKDF(
+            algorithm=hashes.SHA256(), length=32, salt=None,
+            info=b"TES_STAGE10_IDEMPOTENCY_FINGERPRINT_V1",
+        ).derive(self._key())
+        return hmac.new(key, canonical_input, hashlib.sha256).hexdigest()
 
     def encrypt(self, *, value: str, organization_id: str,
                 owner_id: str, resource_id: UUID, kind: str) -> bytes:
