@@ -1,0 +1,206 @@
+"""Offline HTTP, schema, evidence and privacy checks for the real criterion contract."""
+from __future__ import annotations
+
+import json
+from unittest.mock import Mock, patch
+
+import pytest
+
+from scripts.verification.stage11_criterion_contract_smoke import (
+    _CRITERION, _SOURCE, _validated_completion, main, make_request, run,
+)
+from src.infrastructure.providers.llm.structured_response import (
+    CriterionInference, decode_criterion_response,
+)
+
+_MODEL = "private/internal-server-model"
+
+
+def _valid_criterion(*, evidence=True):
+    return {
+        "criterion_code": "clarity", "status": "assessed", "score": 4,
+        "reason": "متن کوتاه و روشن است.", "strengths": ["بیان ساده"],
+        "weaknesses": [], "recommendations": ["مثال بیفزایید"],
+        "evidence": [{"source_kind": "original_submission", "quote": _SOURCE,
+                      "start_offset": 0, "end_offset": len(_SOURCE)}] if evidence else [],
+    }
+
+
+def _response_json(*, content=None, model=_MODEL, finish="stop"):
+    if content is None:
+        content = json.dumps(_valid_criterion(), ensure_ascii=False)
+    return json.dumps({"model": model, "choices": [{"finish_reason": finish,
+          "message": {"role": "assistant", "content": content}}],
+          "usage": {"prompt_tokens": 150, "completion_tokens": 90, "total_tokens": 240}},
+          ensure_ascii=False).encode()
+
+
+def _reply(payload: bytes, status=200):
+    r = Mock(status=status)
+    r.read.side_effect = lambda limit: payload[:limit]
+    return r
+
+
+def _connections(*, model_json=None, completion=None):
+    m = _reply(model_json if model_json is not None else json.dumps({"data": [{"id": _MODEL}]}).encode())
+    c = _reply(completion if completion is not None else _response_json())
+    a, b = Mock(), Mock()
+    a.getresponse.return_value = m
+    b.getresponse.return_value = c
+    return a, b
+
+
+def test_actual_pydantic_schema_and_assessment_validate():
+    schema = make_request(_MODEL)["response_format"]["json_schema"]["schema"]
+    assert schema == CriterionInference.model_json_schema()
+    result = decode_criterion_response(json.dumps(_valid_criterion(), ensure_ascii=False),
+                                       expected_code=_CRITERION, source_text=_SOURCE,
+                                       max_response_bytes=16384)
+    assert result.status == "assessed"
+    assert result.evidence[0].quote == _SOURCE
+    assert result.evidence[0].end_offset == len(_SOURCE)
+
+
+def test_one_get_one_post_real_schema_and_private_redaction():
+    a, b = _connections()
+    with patch("http.client.HTTPConnection", side_effect=[a,b]) as conn:
+        result = run(port=8000)
+    assert result["status"] == "PASS_SYNTHETIC_CRITERION_CONTRACT"
+    assert result["criterion_schema_valid"] and result["grounded_evidence_valid"]
+    assert result["usage_tokens"]["total_tokens"] == 240
+    assert _MODEL not in json.dumps(result)
+    assert _SOURCE not in json.dumps(result, ensure_ascii=False)
+    assert conn.call_count == 2
+    assert conn.call_args_list[0].args == ("127.0.0.1",)
+    assert conn.call_args_list[1].args == ("127.0.0.1",)
+    assert conn.call_args_list[0].kwargs == {"port":8000,"timeout":4}
+    assert conn.call_args_list[1].kwargs == {"port":8000,"timeout":45}
+    assert a.request.call_args.args == ("GET", "/v1/models")
+    assert b.request.call_args.args[:2] == ("POST", "/v1/chat/completions")
+    data = json.loads(b.request.call_args.kwargs["body"])
+    assert data["model"] == _MODEL
+    assert data["max_tokens"] == 320 and data["temperature"] == 0
+    assert data["stream"] is False
+    assert "tools" not in data
+    assert "Authorization" not in b.request.call_args.kwargs["headers"]
+    a.close.assert_called_once(); b.close.assert_called_once()
+
+
+@pytest.mark.parametrize("wrong", ["quote", "offset", "score", "criterion", "extra"])
+def test_strict_criterion_contract_rejects_invalid(wrong):
+    body = _valid_criterion()
+    if wrong == "quote": body["evidence"][0]["quote"] = "ساخته‌شده"
+    if wrong == "offset": body["evidence"][0]["end_offset"] -= 1
+    if wrong == "score": body["score"] = "4"
+    if wrong == "criterion": body["criterion_code"] = "fluency"
+    if wrong == "extra": body["unapproved_field"] = "x"
+    with pytest.raises(ValueError):
+        decode_criterion_response(json.dumps(body, ensure_ascii=False),
+                                  expected_code=_CRITERION, source_text=_SOURCE,
+                                  max_response_bytes=16384)
+
+
+@pytest.mark.parametrize("invalid", [0,-1,65536,"8000",True])
+def test_invalid_ports_never_connect(invalid):
+    with pytest.raises(ValueError), patch("http.client.HTTPConnection") as http:
+        run(port=invalid)
+        http.assert_not_called()
+
+
+def test_ambiguous_models_no_post():
+    a,b = _connections(model_json=b'{"data":[{"id":"one"},{"id":"two"}]}')
+    with patch("http.client.HTTPConnection", side_effect=[a,b]) as http:
+        result = run(port=8000)
+    assert result["status"] == "MODEL_METADATA_UNVERIFIED"
+    assert http.call_count == 1
+
+
+def test_non200_metadata_no_post():
+    a,b = _connections()
+    a.getresponse.return_value = _reply(b'{"secret":"private"}', 401)
+    with patch("http.client.HTTPConnection", side_effect=[a,b]) as http:
+        result=run(port=8000)
+    assert result["status"] == "MODEL_METADATA_UNVERIFIED"
+    assert http.call_count == 1
+
+
+@pytest.mark.parametrize("status", [400,401,403,429,500,503])
+def test_http_errors_not_retried_and_raw_body_hidden(status):
+    a,b=_connections()
+    b.getresponse.return_value=_reply(b'{"error":"SECRET_RAW_RESPONSE"}',status)
+    with patch("http.client.HTTPConnection", side_effect=[a,b]) as http:
+        result=run(port=8000)
+    assert http.call_count == 2
+    assert result["status"] == "INFERENCE_HTTP_REJECTED"
+    assert result["http_status"] == status
+    assert "SECRET" not in json.dumps(result)
+    b.getresponse.return_value.read.assert_not_called()
+
+
+@pytest.mark.parametrize("value", ["not json", "{}", "[]", '{"criterion_code":"clarity"}', '{"status":"assessed","status":"assessed"}'])
+def test_invalid_json_or_partial_contract_fails_closed(value):
+    a,b=_connections(completion=_response_json(content=value))
+    with patch("http.client.HTTPConnection", side_effect=[a,b]):
+        result=run(port=8000)
+    assert result["status"] == "CRITERION_CONTRACT_UNVERIFIED"
+    assert value not in json.dumps(result)
+
+
+def test_abstention_is_valid_shape_but_not_a_grounded_assessment():
+    body=_valid_criterion()
+    body.update(status="not_assessed",score=None,evidence=[])
+    a,b=_connections(completion=_response_json(content=json.dumps(body,ensure_ascii=False)))
+    with patch("http.client.HTTPConnection",side_effect=[a,b]):
+        result=run(port=8000)
+    assert result["status"] == "CRITERION_CONTRACT_UNVERIFIED"
+
+
+def test_model_mismatch_refused():
+    with pytest.raises(ValueError):
+        _validated_completion(json.loads(_response_json(model="another-model")), _MODEL)
+
+
+def test_unfinished_generation_refused():
+    with pytest.raises(ValueError):
+        _validated_completion(json.loads(_response_json(finish="length")), _MODEL)
+
+
+def test_timeout_is_not_retried():
+    a,b=_connections()
+    b.getresponse.side_effect=TimeoutError("SECRET")
+    with patch("http.client.HTTPConnection",side_effect=[a,b]) as http:
+        result=run(port=8000)
+    assert result["status"] == "INFERENCE_TRANSPORT_OR_TIMEOUT"
+    assert http.call_count==2
+    assert "SECRET" not in json.dumps(result)
+
+
+def test_dry_run_is_network_free(capsys):
+    with patch("http.client.HTTPConnection") as http:
+        assert main([])==0
+        http.assert_not_called()
+    result=json.loads(capsys.readouterr().out)
+    assert result["status"]=="DRY_RUN_NO_NETWORK"
+
+
+def test_explicit_opt_in_required(capsys):
+    a,b=_connections()
+    with patch("http.client.HTTPConnection",side_effect=[a,b]):
+        assert main(["--execute-approved"])==0
+    result=json.loads(capsys.readouterr().out)
+    assert result["status"]=="PASS_SYNTHETIC_CRITERION_CONTRACT"
+
+
+def test_explicit_bad_cli_port_refuses_network():
+    with patch("http.client.HTTPConnection") as http, pytest.raises(SystemExit) as info:
+        main(["--execute-approved","--port","65536"])
+    assert info.value.code==2
+    http.assert_not_called()
+
+
+@pytest.mark.parametrize("field,value", [("role","tool"),("refusal","rejected"),("tool_calls",[{"id":"x"}])])
+def test_reject_non_assistant_or_refusal_or_tool_calls(field,value):
+    envelope=json.loads(_response_json())
+    envelope["choices"][0]["message"][field]=value
+    with pytest.raises(ValueError):
+        _validated_completion(envelope,_MODEL)
