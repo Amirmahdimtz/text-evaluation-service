@@ -345,3 +345,28 @@ def test_no_redirect_or_env_proxy_honored(monkeypatch):
         await provider.aclose()
     asyncio.run(run())
     assert len(calls) == 1
+
+
+def test_total_wall_clock_deadline_with_slow_synthetic_server():
+    async def delayed(_):
+        await asyncio.sleep(0.05)
+        return answer()
+    provider = make_provider(delayed, overrides={
+        "timeout_seconds": 0.01, "max_attempts": 1,
+    })
+    async def run():
+        with pytest.raises(LlmProviderError, match="^LLM_RETRY_EXHAUSTED$"):
+            await invoke(provider)
+        await provider.aclose()
+    asyncio.run(run())
+
+
+def test_health_bounded_by_configured_deadline():
+    async def delayed_health(_):
+        await asyncio.sleep(0.05)
+        return httpx.Response(200)
+    provider = make_provider(delayed_health, overrides={"timeout_seconds": 0.01})
+    async def run():
+        assert await provider.health_async() is False
+        await provider.aclose()
+    asyncio.run(run())
