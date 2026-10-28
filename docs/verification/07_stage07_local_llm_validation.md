@@ -49,3 +49,19 @@ These tests are not being claimed as user-run until a terminal result is supplie
 The final source-affecting commit `9e25ebcd5218cf41cdc28893251b0b403740cf7b` additionally enforces a total wall-clock request/health deadline and proves it with fault injection. [GitHub Actions 40644059782](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40644059782) returned **completed/success**, with **52/52 focused Stage07 tests**, **159/159 non-PostgreSQL pytest**, **38/38 Stage03 unittest**, **12/12 Stage02 unittest**, static guard **24 runtime files PASS**, and `pip check` PASS. This is the authoritative latest result; earlier counts 50/157 are historical. The 52 are included in the 159. All inference calls in this run used synthetic local HTTP MockTransport; **no vLLM or GPU was contacted**. This source-tested commit predates documentation-only changes.
 
 **Remaining open:** actual model-selected artifact/version, vLLM schema/Thinking interoperability, tokenizer-aware context limits, TLS/IAM, No-Egress, enterprise logging and supply-chain/license approvals all remain PENDING_SERVER; no real structured output or model accuracy has been measured. These omissions are not disguised as PASS. Stage08 remains NOT_STARTED.
+
+## 2026-10-28 — Independent Simorgh Stage07 non-database verification: PASS
+
+**Source:** actual operator-provided Linux shell transcript, submitted after completing the Stage07 code and CI run. On the Simorgh checkout `/srv/projects/text-evaluation-service`, `git pull --ff-only origin main` fast-forwarded `03ca994` to `7f5f122` successfully. The preexisting Git-ignored `.venv` was then used without a new package install or system-level changes.
+
+| Operator command | Actual observed output | Verification classification |
+|---|---|---|
+| `.venv/bin/python -m pip check` | `No broken requirements found.` | `PASS_USER_SERVER_REPORTED_DEPENDENCY_CONSISTENCY`; not a vulnerability/provenance audit |
+| `.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage07_local_llm.py` | `52 passed in 0.77s` | `PASS_USER_SERVER_REPORTED_STAGE07_STUB_52_OF_52` |
+| `.venv/bin/python -m pytest -q -p no:cacheprovider tests --ignore=tests/test_stage05_postgres.py --ignore=tests/test_stage06_rubric_postgres.py` | `159 passed in 1.95s` | `PASS_USER_SERVER_REPORTED_NON_DB_159_OF_159` |
+
+The 52 Stage07 tests are **included within** the full 159-test non-PostgreSQL suite and are **not disjoint**. The latest Simorgh run does **not** include the 7 real-PostgreSQL test cases from Stages05/06, any Alembic upgrade, real vLLM or an actual internal model/GPU. The [separate Stage07 GitHub Actions run 40644059782](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40644059782) had already passed 52 focused and 159 non-DB tests with synthetic in-process HTTP stubs; independent user-host verification now confirms the same counts.
+
+**Privacy/security boundary:** these Python tests use `httpx.MockTransport` and synthetic payloads; they are not a proof of actual network No-Egress, upstream telemetry safety, corporate TLS/mTLS/IAM, protected input handling by an organization model server, signed upstream model artifacts, or model accuracy. Every S07-S11-01 through S07-S11-06 enterprise item remains `PENDING_SERVER / DEFERRED_TO_STAGE_11`. No real organization endpoint, private text, credential, or shared database usage was shown in the submitted commands.
+
+**Status:** Stage07 `DONE` for local gates. Stage08 `NOT_STARTED`. This subsection records operator-supplied evidence only: **no tests were independently executed by the assistant on Simorgh**, and no source code or database was modified as part of this documentation entry.
