@@ -21,6 +21,9 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from sqlalchemy import func, select
 
 from src.core.services.text_evaluation.rubric_schema import RubricSnapshot
+from src.core.services.text_evaluation.evaluation_worker_service import (
+    EvaluationWorkerService, WorkerPolicy, WorkerResult,
+)
 from src.host.app import create_app
 from src.infrastructure.context.sql_db.psql_dbcontext import PsqlDbContext, get_test_database_url
 from src.infrastructure.di.bootstrap import bootstrap_di
@@ -221,39 +224,53 @@ def test_stage10_http_submission_report_feedback_and_tenant_idor(
                         ProtectedText,
                     ).where(ProtectedText.organization_id == org))) == 1
 
-                jobs = EvaluationJobRepository(db)
-                claimed = await jobs.claim_next_async(
-                    organization_id=org, worker_id="isolated-stub-worker",
-                    lease_duration=timedelta(seconds=60), max_attempts=2,
-                )
-                assert claimed is not None and claimed.id == job_id
+                # Real Stage09 Worker orchestration and fencing with an injected
+                # synthetic authorized executor; no live LLM or protected-text read.
                 crypto = resolve(EncryptedContentService)
-                detail = json.dumps({
-                    "reason": "Synthetic criterion evidence", "strengths": [],
-                    "weaknesses": [], "recommendations": [],
-                    "evidence": [{"quote": SOURCE[:4], "start_offset": 0, "end_offset": 4}],
-                }, ensure_ascii=False)
-                encrypted = crypto.encrypt(
-                    value=detail, organization_id=org,
-                    owner_id="synthetic-author", resource_id=evaluation_id,
-                    kind="criterion",
+                async def synthetic_executor(context):
+                    assert context.evaluation_id == evaluation_id
+                    assert context.job_id == job_id
+                    assert context.protected_text_ref is not None
+                    assert db._engine.sync_engine.pool.checkedout() == 0
+                    detail = json.dumps({
+                        "reason": "Synthetic criterion evidence", "strengths": [],
+                        "weaknesses": [], "recommendations": [],
+                        "evidence": [{"quote": SOURCE[:4], "start_offset": 0, "end_offset": 4}],
+                    }, ensure_ascii=False)
+                    encrypted = crypto.encrypt(
+                        value=detail, organization_id=org,
+                        owner_id=context.owner_id, resource_id=evaluation_id,
+                        kind="criterion",
+                    )
+                    return WorkerResult(
+                        criterion_results=(CriterionResult(
+                            id=uuid4(), evaluation_id=evaluation_id,
+                            organization_id=org, criterion_code="speech_clarity",
+                            status="assessed", score=4, encrypted_details=encrypted,
+                        ),), coverage=0.2,
+                        model_revision="synthetic-stub-revision",
+                        prompt_version="synthetic-prompt",
+                        result_status="needs_human_review",
+                    )
+
+                worker = EvaluationWorkerService(
+                    EvaluationJobRepository(db), EvaluationRepository(db),
                 )
-                assert await EvaluationRepository(db).finalize_with_results_async(
-                    organization_id=org, owner_id="synthetic-author",
-                    evaluation_id=evaluation_id, job_id=job_id,
-                    worker_id="isolated-stub-worker",
-                    attempt_token=claimed.attempt_token,
-                    fencing_generation=claimed.fencing_generation,
-                    results=[CriterionResult(
-                        id=uuid4(), evaluation_id=evaluation_id,
-                        organization_id=org, criterion_code="speech_clarity",
-                        status="assessed", score=4, encrypted_details=encrypted,
-                    )],
-                    overall_score=None, coverage=0.2,
-                    model_revision="synthetic-stub-revision",
-                    prompt_version="synthetic-prompt",
-                    result_status="needs_human_review", correlation_id=uuid4(),
+                worker_policy = WorkerPolicy(
+                    lease_seconds=10, heartbeat_seconds=0.1,
+                    execution_timeout_seconds=3, max_attempts=2,
+                    retry_base_seconds=0, retry_cap_seconds=0,
+                    max_inflight=1, max_queue_depth=10, poll_seconds=0.01,
+                    recovery_batch_size=10, drain_seconds=1,
                 )
+                assert await worker.process_once_async(
+                    organization_id=org, worker_id="isolated-stub-worker",
+                    policy=worker_policy, executor=synthetic_executor,
+                ) == "completed_review"
+                assert await worker.process_once_async(
+                    organization_id=org, worker_id="isolated-next-worker",
+                    policy=worker_policy, executor=synthetic_executor,
+                ) == "idle"
 
                 complete = await client.get(
                     route + "/evaluations/" + str(evaluation_id), headers=headers(auth),
