@@ -62,7 +62,8 @@ def signed_token(key, **overrides):
 def test_stage10_controller_discovered_once_and_prefix_is_exact():
     bootstrap_di()
     app = create_app()
-    paths = {r.path for r in app.routes if hasattr(r, "path")}
+    schema = app.openapi()
+    paths = set(schema["paths"])
     assert {
         "/api/v1/text_evaluation/evaluations",
         "/api/v1/text_evaluation/evaluations/{evaluation_id}",
@@ -70,7 +71,6 @@ def test_stage10_controller_discovered_once_and_prefix_is_exact():
         "/api/v1/text_evaluation/evaluations/{evaluation_id}/feedback",
     } <= paths
     assert not any("/text_evaluation/text_evaluation" in p for p in paths)
-    schema = app.openapi()
     assert schema["paths"]["/api/v1/text_evaluation/evaluations"]["post"]["responses"]["202"]
     assert "CreateEvaluationDto" in schema["components"]["schemas"]
 
