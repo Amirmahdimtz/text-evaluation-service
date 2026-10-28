@@ -1,15 +1,15 @@
 """Atomic PostgreSQL SKIP LOCKED claims and fenced heartbeat."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from uuid import UUID, uuid4
 from dataclasses import dataclass
 
-from sqlalchemy import case, func, or_, select, update
+from sqlalchemy import func, or_, select, update
 
 from src.infrastructure.context.sql_db.psql_dbcontext import PsqlDbContext
 from src.infrastructure.di.inject import inject
-from src.infrastructure.models.text_evaluation import Evaluation, EvaluationJob
+from src.infrastructure.models.text_evaluation import AuditEvent, Evaluation, EvaluationJob
 from src.infrastructure.repositories.base.base_repository import BaseRepository
 
 
@@ -126,6 +126,12 @@ class EvaluationJobRepository(BaseRepository[EvaluationJob]):
                     job.attempt_token = None
                     job.fencing_generation += 1
                     evaluation.status = next_status
+                    session.add(AuditEvent(
+                        organization_id=organization_id, actor_id="stage09-recovery",
+                        action_code="JOB_LEASE_EXPIRED_TERMINAL" if terminal else "JOB_LEASE_RECOVERED",
+                        resource_kind="evaluation", resource_id=job.evaluation_id,
+                        correlation_id=uuid4(),
+                    ))
             return len(expired)
 
     async def fail_attempt_async(
@@ -177,6 +183,12 @@ class EvaluationJobRepository(BaseRepository[EvaluationJob]):
                 job.attempt_token = None
                 job.fencing_generation += 1
                 evaluation.status = next_status
+                session.add(AuditEvent(
+                    organization_id=organization_id, actor_id=worker_id,
+                    action_code="JOB_FAILED_TERMINAL" if terminal else "JOB_RETRY_SCHEDULED",
+                    resource_kind="evaluation", resource_id=job.evaluation_id,
+                    correlation_id=uuid4(),
+                ))
             return True
 
     async def queue_metrics_async(self, *, organization_id: str) -> QueueMetrics:
