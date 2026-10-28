@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import os
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
@@ -180,7 +181,7 @@ def test_real_db_concurrent_claim_crash_recovery_and_stale_fencing(isolated_stag
                 assert job.status == "completed" and job.worker_id is None
                 assert evaluation.status == "needs_human_review"
                 assert evaluation.overall_score is None
-                assert evaluation.coverage == 0.65
+                assert evaluation.coverage == Decimal("0.6500")
                 assert (await session.scalar(
                     select(func.count()).select_from(CriterionResult).where(
                         CriterionResult.evaluation_id == evaluation_id,
