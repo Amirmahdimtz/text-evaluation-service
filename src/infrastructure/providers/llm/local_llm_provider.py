@@ -5,6 +5,7 @@ No external fallback, model download, ambient proxy, or content logging.
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 import re
 import time
@@ -118,6 +119,9 @@ class LocalLlmProvider:
     async def _send(self, method: str, path: str, payload: dict | None = None) -> dict:
         settings, endpoint = self._validated()
         client = await self._get_client()
+        if self._open_until and self._open_until <= time.monotonic():
+            self._open_until = 0.0
+            self._failures = 0
         if self._open_until > time.monotonic():
             raise LlmProviderError("LLM_CIRCUIT_OPEN")
         assert self._sem is not None
@@ -132,19 +136,40 @@ class LocalLlmProvider:
                 if self._open_until > time.monotonic():
                     raise LlmProviderError("LLM_CIRCUIT_OPEN")
                 try:
-                    response = await client.request(
+                    limit = max(65536, settings.max_output_tokens * 48)
+                    async with client.stream(
                         method, endpoint + path,
                         headers=self._headers(), json=payload,
+                    ) as response:
+                        if response.is_redirect:
+                            raise LlmProviderError("LLM_REDIRECT_DENIED")
+                        if response.status_code in _RETRYABLE:
+                            raise LlmProviderError("LLM_TRANSIENT_HTTP")
+                        if not 200 <= response.status_code < 300:
+                            raise LlmProviderError("LLM_HTTP_REJECTED")
+                        chunks: list[bytes] = []
+                        total = 0
+                        async for chunk in response.aiter_bytes():
+                            total += len(chunk)
+                            if total > limit:
+                                raise LlmProviderError("LLM_RESPONSE_TOO_LARGE")
+                            chunks.append(chunk)
+
+                    def unique_pairs(pairs):
+                        result = {}
+                        for key, value in pairs:
+                            if key in result:
+                                raise ValueError("LLM_AMBIGUOUS_ENVELOPE")
+                            result[key] = value
+                        return result
+
+                    def no_nonfinite(_):
+                        raise ValueError("LLM_INVALID_NUMBER")
+
+                    data = json.loads(
+                        b"".join(chunks).decode("utf-8"), object_pairs_hook=unique_pairs,
+                        parse_constant=no_nonfinite,
                     )
-                    if response.is_redirect:
-                        raise LlmProviderError("LLM_REDIRECT_DENIED")
-                    if response.status_code in _RETRYABLE:
-                        raise LlmProviderError("LLM_TRANSIENT_HTTP")
-                    if not 200 <= response.status_code < 300:
-                        raise LlmProviderError("LLM_HTTP_REJECTED")
-                    if len(response.content) > max(65536, settings.max_output_tokens * 48):
-                        raise LlmProviderError("LLM_RESPONSE_TOO_LARGE")
-                    data = response.json()
                     if not isinstance(data, dict):
                         raise LlmProviderError("LLM_INVALID_RESPONSE")
                     self._failures = 0
@@ -165,7 +190,8 @@ class LocalLlmProvider:
                 if attempt + 1 == settings.max_attempts:
                     raise LlmProviderError("LLM_RETRY_EXHAUSTED")
                 await asyncio.sleep(
-                    settings.retry_backoff_seconds * (2 ** attempt) * (0.5 + random.random())
+                    min(settings.timeout_seconds, settings.retry_backoff_seconds * (2 ** attempt))
+                    * (0.5 + random.random())
                 )
             raise LlmProviderError("LLM_RETRY_EXHAUSTED")
         finally:
