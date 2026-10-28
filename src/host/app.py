@@ -84,7 +84,7 @@ def create_app() -> FastAPI:
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException):
         # HTTPException.detail may contain text/credentials: never echo it.
-                safe_errors = frozenset({
+        safe_errors = frozenset({
             "AUTHENTICATION_REQUIRED", "FORBIDDEN", "NOT_FOUND",
             "CONFLICT", "RATE_LIMITED", "SERVICE_UNAVAILABLE",
             "VALIDATION_ERROR",
