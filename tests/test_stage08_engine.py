@@ -209,14 +209,18 @@ def test_stage08_large_source_is_never_silently_truncated_or_falsely_scored():
     provider = SyntheticProvider()
     text = ("پاراگراف ساختگی؛ " * 50) + "\n\n" + ("Another passage. " * 30)
     report = evaluate(provider, text=text, chunk_size=100, max_input=100)
-    assert not provider.calls
+    assert provider.calls  # Synthetic chunk probes only; never a real LLM request.
     assert len(report.chunk_ranges) > 2
     assert report.chunk_ranges[0][0] == 0
     assert report.chunk_ranges[-1][1] == len(text)
     assert report.provisional_score_0_100 is None
     assert report.result_status == "not_assessed"
     assert report.needs_human_review
-    assert all(c.reason_code == "DOCUMENT_CONTEXT_LIMIT" for c in report.criteria)
+    assert all(c.reason_code in {
+        "DOCUMENT_GLOBAL_CONTEXT_UNVERIFIED",
+        "DOCUMENT_SYNTHESIS_BUDGET_EXCEEDED",
+        "DOCUMENT_CHUNK_COUNT_LIMIT",
+    } for c in report.criteria)
 
 
 @pytest.mark.parametrize("source", [
@@ -277,3 +281,22 @@ def test_stage08_prevents_engine_limit_bypass_of_provider_limits():
     with pytest.raises(ValueError, match="ENGINE_PROVIDER_LIMIT_MISMATCH"):
         evaluate(provider, max_input=4096)
     assert provider.calls == []
+
+
+def test_stage08_two_pass_document_synthesis_maps_quotes_to_original():
+    provider = SyntheticProvider()
+    text = ("متن ساختگی آزمایش هر بخش. " * 6) + "\n\n" + (
+        "Second document section synthetic. " * 4
+    )
+    report = evaluate(provider, text=text, chunk_size=90, max_input=100)
+    assert len(report.chunk_ranges) > 1
+    assert report.result_status == "partial"
+    assert report.needs_human_review
+    assert not report.publishable_as_official_score
+    assessed = [item for item in report.criteria if item.status == "assessed"]
+    assert assessed
+    assert any("DOCUMENT_SYNTHESIS_UNVERIFIED" in x.quality_flags for x in assessed)
+    for item in assessed:
+        for quote, start, end in item.evidence:
+            assert text[start:end] == quote
+    assert next(c for c in report.criteria if c.criterion_code == "speech_coherence").score is None
