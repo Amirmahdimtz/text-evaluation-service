@@ -239,13 +239,22 @@ class EvaluationWorkerService:
         executor: JobExecutor, stop_event: asyncio.Event,
     ) -> None:
         """Bounded concurrency, cooperative drain, and lease-expiry crash recovery."""
-        if not isinstance(stop_event, asyncio.Event):
+        if (not isinstance(stop_event, asyncio.Event) or not isinstance(worker_id, str)
+                or not 1 <= len(worker_id) <= 112 or not organization_id):
             raise ValueError("WORKER_STOP_EVENT_REQUIRED")
         tasks: set[asyncio.Task] = set()
         try:
             while not stop_event.is_set():
                 await self.recover_async(organization_id=organization_id, policy=policy)
-                tasks = {t for t in tasks if not t.done()}
+                finished = {task for task in tasks if task.done()}
+                for task in finished:
+                    try:
+                        task.result()
+                    except asyncio.CancelledError:
+                        pass
+                    except Exception:
+                        raise RuntimeError("WORKER_TASK_FAILED") from None
+                tasks.difference_update(finished)
                 while len(tasks) < policy.max_inflight and not stop_event.is_set():
                     index = len(tasks)
                     task = asyncio.create_task(self.process_once_async(
@@ -257,7 +266,9 @@ class EvaluationWorkerService:
                 if tasks:
                     await asyncio.wait(tasks, timeout=policy.poll_seconds,
                                        return_when=asyncio.FIRST_COMPLETED)
-                else:
+                # Throttle empty queue and failure loops; still react promptly
+                # to shutdown rather than hammering the database.
+                if not stop_event.is_set():
                     try:
                         await asyncio.wait_for(stop_event.wait(), policy.poll_seconds)
                     except asyncio.TimeoutError:
