@@ -29,3 +29,7 @@ The operator-reported Simorgh tests and CI were already recorded in [Stage10 val
 - Stage 11 executed Run IDs: **none**.
 - Stage 11 software PASS/FAIL measured: **none**.
 - Blocking approvals and dependencies: [release blockers](06_release_blockers.md); detailed test IDs: [strategy](01_test_strategy_and_traceability.md).
+
+## Independent Simorgh read-only Stage11 preflight — 2026-10-28
+
+The operator fast-forwarded the local checkout to `e29537b`, ran the new standalone Python preflight safety suite (**13 passed in 0.04s**) and successfully executed the read-only host/GPU inventory command. This is **user-reported host-local test and observation evidence**, **not** completion of an enterprise acceptance test. No live vLLM, corporate DB, IAM, KMS, external egress validation, inference, load, or Recovery test occurred. The source `S11-AI-01` hardware-inventory prerequisite is partially informed, but the pinned runtime/capacity oracle remains unmet and `PENDING_SERVER`. All 56 actual Stage11 gate tests remain `PENDING_SERVER`. [Observed hardware summary](07_stage11_readonly_preflight.md).
