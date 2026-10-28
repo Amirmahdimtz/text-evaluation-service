@@ -395,6 +395,20 @@ def test_stage10_http_validation_rate_limits_backpressure_and_disabled_security(
                     },
                 )
                 assert expired.status_code == 401
+                # A real signed token does not bypass missing mandatory policies.
+                cfg = resolve(ConfigReader)
+                current = cfg.settings.http_security
+                monkeypatch.setattr(cfg, "settings", cfg.settings.model_copy(
+                    update={"http_security": current.model_copy(
+                        update={"max_active_jobs": None},
+                    )},
+                ))
+                unavailable = await client.get(
+                    route + "/rubrics",
+                    headers=headers(token(key, org, user="synthetic-third")),
+                )
+                assert unavailable.status_code == 503
+                assert unavailable.json()["error_code"] == "SERVICE_UNAVAILABLE"
         finally:
             await db.close()
     asyncio.run(exercise())
