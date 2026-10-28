@@ -75,7 +75,12 @@ class ScoringService:
                 exact_score_ratio=None, exact_coverage_ratio=(0, 100),
             )
         # Exact rational computation via Decimal; NO implicit business rounding.
-        # Fraction is preserved as integer ratio; a recurring decimal is NOT exact.\n        numerator = int(D100 * weighted_score)\n        denominator_score = int(D5 * assessed_weight)\n        with localcontext() as ctx:\n            ctx.prec = 64\n            raw = Decimal(numerator) / Decimal(denominator_score)
+        # The numerator/denominator preserve exact rational information.
+        numerator = int(D100 * weighted_score)
+        denominator_score = int(D5 * assessed_weight)
+        with localcontext() as ctx:
+            ctx.prec = 64
+            raw = Decimal(numerator) / Decimal(denominator_score)
         # The Stage01 candidate threshold and rounding policy remain OPEN.
         return ScoringOutcome(
             provisional_score_0_100=raw, coverage_fraction=coverage,
