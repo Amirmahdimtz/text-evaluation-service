@@ -42,6 +42,37 @@ def create_app() -> FastAPI:
         request_id = str(uuid4())  # Never trust arbitrary externally supplied identifiers.
         request.state.correlation_id = request_id
         try:
+            if request.url.path.startswith(config.get_api_prefix() + "/text_evaluation"):
+                if request.method in ("POST", "PUT", "PATCH"):
+                    settings = config.settings.http_security
+                    limit = settings.max_request_bytes or 65536
+                    if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/json":
+                        return JSONResponse(
+                            status_code=415, content={
+                                "error_code": "UNSUPPORTED_MEDIA_TYPE",
+                                "correlation_id": request_id,
+                            }, headers={"Cache-Control": "no-store", "X-Correlation-ID": request_id},
+                        )
+                    length = request.headers.get("content-length")
+                    if length is not None and (not length.isdecimal() or int(length) > limit):
+                        return JSONResponse(
+                            status_code=413, content={
+                                "error_code": "REQUEST_TOO_LARGE",
+                                "correlation_id": request_id,
+                            }, headers={"Cache-Control": "no-store", "X-Correlation-ID": request_id},
+                        )
+                    # Enforce upper bound even with chunked transfer or forged Content-Length.
+                    data = bytearray()
+                    async for chunk in request.stream():
+                        data.extend(chunk)
+                        if len(data) > limit:
+                            return JSONResponse(
+                                status_code=413, content={
+                                    "error_code": "REQUEST_TOO_LARGE",
+                                    "correlation_id": request_id,
+                                }, headers={"Cache-Control": "no-store", "X-Correlation-ID": request_id},
+                            )
+                    request._body = bytes(data)
             response = await call_next(request)
         except Exception:
             log_event(logger, "REQUEST_FAILED", request_id)
@@ -53,7 +84,15 @@ def create_app() -> FastAPI:
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException):
         # HTTPException.detail may contain text/credentials: never echo it.
-        return JSONResponse(status_code=exc.status_code, content={"error_code": "HTTP_ERROR", "correlation_id": request.state.correlation_id})
+                safe_errors = frozenset({
+            "AUTHENTICATION_REQUIRED", "FORBIDDEN", "NOT_FOUND",
+            "CONFLICT", "RATE_LIMITED", "SERVICE_UNAVAILABLE",
+            "VALIDATION_ERROR",
+        })
+        error_code = exc.detail if isinstance(exc.detail, str) and exc.detail in safe_errors else "HTTP_ERROR"
+        return JSONResponse(status_code=exc.status_code, content={
+            "error_code": error_code, "correlation_id": request.state.correlation_id,
+        }, headers={"Cache-Control": "no-store"})
 
     @app.exception_handler(RequestValidationError)
     async def input_error(request: Request, exc: RequestValidationError):
