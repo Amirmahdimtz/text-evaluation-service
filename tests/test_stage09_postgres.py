@@ -275,3 +275,55 @@ def test_real_db_max_attempts_expired_lease_becomes_poison_terminal(isolated_sta
         finally:
             await db.close()
     asyncio.run(exercise())
+
+
+def test_real_worker_success_persists_one_review_only_result_without_open_sessions(
+    isolated_stage09_schema,
+):
+    async def exercise():
+        db = PsqlDbContext()
+        try:
+            org, eval_id, job_id = await seed(db)
+            service = EvaluationWorkerService(
+                EvaluationJobRepository(db), EvaluationRepository(db),
+            )
+            calls = []
+            async def synthetic_approved_executor(ctx):
+                assert ctx.organization_id == org and ctx.evaluation_id == eval_id
+                # Inference runs strictly OUTSIDE all SQL transactions.
+                assert db._engine.sync_engine.pool.checkedout() == 0
+                await asyncio.sleep(0.03)
+                assert db._engine.sync_engine.pool.checkedout() == 0
+                calls.append(ctx.job_id)
+                return fixture_result(ctx)
+
+            outcome = await service.process_once_async(
+                organization_id=org, worker_id="worker-safe",
+                policy=config(), executor=synthetic_approved_executor,
+            )
+            assert outcome == "completed_review"
+            assert calls == [job_id]
+            assert await service.process_once_async(
+                organization_id=org, worker_id="worker-next",
+                policy=config(), executor=synthetic_approved_executor,
+            ) == "idle"
+            assert calls == [job_id]
+            async with db.session() as session:
+                evaluation = await session.get(Evaluation, eval_id)
+                job = await session.get(EvaluationJob, job_id)
+                assert evaluation.status == "needs_human_review"
+                assert evaluation.overall_score is None
+                assert job.status == "completed"
+                assert (await session.scalar(select(func.count()).select_from(
+                    CriterionResult
+                ).where(CriterionResult.evaluation_id == eval_id))) == 1
+                assert (await session.scalar(select(func.count()).select_from(
+                    AuditEvent
+                ).where(
+                    AuditEvent.resource_id == eval_id,
+                    AuditEvent.action_code == "EVALUATION_COMPLETED",
+                ))) == 1
+            assert db._engine.sync_engine.pool.checkedout() == 0
+        finally:
+            await db.close()
+    asyncio.run(exercise())
