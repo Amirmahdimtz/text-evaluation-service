@@ -336,8 +336,7 @@ def test_stage10_http_validation_rate_limits_backpressure_and_disabled_security(
                 assert oversized.status_code == 413, oversized.text
                 assert "REQUEST_TOO_LARGE" in oversized.text
                 bad_media = await client.post(
-                    route + "/evaluations", headers=headers(auth),
-                    content=b"<xml/>",
+                    route + "/evaluations", content=b"<xml/>",
                     headers={**headers(auth), "Content-Type": "application/xml"},
                 )
                 assert bad_media.status_code == 415
