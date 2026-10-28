@@ -65,6 +65,6 @@ class EncryptedContentService:
     def _aad(org: str, owner: str, resource_id: UUID, kind: str) -> bytes:
         if (not isinstance(org, str) or not org or not isinstance(owner, str)
                 or not owner or not isinstance(resource_id, UUID)
-                or kind not in ("original", "feedback")):
+                or kind not in ("original", "feedback", "criterion")):
             raise ValueError("ENCRYPTION_SCOPE_INVALID")
         return (f"tes:v1:{kind}:{org}:{owner}:{resource_id}").encode("utf-8")
