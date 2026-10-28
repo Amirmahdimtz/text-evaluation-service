@@ -32,3 +32,9 @@ Independently validate JSON schema, evidence quote exactly matching original Uni
 **Numeric thresholds** `OD-14`, corpus rights `OD-08/13`, workload `OD-12`, evidence rules `OD-11`, and rubric/scoring policies `OD-03/04/09` remain `OPEN`; do not invent acceptable values. Golden dataset/model execution IDs `S11-AI-01..10`, `S08-S11-01..05` remain `PENDING_SERVER`.
 
 **Model selection:** `BLOCKED / NO_MODEL_SELECTED`. Final selection requires side-by-side real evidence, legal/security reviews and organization-approved thresholds. Stage12 commercial acceptance is separate.
+
+## Preliminary real-model connectivity signal — synthetic one-shot, 2026-10-28
+
+One operator-reported live Simorgh request using source commit `0ba42a2` completed with HTTP 200, `finish_reason=stop`, and an exactly valid **one-field synthetic JSON-schema** completion. This indicates limited structured-output feasibility for the **currently advertised model** only. The served model ID is deliberately redacted and not linked to a pinned weights/tokenizer revision, approved license, or model comparison. The payload was not a `CriterionInference` object and had **no rubric, evidence offsets, groundedness or quality reference label**. Consequently the result is `PASS_AUXILIARY_SYNTHETIC_SMOKE`, **not** an AI-quality metric, nor evidence of compatibility with all JSON Schema constraints.
+
+The required 2-model, 3-domain golden benchmark with expert adjudication, MAE, supported claims, abstention, fairness and confidence intervals remains `NOT_MEASURED` / `PENDING_SERVER`. **Do not update numerical quality thresholds or select a model from this observation**. The one-shot permission has been consumed; real benchmark requires independent owner approval, licensed artifacts and gold data. [Recorded evidence](09_stage11_single_inference_smoke.md).

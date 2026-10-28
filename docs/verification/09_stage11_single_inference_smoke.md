@@ -1,6 +1,6 @@
 # Stage 11 — One-Shot Synthetic Structured-Output Inference Smoke
 
-**Status:** `READY_FOR_OPERATOR_RUN / NOT_EXECUTED_ON_SIMORGH` (2026-10-28); Stage 11 overall `BLOCKED`; 56 organizational acceptance tests still `PENDING_SERVER`.
+**Status:** `PASS_USER_REPORTED_SINGLE_SYNTHETIC_STRUCTURED_SMOKE / ENTERPRISE_GATE_BLOCKED` (2026-10-28); Stage 11 overall `BLOCKED`; 56 organizational acceptance tests still `PENDING_SERVER`.
 
 ## Explicitly permitted scope
 
@@ -30,3 +30,30 @@ Review the dry-run/test results before sending the one request. The script does 
 - This tool does not test actual production Provider DTO schema, rubric evaluation, no-egress, isolated enterprise IAM/KMS, real dataset quality, GPU capacity, latency percentile, concurrency or E2E. No Stage11 organization-required test ID is complete merely because this probe passes. Existing 56 deferred acceptance test IDs remain `PENDING_SERVER`, Stage11 `BLOCKED`, and Stage12 `NOT_STARTED` until each approved gate has verified evidence.
 
 Evidence classification: prior Simorgh 13 host inventory tests and 30 container-metadata tests are distinct offline/metadata results; the 35 new synthetic smoke tool tests and dry-run are executable off-host without any actual inference. Actual Simorgh one-shot result must be entered here only after an operator supplies sanitized output; do not record `PASS` in advance.
+
+## Simorgh: one-shot real synthetic inference evidence — 2026-10-28
+
+**Observed status:** `PASS_USER_REPORTED_SINGLE_SYNTHETIC_STRUCTURED_SMOKE`. This replaces the previous **not yet executed** state only for the **one approved, auxiliary smoke**. The overall Stage11 enterprise gate remains `BLOCKED`.
+
+The operator supplied a terminal transcript showing fast-forward to git commit `0ba42a29fbbfd9ae2faf1916c593207558cc500d`. `tests/test_stage11_synthetic_inference_smoke.py` completed **35 passed in 0.08s** on Simorgh; `--dry-run` returned `DRY_RUN_NO_REQUESTS`. Exactly one permitted host-local smoke script invocation was then reported. The sanitized result was:
+
+| Observed field | Operator-reported value |
+|---|---|
+| `schema_version` | `stage11-single-synthetic-inference-v1` |
+| `status` | `PASS_SYNTHETIC_STRUCTURED_SMOKE` |
+| `http_status` | `200` |
+| `schema_valid` | `true` (the exact synthetic acknowledgement object) |
+| `finish_reason` | `stop` |
+| `elapsed_ms` | `149` (single POST timing; excludes the GET and isn't an SLO percentile) |
+| `usage_tokens.prompt_tokens` | `70` |
+| `usage_tokens.completion_tokens` | `10` |
+| `usage_tokens.total_tokens` | `80` |
+| `private_model_id_logged` / `model_output_logged` | `false` / `false` in client-side summary |
+| `requests_limit` | `metadata_get=1; inference_post=1; retries=0` (script configuration; not an independent server trace) |
+| `enterprise_stage11_gate` | `BLOCKED` |
+
+The probe uses a fixed **synthetic Persian** prompt and tiny strict `ack` JSON schema, not the real `CriterionInference` rubric/evidence schema; no scoring, official model-quality baseline, precise model weights or separate independent server-side logging/no-egress attestation. This is useful narrow evidence that one OpenAI-compatible structured output request completed successfully, **not an end-to-end application execution**. The model ID remains redacted; the serving alias has not been tied to immutable model/tokenizer/image hashes or independently verified as the named Docker process. No confidential content was submitted by this tool.
+
+**Authorization limit:** the approved single generation request has now been consumed. Do not rerun the command, increase token count, send a new prompt, perform benchmarks or load testing without newly scoped permission. Preserve sensitive internal manifests only in approved private evidence storage.
+
+**Acceptance ledger:** the one auxiliary smoke is a passed observation **outside the original 56 test IDs**. All 56 mandatory enterprise acceptance IDs remain `PENDING_SERVER` because each original test has a broader oracle. Stage 11 `BLOCKED`; Stage 12 `NOT_STARTED`.

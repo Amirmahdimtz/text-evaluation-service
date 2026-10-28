@@ -107,3 +107,9 @@ Record source test ID, immutable run ID, UTC timestamp, named authorized owner, 
 ## Ledger integrity check
 
 At Stage 11 initiation, a source-to-document static consistency check counted **56 unique IDs**: 12 + 10 + 5 + 4 + 6 + 6 + 6 + 7. This is **documentation verification only**, no live infrastructure test.
+
+## Additional auxiliary evidence — first actual synthetic generation, 2026-10-28
+
+A **separate auxiliary pre-acceptance** one-shot structured-output probe succeeded on Simorgh, according to operator-provided terminal evidence: reviewed source `0ba42a2`, HTTP `200`, `schema_valid=true`, `finish_reason=stop`, single POST observed 149ms, 70 prompt and 10 completion tokens, with **35 local smoke-tool tests passed**. [Full redacted report](09_stage11_single_inference_smoke.md).
+
+This **does not change the original 56-test ledger** or establish a `PASS` on `S07-S11-01` or `S11-AI-01..10`; the original items require model revision, real criterion rubric contract, quality evidence, provenance and broader enterprise tests. All 56 maintain their original `PENDING_SERVER` status, not `PASSED`. The one-generation permission was consumed; no additional inference under that authorization. This independent auxiliary evidence is not an invented source test ID or an organization signoff.
