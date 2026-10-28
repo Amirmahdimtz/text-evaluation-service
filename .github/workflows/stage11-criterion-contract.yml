@@ -31,5 +31,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check --only-binary=:all: -r requirements-dev.txt
       - name: Verify application criterion schema and HTTP safety with synthetic mocks only
         run: python -m pytest -q -p no:cacheprovider tests/test_stage11_criterion_contract_smoke.py tests/test_stage11_synthetic_inference_smoke.py
-      - name: Dry-run only (never send actual inference in CI)
-        run: python scripts/verification/stage11_criterion_contract_smoke.py > /dev/null
+      - name: Verify direct script-path CLI in isolated mode (no network)
+        run: python -I -B scripts/verification/stage11_criterion_contract_smoke.py > /dev/null
+      - name: Verify module-mode CLI (no network)
+        run: python -B -m scripts.verification.stage11_criterion_contract_smoke > /dev/null

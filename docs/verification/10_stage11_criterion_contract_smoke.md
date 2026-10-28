@@ -26,6 +26,10 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
   tests/test_stage11_synthetic_inference_smoke.py
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
   scripts/verification/stage11_criterion_contract_smoke.py
+
+# Equivalent module entry point (also network-free by default):
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m \
+  scripts.verification.stage11_criterion_contract_smoke
 ```
 
 **Only after a separate explicitly scoped approval** to send one **additional** synthetic, low-load inference to the existing approved internal endpoint:
@@ -45,3 +49,11 @@ Run **once**; do not repeat after failure, do not scale token count or paralleli
 - `DRY_RUN_NO_NETWORK`: local safety success, **not** live-model evidence.
 
 **Gate:** 56 mandatory Stage11 tests still `PENDING_SERVER` until their specific real evidence is verified. Security No-Egress, expert-labeled three-domain model comparison, SSO/KMS, authentic enterprise E2E and RPO/RTO remain unknown; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`. Do not promote to Production.
+
+## Simorgh CLI import regression and resolution — 2026-10-28
+
+- User-reported Simorgh checkout successfully fast-forwarded to commit `20233d1`; 70 unit/contract tests passed in **0.24s**. The *direct file-path* dry-run then failed before making any network request with `ModuleNotFoundError: No module named 'scripts'`. This **does not represent an inference/model failure**, and no additional server request was sent.
+- Root cause: direct Python execution places `scripts/verification` rather than the repository root on `sys.path`; the smoke entry point uses absolute `scripts.verification.*` and `src.*` imports. Pytest supplies the repository root so it did not expose this issue.
+- Fix: bootstrap only the trusted repository root for **direct script entry**, preserving existing absolute imports and production code. The module entry point `python -m scripts.verification.stage11_criterion_contract_smoke` is also supported. Two subprocess regression tests exercise both invocation forms, including the direct script using isolated Python (`-I -B`) without ambient Python paths.
+- Fix verification on the assistant-host environment: **72 passed in 2.47s** for the existing/new suites; direct and module dry-runs returned `DRY_RUN_NO_NETWORK` with no credentials, HTTP request, model loading or GPU work. **User-server retest of the fixed direct CLI is pending; no new enterprise test was marked PASS.**
+- The earlier single live synthetic response remains valid auxiliary evidence, but its scope was consumed. Running with `--execute-approved` still requires **new explicit operator/organizational authorization**. Stage 11 `BLOCKED`, 56 mandatory tests `PENDING_SERVER`, Stage 12 `NOT_STARTED`.

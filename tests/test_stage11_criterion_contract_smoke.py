@@ -204,3 +204,42 @@ def test_reject_non_assistant_or_refusal_or_tool_calls(field,value):
     envelope["choices"][0]["message"][field]=value
     with pytest.raises(ValueError):
         _validated_completion(envelope,_MODEL)
+
+
+def test_direct_cli_dry_run_in_isolated_python_without_pythonpath():
+    """Regression for the real Simorgh script-path ModuleNotFoundError."""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "verification" / "stage11_criterion_contract_smoke.py"
+    result = subprocess.run(
+        [sys.executable, "-I", "-B", str(script)],
+        cwd=root, capture_output=True, text=True, timeout=15, check=False,
+    )
+    assert result.returncode == 0
+    assert not result.stderr
+    data = json.loads(result.stdout)
+    assert data["status"] == "DRY_RUN_NO_NETWORK"
+    assert data["stage11_gate"] == "BLOCKED"
+
+
+def test_module_cli_dry_run_without_pythonpath():
+    """The alternate -m entrypoint also stays network-free by default."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.pop("PYTHONPATH", None)
+    result = subprocess.run(
+        [sys.executable, "-B", "-m", "scripts.verification.stage11_criterion_contract_smoke"],
+        cwd=root, env=env, capture_output=True, text=True, timeout=15, check=False,
+    )
+    assert result.returncode == 0
+    assert not result.stderr
+    assert json.loads(result.stdout)["status"] == "DRY_RUN_NO_NETWORK"
+

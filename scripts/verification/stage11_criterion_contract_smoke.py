@@ -10,7 +10,13 @@ import http.client
 import json
 import sys
 import time
+from pathlib import Path
 from typing import Any
+
+# A direct script invocation adds only scripts/verification to sys.path.
+# Keep the documented CLI compatible with both path and -m invocations.
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from pydantic import ValidationError
 
