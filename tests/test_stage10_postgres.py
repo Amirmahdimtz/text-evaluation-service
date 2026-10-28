@@ -357,6 +357,12 @@ def test_stage10_http_validation_rate_limits_backpressure_and_disabled_security(
                     headers={**headers(auth), "Content-Type": "application/xml"},
                 )
                 assert bad_media.status_code == 415
+                ambiguous = await client.post(
+                    route + "/evaluations",
+                    content=b'{"text":"safe","text":"override"}',
+                    headers={**headers(auth), "Content-Type": "application/json"},
+                )
+                assert ambiguous.status_code == 422
                 invalid = await client.post(
                     route + "/evaluations",
                     headers=headers(auth, key="invalid"),
