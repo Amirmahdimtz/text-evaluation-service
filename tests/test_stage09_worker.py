@@ -19,6 +19,7 @@ from src.infrastructure.repositories.text_evaluation.evaluation_repository impor
 from src.infrastructure.di.bootstrap import bootstrap_di
 from src.infrastructure.di.inject import resolve
 from src.host.evaluation_worker import _load_worker_policy, main
+from src.infrastructure.providers.llm.local_llm_provider import LlmProviderError
 
 
 def policy(**updates):
@@ -254,3 +255,51 @@ def test_cooperative_shutdown_drains_inflight_and_caps_concurrency():
     asyncio.run(run())
     assert 1 <= peak[0] <= 2
     assert all(item["overall_score"] is None for item in ev.finished)
+
+
+def test_unknown_model_error_is_terminal_but_known_transient_is_retryable():
+    jobs, ev = FakeJobs(), FakeEvaluations()
+    async def transient(_):
+        raise LlmProviderError("LLM_RETRY_EXHAUSTED")
+    assert run_once(jobs, ev, transient) == "retry_scheduled"
+    assert jobs.failed[0]["error_code"] == "INFERENCE_TRANSIENT"
+
+    poisoned_jobs, poisoned_evaluations = FakeJobs(), FakeEvaluations()
+    async def invalid(_):
+        raise LlmProviderError("LLM_SCHEMA_REJECTED")
+    assert run_once(poisoned_jobs, poisoned_evaluations, invalid) == "terminal"
+    assert poisoned_jobs.failed[0]["error_code"] == "INFERENCE_INVALID"
+
+
+def test_database_claim_outage_never_runs_executor_or_logs_original_error():
+    jobs, ev = FakeJobs(), FakeEvaluations()
+    async def unavailable(**_):
+        raise ConnectionError("SYNTHETIC_SECRET_CONNECTION_DIAGNOSTICS")
+    jobs.claim_next_async = unavailable
+    service = EvaluationWorkerService(jobs, ev)
+    async def execute():
+        async def never(_):
+            pytest.fail("No inference can run without the DB claim")
+        assert await service.process_once_async(
+            organization_id="synthetic-org", worker_id="safe-worker",
+            policy=policy(), executor=never,
+        ) == "claim_unavailable"
+        assert service.last_error_code == "WORKER_DATABASE_UNAVAILABLE"
+    asyncio.run(execute())
+
+
+def test_database_heartbeat_exception_revokes_untrusted_inflight_result():
+    jobs, ev = FakeJobs(), FakeEvaluations()
+    async def database_down(**_):
+        raise ConnectionError("SYNTHETIC_DB_DETAILS")
+    jobs.heartbeat_async = database_down
+    cancelled = []
+    async def slow(ctx):
+        try:
+            await asyncio.sleep(0.5)
+        finally:
+            cancelled.append(True)
+    assert run_once(jobs, ev, slow, policy(
+        heartbeat_seconds=0.02, execution_timeout_seconds=0.2,
+    )) == "lost_lease"
+    assert cancelled and not ev.finished
