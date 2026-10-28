@@ -225,6 +225,20 @@ class LocalLlmProvider:
             "revision_verified": "false",
         }
 
+    def declared_configuration(self) -> dict[str, object]:
+        """Effective non-secret configuration; not evidence of model artifact revision."""
+        settings, _ = self._validated()
+        return {
+            "model_id": settings.model_id,
+            "model_revision": settings.model_revision,
+            "revision_verified": False,
+            "temperature": settings.temperature,
+            "thinking_mode": settings.thinking_mode,
+            "max_output_tokens": settings.max_output_tokens,
+            "max_context_tokens": settings.max_context_tokens,
+            "contract_version": settings.contract_version,
+        }
+
     async def evaluate_async(
         self, *, source_text: str, criterion_code: str,
         instructions: str, rubric_checksum: str,
