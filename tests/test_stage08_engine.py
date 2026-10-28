@@ -50,6 +50,7 @@ class SyntheticProvider:
             "model_id": "synthetic-local-provider",
             "model_revision": "synthetic-pinned-rev",
             "revision_verified": False,
+            "max_input_characters": 2048,
             "temperature": 0,
             "thinking_mode": "runtime_default",
         }
@@ -268,4 +269,11 @@ def test_stage08_bindings_are_locked_to_checksum_and_domain():
             original_text=ORIGINAL, rubric=corrupted, chunk_char_limit=256,
             max_inference_characters=2048,
         ))
+    assert provider.calls == []
+
+
+def test_stage08_prevents_engine_limit_bypass_of_provider_limits():
+    provider = SyntheticProvider()
+    with pytest.raises(ValueError, match="ENGINE_PROVIDER_LIMIT_MISMATCH"):
+        evaluate(provider, max_input=4096)
     assert provider.calls == []

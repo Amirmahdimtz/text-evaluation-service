@@ -236,6 +236,7 @@ class LocalLlmProvider:
             "thinking_mode": settings.thinking_mode,
             "max_output_tokens": settings.max_output_tokens,
             "max_context_tokens": settings.max_context_tokens,
+            "max_input_characters": settings.max_input_characters,
             "contract_version": settings.contract_version,
         }
 

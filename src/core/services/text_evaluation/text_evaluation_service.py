@@ -79,6 +79,11 @@ class TextEvaluationService:
                 or not provenance.get("model_revision")
                 or provenance.get("revision_verified") is not False):
             raise ValueError("ENGINE_MODEL_PROVENANCE_INVALID")
+        provider_limit = provenance.get("max_input_characters")
+        if (type(provider_limit) is not int
+                or not 32 <= provider_limit <= 2_000_000
+                or max_inference_characters > provider_limit):
+            raise ValueError("ENGINE_PROVIDER_LIMIT_MISMATCH")
         criteria: list[CriterionAssessment] = []
         # A chunk-by-chunk average is NOT a valid document-level assessment.
         # Without approved hierarchical synthesis and real tokenizer evidence,
