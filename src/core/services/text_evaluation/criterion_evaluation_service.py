@@ -104,3 +104,78 @@ class CriterionEvaluationService:
             ),
             quality_flags=("SEMANTIC_REVIEW_REQUIRED",),
         )
+
+    async def evaluate_document_chunks_async(
+        self, *, criterion: RubricCriterion, original_text: str,
+        chunks: tuple, rubric_checksum: str, max_input_characters: int,
+    ) -> CriterionAssessment:
+        """Two-pass evidence synthesis with exact global offsets and explicit review.
+
+        Chunk-local judgments cannot certify global logical coherence. No
+        averaging, silent truncation, or unverified cross-chunk evidence.
+        """
+        code = criterion.criterion_code
+        if code == "research_novelty":
+            return abstain(code, "UNVERIFIED_SOURCE")
+        if len(chunks) > 32:
+            return abstain(code, "DOCUMENT_CHUNK_COUNT_LIMIT")
+        # A summary from a selection of passages cannot prove whole-document
+        # structure or reasoning. Fail closed until reviewed synthesis policy.
+        if any(code.endswith(suffix) for suffix in (
+            "_coherence", "_structure", "_reasoning",
+        )):
+            return abstain(code, "DOCUMENT_GLOBAL_CONTEXT_UNVERIFIED")
+        snippets: list[tuple[str, int]] = []
+        for chunk in chunks:
+            part = await self.evaluate_criterion_async(
+                criterion=criterion, original_text=chunk.text,
+                rubric_checksum=rubric_checksum,
+            )
+            if part.status != "assessed" or not part.evidence:
+                return abstain(code, "DOCUMENT_CHUNK_EVIDENCE_MISSING")
+            quote, start, end = part.evidence[0]
+            global_start = chunk.start_offset + start
+            global_end = chunk.start_offset + end
+            if original_text[global_start:global_end] != quote:
+                return abstain(code, "DOCUMENT_OFFSET_MISMATCH")
+            snippets.append((quote, global_start))
+
+        packed: list[str] = []
+        locations: list[int | None] = []
+        for index, (quote, start) in enumerate(snippets):
+            if index:
+                label = "\n[Next ordered document section]\n"
+                packed.append(label)
+                locations.extend([None] * len(label))
+            packed.append(quote)
+            locations.extend(range(start, start + len(quote)))
+        text_packet = "".join(packed)
+        if not text_packet or len(text_packet) > max_input_characters:
+            return abstain(code, "DOCUMENT_SYNTHESIS_BUDGET_EXCEEDED")
+        combined = await self.evaluate_criterion_async(
+            criterion=criterion, original_text=text_packet,
+            rubric_checksum=rubric_checksum,
+        )
+        if combined.status != "assessed":
+            return abstain(code, "DOCUMENT_SYNTHESIS_UNCERTAIN")
+        mapped: list[tuple[str, int, int]] = []
+        for quote, start, end in combined.evidence:
+            segment = locations[start:end]
+            if (not segment or any(pos is None for pos in segment)
+                    or any(segment[i + 1] != segment[i] + 1
+                           for i in range(len(segment) - 1))):
+                return abstain(code, "DOCUMENT_SYNTHESIS_EVIDENCE_INVALID")
+            original_start = segment[0]
+            original_end = segment[-1] + 1
+            if original_text[original_start:original_end] != quote:
+                return abstain(code, "DOCUMENT_SYNTHESIS_EVIDENCE_INVALID")
+            mapped.append((quote, original_start, original_end))
+        # Semantic validity and unselected document spans remain unverified;
+        # the result is provisional and MUST get human review.
+        return CriterionAssessment(
+            criterion_code=code, status="assessed", score=combined.score,
+            reason=combined.reason, reason_code=None,
+            strengths=combined.strengths, weaknesses=combined.weaknesses,
+            recommendations=combined.recommendations, evidence=tuple(mapped),
+            quality_flags=("DOCUMENT_SYNTHESIS_UNVERIFIED", "SEMANTIC_REVIEW_REQUIRED"),
+        )
