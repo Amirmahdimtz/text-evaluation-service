@@ -17,7 +17,7 @@
 
 **Approval conditions:** A user's request to start Stage11 authorizes planning, not unbounded privileged execution, moving proprietary artifacts, exposing confidential data, altering shared containers/network/secrets, applying migrations to organizational DB, downloading models or starting GPU load. Do not request credentials in chat or store them in GitHub.
 
-**First permitted next action:** receive approved **nonsecret** staging readiness metadata and role/approval references. A bounded, no-network/no-Docker [host-local read-only inventory script](07_stage11_readonly_preflight.md) has been prepared and tested off-host; a permitted operator may run it on Simorgh and share only a sanitized summary. No Simorgh run has yet been observed by the assistant. If mandatory approvals remain absent, retain `BLOCKED`. All 56 tests remain `PENDING_SERVER`.
+**First permitted next action:** receive approved **nonsecret** staging readiness metadata and role/approval references. The [host-only inventory](07_stage11_readonly_preflight.md) was actually run by the operator on Simorgh (13 offline safety tests passed; one RTX3090 observed); that snapshot did **not** validate inference capacity. The new bounded [read-only container/package-and-loopback metadata probe](08_stage11_container_metadata.md) is tested only off-host and can be used by an appropriately authorized local operator with scoped Docker metadata/exec and optional loopback model-list permission. Do **not** use it without authorization or treat this as a full security/runtime acceptance test. If mandatory approvals remain absent, retain `BLOCKED`. All 56 enterprise tests remain `PENDING_SERVER`.
 
 ## Decision/Progress policy
 

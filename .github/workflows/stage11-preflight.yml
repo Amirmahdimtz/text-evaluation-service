@@ -6,6 +6,8 @@ on:
     paths:
       - "scripts/verification/stage11_readonly_preflight.py"
       - "tests/test_stage11_readonly_preflight.py"
+      - "scripts/verification/stage11_container_metadata.py"
+      - "tests/test_stage11_container_metadata.py"
       - ".github/workflows/stage11-preflight.yml"
   workflow_dispatch:
 
@@ -28,8 +30,12 @@ jobs:
       - name: Run synthetic-only safety tests (not Simorgh GPU tests)
         env:
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python -m pytest -q -p no:cacheprovider tests/test_stage11_readonly_preflight.py
+        run: python -m pytest -q -p no:cacheprovider tests/test_stage11_readonly_preflight.py tests/test_stage11_container_metadata.py
       - name: Offline import/CLI sanity without querying GPU
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python scripts/verification/stage11_readonly_preflight.py --no-gpu > /dev/null
+      - name: Offline container script dry-run (no Docker, no network)
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python scripts/verification/stage11_container_metadata.py --container synthetic-vllm > /dev/null
