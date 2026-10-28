@@ -305,3 +305,43 @@ def test_unavailable_model_and_input_too_long_and_max_token_guard():
         with pytest.raises(LlmProviderError, match="^LLM_CONFIG_INVALID$"):
             await invoke(provider2)
     asyncio.run(run2())
+
+
+def test_oversized_response_rejected_incrementally_without_full_buffer():
+    chunks = [b"x" * 32768, b"y" * 32768, b"z" * 32768]
+    provider = make_provider(lambda _: httpx.Response(
+        200, stream=httpx.ByteStream(b"".join(chunks)),
+    ), overrides={"max_output_tokens": 100})
+    async def run():
+        with pytest.raises(LlmProviderError, match="^LLM_RESPONSE_TOO_LARGE$"):
+            await invoke(provider)
+        await provider.aclose()
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("content", [
+    b'{"model":"approved-local-model","model":"wrong","choices":[]}',
+    b'{"model":"approved-local-model","choices":[],"extra":NaN}',
+    b'not json',
+])
+def test_ambiguous_or_invalid_http_json_envelope_rejected_without_leak(content):
+    provider = make_provider(lambda _: httpx.Response(200, content=content))
+    async def run():
+        with pytest.raises(LlmProviderError, match="^LLM_INVALID_RESPONSE$"):
+            await invoke(provider)
+        await provider.aclose()
+    asyncio.run(run())
+
+
+def test_no_redirect_or_env_proxy_honored(monkeypatch):
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:1080")
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:1080")
+    calls = []
+    provider = make_provider(lambda req: calls.append(req) or answer())
+    async def run():
+        assert (await invoke(provider)).score == 4
+        assert provider._client._trust_env is False
+        assert provider._client.follow_redirects is False
+        await provider.aclose()
+    asyncio.run(run())
+    assert len(calls) == 1
