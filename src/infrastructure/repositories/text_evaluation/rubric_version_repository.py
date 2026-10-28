@@ -128,3 +128,17 @@ class RubricVersionRepository(BaseRepository[RubricVersion]):
                     resource_id=row.id, correlation_id=correlation_id,
                 ))
         return rubric_id
+
+    async def list_published_async(
+        self, *, organization_id: str, limit: int = 100,
+    ) -> tuple[RubricVersion, ...]:
+        """Only tenant-scoped published candidates; never leak draft versions."""
+        self._scope(organization_id)
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise ValueError("RUBRIC_LIMIT_INVALID")
+        async with self._db.session() as session:
+            rows = await session.scalars(select(RubricVersion).where(
+                RubricVersion.organization_id == organization_id,
+                RubricVersion.status == "published",
+            ).order_by(RubricVersion.code, RubricVersion.version).limit(limit))
+            return tuple(rows.all())
