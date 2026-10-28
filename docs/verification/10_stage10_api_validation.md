@@ -36,16 +36,16 @@ The four Stage10 routes are auto-discovered under `/api/v1/text_evaluation` thro
 
 ## Executed acceptance tests
 
-Source commit proven by the latest successful GitHub Actions Stage10 run is appended after the final code/test gate. Previous real successful [Stage10 CI 40656268346](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40656268346), on SHA `a2da5f03e093003782412b23f9376ea2aca5fd43`, performed on Ubuntu 24.04, Python 3.12, isolated PostgreSQL 17 and synthetic, locally generated keys/token/requests:
+The authoritative **final successful**, source-tested Stage10 run is [GitHub Actions 40656653349](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40656653349), on SHA `24ced033c4deac0f117779ed12f4c1875349a98d`, **completed/success**, Python 3.12 and ephemeral PostgreSQL 17. An earlier successful [Stage10 CI 40656268346](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40656268346), on SHA `a2da5f03e093003782412b23f9376ea2aca5fd43`, performed on Ubuntu 24.04, Python 3.12, isolated PostgreSQL 17 and synthetic, locally generated keys/token/requests:
 
 | Real check | Observed result |
 |---|---|
-| Strict signed-token Auth/crypto/OpenAPI/DTO tests | **9 passed**, with one test-only HMAC-key-size warning subsequently corrected |
-| End-to-end signed HTTP → encrypted DB/Job → actual Stage09 Worker with synthetic executor → private report → assigned reviewer encrypted feedback | **2 passed** on real isolated PostgreSQL |
+| Strict signed-token Auth/crypto/OpenAPI/DTO tests | **9 passed in 0.72s, no warnings** (short synthetic HS256 forgery fixture corrected) |
+| End-to-end signed HTTP → encrypted DB/Job → actual Stage09 Worker with synthetic executor → private report → assigned reviewer encrypted feedback | **2 passed in 0.91s** on real isolated PostgreSQL |
 | Stage09 synthetic Worker regression | 21 passed |
 | Stage05 Schema / Stage06 candidate Rubric validation | 13 / 20 passed |
 | Stage05 / Stage06 / Stage09 isolated PG regression | 4 / 3 / 5 passed |
-| Full Python suite (includes the previous 9 + 2 + all earlier tests) | **240 passed** |
+| Full Python suite (includes the previous 9 + 2 + all earlier tests) | **240 passed in 3.28s, no warnings** |
 | Stage03 and Stage02 standalone unittest | 38 and 12 PASS |
 | Isolated Alembic upgrade and SQLAlchemy metadata drift | PASS |
 | Stage04 static security guard | PASS (38 runtime sources) |
@@ -80,3 +80,11 @@ git pull --ff-only origin main
 ```
 
 **Safety:** Use only approved package index/provenance; the installation contacts a package source and must be locally approved. Test modules above do not connect to the protected company database or GPU, do not decrypt real text and do not start a production API.
+
+## Final authenticated Stage10 source test attestation
+
+- **Source-tested commit:** `24ced033c4deac0f117779ed12f4c1875349a98d`. GitHub Actions [40656653349](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40656653349): `completed / success`.
+- **Actual logs:** Stage05 schema `13 passed in 0.22s`; Stage10 Auth/Crypto/DTO `9 passed in 0.72s`; Stage09 service `21 passed in 0.64s`; Stage06 candidate schema `20 passed in 0.54s`; Stage06 DB `3 passed in 0.47s`; Stage09 DB `5 passed in 0.75s`; Stage10 HTTP+PG E2E `2 passed in 0.91s`; Stage05 DB `4 passed in 0.46s`; **full suite `240 passed in 3.28s`** with no warnings; Stage03 38 unittest and Stage02 12 unittest PASS; Migration Upgrade/Drift PASS; Stage04 safety guard 38 files PASS; `pip check` PASS; **Python OSV `No known vulnerabilities found`** in checked metadata.
+- The earlier warning was solely a short **synthetic test-only** HS256 forgery key used to test that RS256-only verifier rejects a disallowed algorithm. It was corrected in the final source-tested commit; the final GitHub Actions results have zero warnings. No production HMAC signing is accepted by the verifier.
+- Every HTTP/PG E2E invocation used self-generated synthetic RSA keys/AEAD secret and text, real isolated PostgreSQL, and the actual Stage09 Worker with injected **synthetic** executor. This does **not** demonstrate a real approved LLM, protected KMS, SSO, inference network or production authorization.
+- Stage10 `DONE_LOCAL` is restricted to the listed technical local gates. Stage11 `NOT_STARTED` and its seven enterprise gates remain `PENDING_SERVER`, and Stage12 commercial approval is not granted.

@@ -21,7 +21,7 @@ The API returns only approved sanitized `error_code` and opaque correlation ID. 
 
 ## Current local evidence and commands
 
-[Stage10 GitHub Actions initial fully successful run 40656268346](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40656268346): 9 focused auth/crypto tests, 2 real isolated PostgreSQL signed HTTP/Worker-stub E2E, 240 full pytest tests, clean Python OSV audit after dependency pin upgrades. The final post-warning run is recorded separately after verification.
+[Stage10 GitHub Actions final successful run 40656653349](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40656653349), source SHA `24ced033c4deac0f117779ed12f4c1875349a98d`: 9/9 focused Auth/Crypto tests, 2/2 real isolated PostgreSQL signed HTTP → actual Worker using synthetic executor → authorized report/feedback E2E, 240/240 full pytest tests, 38 Stage03 + 12 Stage02 unittest, Alembic drift, `pip check`, and clean Python OSV after dependency upgrades. No warnings. No live model or enterprise services were tested.
 
 For user-local safe tests:
 
