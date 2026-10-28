@@ -59,3 +59,19 @@ No company-controlled Postgres, secrets, GPUs, Docker, vLLM or production servic
 The command above does not run PostgreSQL integration and has not been executed on Simorgh by the assistant. Real isolated PostgreSQL tests were already actually executed and passed in GitHub Actions run 40651492153, with no need to touch the shared Simorgh server.
 
 Status: DONE_LOCAL only. Stage10: NOT_STARTED.
+
+## Independent Simorgh Stage09 verification — 2026-10-28
+
+**Evidence source:** operator-provided Simorgh terminal transcript, `/srv/projects/text-evaluation-service`. `git pull --ff-only origin main` completed a clean fast-forward from `272bfe7` to `63ed502`; no uncommitted patch or database operation was reported.
+
+| Command | Actual operator output | Classification |
+|---|---|---|
+| `.venv/bin/python -m pip check` | `No broken requirements found.` | `PASS_USER_SERVER_REPORTED_DEPENDENCY_CONSISTENCY` (not a security audit) |
+| `.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage09_worker.py` | `21 passed in 0.75s` | `PASS_USER_SERVER_REPORTED_STAGE09_OFFLINE_21_OF_21` |
+| `.venv/bin/python -m pytest -q -p no:cacheprovider tests --ignore=tests/test_stage05_postgres.py --ignore=tests/test_stage06_rubric_postgres.py --ignore=tests/test_stage09_postgres.py` | `217 passed in 2.16s` | `PASS_USER_SERVER_REPORTED_NON_DB_217_OF_217` |
+
+**Count reconciliation:** All 21 focused Stage09 tests are included in the 217-test broad offline run, not additional tests. The 12 excluded PostgreSQL integration tests (Stage05: 4, Stage06: 3, Stage09: 5) account for the difference from the **229** previously passed full-suite tests in isolated PostgreSQL 17 GitHub Actions [run 40651492153](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40651492153). This statement does not claim the 12 were re-executed on Simorgh.
+
+**Boundary:** This operator execution did not start a live Worker, access the guarded/organization PostgreSQL, perform an Alembic migration, decrypt protected text, invoke actual vLLM/GPU, or verify network No-Egress and real IAM/KMS. Stage09 local gates remain `DONE`; Stage11 security/load/enterprise tests `S09-S11-01..06` remain `PENDING_SERVER`, not `PASSED`. Stage10 remains `NOT_STARTED`.
+
+**Provenance:** These are user-executed host commands reported in the transcript; the assistant did not independently run tests on Simorgh. This entry is documentation only, without source-code, schema, secret or production changes.
