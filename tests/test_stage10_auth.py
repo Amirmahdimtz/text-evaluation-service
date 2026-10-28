@@ -99,7 +99,7 @@ def test_stage10_rs256_signature_tamper_and_expiration(signed_env):
     with pytest.raises(AuthenticationError):
         service.verify(signed_token(signed_env, permissions=["rubric:manage", "unknown:scope"]))
     with pytest.raises(AuthenticationError):
-        service.verify(jwt.encode({"sub": "forged"}, "not-an-rsa-key", algorithm="HS256"))
+        service.verify(jwt.encode({"sub": "forged"}, "synthetic-hmac-test-only-key-with-64-bytes-of-entropy-not-production", algorithm="HS256"))
 
 
 def test_stage10_authenticated_encryption_bound_to_org_owner_id_and_type(signed_env):
