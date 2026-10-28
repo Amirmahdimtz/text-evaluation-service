@@ -137,7 +137,7 @@ class LocalLlmProvider:
                     raise LlmProviderError("LLM_CIRCUIT_OPEN")
                 try:
                     limit = max(65536, settings.max_output_tokens * 48)
-                    async with client.stream(
+                    async with asyncio.timeout(settings.timeout_seconds), client.stream(
                         method, endpoint + path,
                         headers=self._headers(), json=payload,
                     ) as response:
@@ -179,7 +179,7 @@ class LocalLlmProvider:
                 except LlmProviderError as exc:
                     if str(exc) != "LLM_TRANSIENT_HTTP":
                         raise
-                except httpx.RequestError:
+                except (httpx.RequestError, asyncio.TimeoutError):
                     pass
                 except (ValueError, UnicodeError, RecursionError):
                     raise LlmProviderError("LLM_INVALID_RESPONSE") from None
@@ -202,11 +202,13 @@ class LocalLlmProvider:
         root = endpoint[:-3] if endpoint.endswith("/v1") else endpoint
         client = await self._get_client()
         try:
-            response = await client.get(root + "/health", headers=self._headers())
-            return response.status_code == 200
+            async with asyncio.timeout(self._config.timeout_seconds), client.stream(
+                "GET", root + "/health", headers=self._headers()
+            ) as response:
+                return response.status_code == 200
         except asyncio.CancelledError:
             raise
-        except httpx.RequestError:
+        except (httpx.RequestError, asyncio.TimeoutError):
             return False
 
     async def model_metadata_async(self) -> dict[str, str]:
