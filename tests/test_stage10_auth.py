@@ -62,7 +62,7 @@ def signed_token(key, **overrides):
 def test_stage10_controller_discovered_once_and_prefix_is_exact():
     bootstrap_di()
     app = create_app()
-    paths = {r.path for r in app.routes}
+    paths = {r.path for r in app.routes if hasattr(r, "path")}
     assert {
         "/api/v1/text_evaluation/evaluations",
         "/api/v1/text_evaluation/evaluations/{evaluation_id}",
