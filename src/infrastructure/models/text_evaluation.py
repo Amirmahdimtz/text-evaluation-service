@@ -19,6 +19,23 @@ def _pk():
     return mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
 
 
+class ProtectedText(Base):
+    """Encrypted original source only; the application never persists plaintext."""
+
+    __tablename__ = "protected_texts"
+    id: Mapped[UUID] = _pk()
+    organization_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    owner_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    key_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    ciphertext: Mapped[bytes] = mapped_column(BYTEA, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    __table_args__ = (
+        UniqueConstraint("id", "organization_id", "owner_id", name="uq_protected_text_scope"),
+        CheckConstraint("octet_length(ciphertext) >= 29", name="ck_protected_text_ciphertext"),
+        Index("ix_protected_text_scope", "organization_id", "owner_id", "id"),
+    )
+
+
 class RubricVersion(Base):
     __tablename__ = "rubric_versions"
     id: Mapped[UUID] = _pk()
