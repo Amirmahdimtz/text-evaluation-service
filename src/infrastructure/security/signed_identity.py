@@ -56,9 +56,7 @@ class SignedIdentityVerifier:
                     or any(type(p) is not str or p not in _ALLOWED for p in permissions)
                     or len(set(permissions)) != len(permissions)
                     or not isinstance(assigned, list) or len(assigned) > 100
-                    or any(not isinstance(v, str) or not re.fullmatch(
-                        r"[0-9a-fA-F]{8}-[0-9a-fA-F-]{28,36}", v,
-                    ) for v in assigned)):
+                    or any(not isinstance(v, str) or len(v) != 36 for v in assigned)):
                 raise AuthenticationError("AUTH_INVALID")
             try:
                 assigned = [str(UUID(item)) for item in assigned]
