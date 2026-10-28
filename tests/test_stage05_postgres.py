@@ -176,12 +176,14 @@ def test_stage05_upgrade_is_idempotent_with_existing_synthetic_data(isolated_pos
     # Existing synthetic tables/data remain; no destructive downgrade or reset.
     from alembic import command
     command.upgrade(isolated_postgres_schema, "head")
+    from alembic.script import ScriptDirectory
+    expected_head = ScriptDirectory.from_config(isolated_postgres_schema).get_current_head()
     async def check():
         ctx = PsqlDbContext()
         try:
             async with ctx.session() as session:
                 rev = await session.scalar(text("SELECT version_num FROM alembic_version"))
-                assert rev == "20261027_05"
+                assert rev == expected_head
         finally:
             await ctx.close()
     asyncio.run(check())
