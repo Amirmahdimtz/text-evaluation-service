@@ -13,6 +13,16 @@ class ApiDto(BaseModel):
 
 
 class CreateEvaluationDto(ApiDto):
+    model_config = ConfigDict(
+        extra="forbid", strict=True,
+        json_schema_extra={"examples": [{
+            "text": "Synthetic text for isolated validation only.",
+            "evaluation_type": "speech",
+            "rubric_code": "speech_quality",
+            "rubric_version": "candidate-0.1",
+            "purpose": "Synthetic contract smoke test",
+        }]},
+    )
     text: str = Field(min_length=1, max_length=2000000)
     evaluation_type: Literal["speech", "media", "research"]
     rubric_code: str = Field(min_length=2, max_length=100, pattern=r"^[a-z][a-z0-9_]*$")
@@ -72,6 +82,13 @@ class RubricResponseDto(ApiDto):
 
 
 class CreateFeedbackDto(ApiDto):
+    model_config = ConfigDict(
+        extra="forbid", strict=True,
+        json_schema_extra={"examples": [{
+            "comment": "Synthetic reviewer comment. No confidential material.",
+            "decision_code": "COMMENT",
+        }]},
+    )
     comment: str = Field(min_length=1, max_length=8192)
     decision_code: Literal["COMMENT"] = "COMMENT"
 
