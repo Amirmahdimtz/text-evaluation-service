@@ -64,7 +64,14 @@ No real source text, production key, Simorgh shared PostgreSQL, GPU or vLLM was 
 
 ## Independent Simorgh user-local tests (no DB, no real model)
 
-The user has not yet executed Stage10 tests on Simorgh. First use a trusted, approved private wheelhouse/package mirror to update the Git-ignored virtualenv with the **new pinned** `PyJWT` and `cryptography` dependencies; verify `pip check`. Then:
+On 2026-10-28, the Simorgh operator reported a successful independent Stage10 offline run on the checkout at `/srv/projects/text-evaluation-service` (branch `main`, previously fast-forwarded to `dbcf3f2`). Following a previous `ModuleNotFoundError: jwt` caused by missing dependencies, `PyJWT==2.15.1` and `cryptography==50.0.2` were installed from a third-party package mirror, and `pip check` reported `No broken requirements found`. The operator's actual terminal logs show:
+
+- `.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage10_auth.py` — **9 passed in 0.87s**.
+- `.venv/bin/python -m pytest -q -p no:cacheprovider tests --ignore=tests/test_stage05_postgres.py --ignore=tests/test_stage06_rubric_postgres.py --ignore=tests/test_stage09_postgres.py --ignore=tests/test_stage10_postgres.py` — **226 passed in 2.37s** (includes the nine focused tests; do not sum these counts).
+- **14 PostgreSQL integration tests excluded** on this host: four Stage05, three Stage06, five Stage09, two Stage10. They remain **NOT_RUN_ON_SIMORGH**, although the CI full suite including them previously passed on an isolated database. No company DB, live model, real identities, or production cryptographic keys were used by these reported tests.
+- The mirror download succeeded, but package supply-chain provenance and organizational approval of that external mirror have **not** been independently verified by the assistant. Do not infer production deployment approval from the development environment.
+
+The commands below are reference commands for re-running the checks after dependencies are available; any subsequent installation should use an organization-approved package source:
 
 ```bash
 cd /srv/projects/text-evaluation-service
