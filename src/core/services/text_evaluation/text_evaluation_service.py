@@ -89,8 +89,14 @@ class TextEvaluationService:
         # Without approved hierarchical synthesis and real tokenizer evidence,
         # fail closed rather than suppressing global context or fabricating scores.
         if len(original_text) > max_inference_characters:
-            criteria.extend(abstain(c.criterion_code, "DOCUMENT_CONTEXT_LIMIT")
-                            for c in rubric.snapshot.criteria)
+            for criterion in rubric.snapshot.criteria:
+                criteria.append(
+                    await self._criteria.evaluate_document_chunks_async(
+                        criterion=criterion, original_text=original_text,
+                        chunks=prepared.chunks, rubric_checksum=rubric.checksum,
+                        max_input_characters=max_inference_characters,
+                    )
+                )
         else:
             for criterion in rubric.snapshot.criteria:
                 criteria.append(await self._criteria.evaluate_criterion_async(
