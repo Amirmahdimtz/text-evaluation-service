@@ -43,3 +43,9 @@ Run only in approved development checkout with pinned public dependencies instal
     .venv/bin/python -m pytest -q -p no:cacheprovider tests --ignore=tests/test_stage05_postgres.py --ignore=tests/test_stage06_rubric_postgres.py
 
 These tests are not being claimed as user-run until a terminal result is supplied. No installation or change to shared Simorgh Docker, PostgreSQL, vLLM or production is needed.
+
+## Final verified CI evidence — 2026-10-28
+
+The final source-affecting commit `9e25ebcd5218cf41cdc28893251b0b403740cf7b` additionally enforces a total wall-clock request/health deadline and proves it with fault injection. [GitHub Actions 40644059782](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40644059782) returned **completed/success**, with **52/52 focused Stage07 tests**, **159/159 non-PostgreSQL pytest**, **38/38 Stage03 unittest**, **12/12 Stage02 unittest**, static guard **24 runtime files PASS**, and `pip check` PASS. This is the authoritative latest result; earlier counts 50/157 are historical. The 52 are included in the 159. All inference calls in this run used synthetic local HTTP MockTransport; **no vLLM or GPU was contacted**. This source-tested commit predates documentation-only changes.
+
+**Remaining open:** actual model-selected artifact/version, vLLM schema/Thinking interoperability, tokenizer-aware context limits, TLS/IAM, No-Egress, enterprise logging and supply-chain/license approvals all remain PENDING_SERVER; no real structured output or model accuracy has been measured. These omissions are not disguised as PASS. Stage08 remains NOT_STARTED.

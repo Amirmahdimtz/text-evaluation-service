@@ -14,7 +14,7 @@
 
 ## Existing local evidence and safe testing
 
-Local HTTPX MockTransport contract test [CI run 40643712715](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40643712715): 50 focused PASS, 157 total non-DB PASS; zero inference. No actual model revision verification, GPU startup, TLS handshake, external network test or Production approvals have been performed.
+Local HTTPX MockTransport contract test [CI run 40644059782](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40644059782): 52 focused PASS, 159 total non-DB PASS; zero inference. No actual model revision verification, GPU startup, TLS handshake, external network test or Production approvals have been performed.
 
 Official vLLM public documentation (public technical metadata only):
 - https://docs.vllm.ai/en/stable/serving/online_serving/openai_compatible_server/

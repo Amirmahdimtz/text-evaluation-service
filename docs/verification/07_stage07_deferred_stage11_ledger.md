@@ -1,6 +1,6 @@
 # Stage07 — Organization-Only LLM Test Ledger
 
-Every item below is **PENDING_SERVER / DEFERRED_TO_STAGE_11**, not PASSED. No enterprise model, GPU, SSO or confidential-data tests were executed for Stage07. The local Stub tests and no-external-client guards have already PASS in [CI 40643712715](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40643712715).
+Every item below is **PENDING_SERVER / DEFERRED_TO_STAGE_11**, not PASSED. No enterprise model, GPU, SSO or confidential-data tests were executed for Stage07. The local Stub tests and no-external-client guards have already PASS in [CI 40644059782](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/40643712715).
 
 | ID | Responsible Stage11 owner | Why real organizational server is needed | Prerequisites and pass oracle |
 |---|---|---|---|
