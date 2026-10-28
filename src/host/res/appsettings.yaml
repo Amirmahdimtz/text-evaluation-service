@@ -10,3 +10,5 @@ security:
   deny_external_egress: true
 llm:
   enabled: false
+worker:
+  enabled: false
