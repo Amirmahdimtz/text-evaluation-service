@@ -1,6 +1,7 @@
 """Stage 04 API composition root; no product endpoints are exposed."""
 
 from contextlib import asynccontextmanager
+import json
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
@@ -64,14 +65,36 @@ def create_app() -> FastAPI:
                     # Enforce upper bound even with chunked transfer or forged Content-Length.
                     data = bytearray()
                     async for chunk in request.stream():
-                        data.extend(chunk)
-                        if len(data) > limit:
+                        if len(data) + len(chunk) > limit:
                             return JSONResponse(
                                 status_code=413, content={
                                     "error_code": "REQUEST_TOO_LARGE",
                                     "correlation_id": request_id,
                                 }, headers={"Cache-Control": "no-store", "X-Correlation-ID": request_id},
                             )
+                    def unique_json_pairs(pairs):
+                        result = {}
+                        for key, value in pairs:
+                            if key in result:
+                                raise ValueError("AMBIGUOUS_JSON")
+                            result[key] = value
+                        return result
+
+                    def reject_constant(_):
+                        raise ValueError("NONFINITE_JSON")
+                    try:
+                        json.loads(
+                            bytes(data).decode("utf-8"),
+                            object_pairs_hook=unique_json_pairs,
+                            parse_constant=reject_constant,
+                        )
+                    except (ValueError, UnicodeError, RecursionError):
+                        return JSONResponse(
+                            status_code=422, content={
+                                "error_code": "VALIDATION_ERROR",
+                                "correlation_id": request_id,
+                            }, headers={"Cache-Control": "no-store", "X-Correlation-ID": request_id},
+                        )
                     request._body = bytes(data)
             response = await call_next(request)
         except Exception:
