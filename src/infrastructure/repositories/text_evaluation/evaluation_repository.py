@@ -245,8 +245,10 @@ class EvaluationRepository(BaseRepository[Evaluation]):
 
     async def read_scoped_report_async(self, *, organization_id: str,
                                        evaluation_id: UUID):
-        """Read only within authenticated tenant; caller must enforce ownership."""
-        self._scope(organization_id)
+        """Tenant-safe load before the Core enforces authenticated owner/assignment."""
+        if (not isinstance(organization_id, str) or not organization_id.strip()
+                or not isinstance(evaluation_id, UUID)):
+            raise ValueError("DB_SCOPE_REQUIRED")
         async with self._db.session() as session:
             evaluation = (await session.scalars(select(Evaluation).where(
                 Evaluation.id == evaluation_id,
