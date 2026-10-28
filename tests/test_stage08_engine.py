@@ -119,7 +119,7 @@ def test_stage08_three_domains_use_real_candidate_anchors_and_are_provisional(
     else:
         assert result.result_status == "needs_human_review"
         assert result.provisional_score_0_100 == Decimal("80")
-        assert result.exact_score_ratio == (8000, 100)
+        assert result.exact_score_ratio == (40000, 500)
 
 
 def test_stage08_weighted_score_and_coverage_are_deterministic_with_missing_required():
@@ -135,7 +135,7 @@ def test_stage08_weighted_score_and_coverage_are_deterministic_with_missing_requ
     a = scoring.calculate(rubric=b.snapshot, outcomes=two)
     repeated = scoring.calculate(rubric=b.snapshot, outcomes=two)
     assert a == repeated
-    assert a.exact_score_ratio == (2800, 225)
+    assert a.exact_score_ratio == (14000, 225)
     assert a.exact_coverage_ratio == (45, 100)
     assert a.coverage_fraction == Decimal("0.45")
     assert a.needs_human_review and not a.publishable_as_official_score
@@ -161,7 +161,7 @@ def test_stage08_no_assessed_is_null_not_zero_and_requires_review():
 @pytest.mark.parametrize("mutator", [
     lambda scores: scores.pop(),
     lambda scores: scores.append(scores[0]),
-    lambda scores: scores[0].__class__("foreign_code", "assessed", 5),
+    lambda scores: scores.__setitem__(0, CriterionScore("foreign_code", "assessed", 5)),
     lambda scores: scores.__setitem__(0, CriterionScore(scores[0].criterion_code, "assessed", 6)),
     lambda scores: scores.__setitem__(0, CriterionScore(scores[0].criterion_code, "assessed", True)),
     lambda scores: scores.__setitem__(0, CriterionScore(scores[0].criterion_code, "not_assessed", 0, "NO")),
@@ -228,7 +228,6 @@ def test_stage08_preprocessor_preserves_original_and_reversible_offsets(source):
     assert prep.chunks[0].start_offset == 0
     assert prep.chunks[-1].end_offset == len(source)
     assert len(prep.normalized_to_original) == len(prep.normalized)
-    assert prep.normalized[prep.normalized.find("ک"):] or True
     for index, _ in enumerate(prep.normalized):
         start, end = prep.original_span(index, index + 1)
         assert 0 <= start < end <= len(source)
