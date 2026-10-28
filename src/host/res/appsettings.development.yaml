@@ -12,3 +12,5 @@ llm:
   enabled: false
 worker:
   enabled: false
+http_security:
+  enabled: false

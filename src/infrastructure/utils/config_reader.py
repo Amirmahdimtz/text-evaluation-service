@@ -101,6 +101,20 @@ class _Worker(_StrictSettings):
     drain_seconds: float | None = Field(default=None, gt=0, le=3600)
 
 
+class _HttpSecurity(_StrictSettings):
+    """No valid HTTP auth or encryption without approved in-environment keys."""
+    enabled: bool = False
+    issuer: str | None = None
+    audience: str | None = None
+    public_key_ref: str | None = None
+    encryption_key_ref: str | None = None
+    key_id: str | None = None
+    max_request_bytes: int | None = Field(default=None, ge=128, le=10000000)
+    max_text_characters: int | None = Field(default=None, ge=32, le=2000000)
+    max_active_jobs: int | None = Field(default=None, ge=1, le=100000)
+    max_requests_per_minute: int | None = Field(default=None, ge=1, le=10000)
+
+
 class Settings(_StrictSettings):
     app: _App
     server: _Server
@@ -108,6 +122,7 @@ class Settings(_StrictSettings):
     security: _Security
     llm: _Llm = Field(default_factory=_Llm)
     worker: _Worker = Field(default_factory=_Worker)
+    http_security: _HttpSecurity = Field(default_factory=_HttpSecurity)
 
 
 @inject
