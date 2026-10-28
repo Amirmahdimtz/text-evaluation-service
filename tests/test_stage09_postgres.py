@@ -327,3 +327,77 @@ def test_real_worker_success_persists_one_review_only_result_without_open_sessio
         finally:
             await db.close()
     asyncio.run(exercise())
+
+
+def test_real_db_global_tenant_backpressure_is_atomic_and_replay_safe(isolated_stage09_schema):
+    async def exercise():
+        db = PsqlDbContext()
+        try:
+            org = "stage09-capacity-" + uuid4().hex
+            rubric_id = uuid4()
+            async with db.session() as session:
+                async with session.begin():
+                    session.add(RubricVersion(
+                        id=rubric_id, organization_id=org, evaluation_type="speech",
+                        code="capacity", version="candidate-v1", status="published",
+                        criteria_snapshot={"criteria": []}, checksum="c" * 64,
+                        published_at=datetime.now(timezone.utc),
+                    ))
+            repo = EvaluationRepository(db)
+            owner = "synthetic-submit-owner"
+
+            def create_pair(key: str):
+                evaluation_id = uuid4()
+                evaluation = Evaluation(
+                    id=evaluation_id, organization_id=org, owner_id=owner,
+                    evaluation_type="speech", rubric_version_id=rubric_id,
+                    protected_text_ref=uuid4(), idempotency_key=key,
+                    request_fingerprint="d" * 64,
+                )
+                job = EvaluationJob(
+                    id=uuid4(), evaluation_id=evaluation_id, organization_id=org,
+                )
+                return evaluation, job
+
+            async def submit(key):
+                return await repo.create_with_job_async(
+                    *create_pair(key), organization_id=org,
+                    owner_id=owner, correlation_id=uuid4(), max_active_jobs=1,
+                )
+            async def attempt(key):
+                try:
+                    return await submit(key)
+                except ValueError as exc:
+                    return str(exc)
+
+            outcomes = await asyncio.gather(
+                attempt("key-A"), attempt("key-B"),
+            )
+            accepted = [o for o in outcomes if isinstance(o, tuple)]
+            denied = [o for o in outcomes if isinstance(o, str)]
+            assert len(accepted) == len(denied) == 1
+            assert denied == ["DB_QUEUE_CAPACITY_EXCEEDED"]
+            successful_key = "key-A" if isinstance(outcomes[0], tuple) else "key-B"
+            assert await submit(successful_key) == (
+                accepted[0][0], accepted[0][1], True,
+            )
+            with pytest.raises(ValueError, match="DB_IDEMPOTENCY_CONFLICT"):
+                different, related = create_pair(successful_key)
+                different.request_fingerprint = "e" * 64
+                await repo.create_with_job_async(
+                    different, related, organization_id=org,
+                    owner_id=owner, correlation_id=uuid4(), max_active_jobs=1,
+                )
+            async with db.session() as session:
+                assert (await session.scalar(select(func.count()).select_from(
+                    EvaluationJob,
+                ).where(EvaluationJob.organization_id == org))) == 1
+                assert (await session.scalar(select(func.count()).select_from(
+                    AuditEvent,
+                ).where(
+                    AuditEvent.organization_id == org,
+                    AuditEvent.action_code == "EVALUATION_SUBMITTED",
+                ))) == 1
+        finally:
+            await db.close()
+    asyncio.run(exercise())
