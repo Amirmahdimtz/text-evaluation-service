@@ -394,3 +394,68 @@ def test_malformed_quote_diagnoses_not_in_source_vs_incorrect_offset():
         decode_criterion_response(json.dumps(missing_quote, ensure_ascii=False),
                                   expected_code=CODE, source_text=SOURCE,
                                   max_response_bytes=4096)
+
+
+def test_shared_vllm_client_serializes_requests_with_single_inflight_slot():
+    """No additional model load or network call: in-process synthetic transport."""
+    active = 0
+    peak_active = 0
+    calls = 0
+
+    async def handler(request):
+        nonlocal active, peak_active, calls
+        assert request.url.path == "/v1/chat/completions"
+        calls += 1
+        active += 1
+        peak_active = max(peak_active, active)
+        try:
+            await asyncio.sleep(0.02)
+            return answer()
+        finally:
+            active -= 1
+
+    provider = make_provider(handler, overrides={
+        "max_concurrency": 1,
+        "max_attempts": 1,
+        "timeout_seconds": 1.0,
+    })
+
+    async def exercise():
+        try:
+            results = await asyncio.gather(invoke(provider), invoke(provider))
+            assert all(result.score == 4 for result in results)
+        finally:
+            await provider.aclose()
+
+    asyncio.run(exercise())
+    assert calls == 2
+    assert peak_active == 1
+    assert active == 0
+
+
+@pytest.mark.parametrize("status", [429, 503])
+def test_shared_vllm_busy_endpoint_never_retries_with_single_attempt(status):
+    """Backpressure must not amplify requests to a shared model service."""
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(status, text="private-shared-provider-details")
+
+    provider = make_provider(handler, overrides={
+        "max_concurrency": 1,
+        "max_attempts": 1,
+        "circuit_failures": 5,
+    })
+
+    async def exercise():
+        try:
+            with pytest.raises(LlmProviderError, match="^LLM_RETRY_EXHAUSTED$") as err:
+                await invoke(provider)
+            assert "private-shared-provider-details" not in str(err.value)
+        finally:
+            await provider.aclose()
+
+    asyncio.run(exercise())
+    assert len(requests) == 1
+    assert requests[0].url.path == "/v1/chat/completions"

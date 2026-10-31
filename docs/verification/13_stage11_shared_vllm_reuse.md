@@ -79,3 +79,21 @@ The operator ran the documented non-invasive commands on Simorgh and supplied th
 **Next external prerequisite:** shared serving owner's confirmation of which clients/models may be reused, current serving artifact revision/license, off-peak/test window, acceptable latency/error impact, request budget, fair-share quotas and immediate abort criteria; then separately approved, synthetic-only, sequential benchmarks with `max_inflight=1` and `max_attempts=1` on our side, subject to actual enforceable controls. No such approval or measured competing-workload baseline is present in this transcript.
 
 **No actual source or runtime configuration was changed by this observation; no new inference was sent.** All 56 original Stage11 enterprise test IDs remain `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## Stage11 shared-client admission and retry regression — 2026-10-31
+
+A new **offline-only test addition** to the existing `tests/test_stage07_local_llm.py` checks the actual `LocalLlmProvider` with in-process `httpx.MockTransport` under this proposed shared-service client profile:
+
+- `llm.max_concurrency=1`: schedule two simultaneous synthetic calls through **one** provider instance; assert both complete and maximum actual simultaneous HTTP requests is **one**, proving the existing per-instance semaphore's serialization.
+- `llm.max_attempts=1`: inject synthetic HTTP `429` and `503`; assert **exactly one** model POST per failed attempt, fail-closed `LLM_RETRY_EXHAUSTED`, and no echo of private upstream response bodies.
+
+**Scope limitation:** the semaphore is per provider instance/process. These tests do **NOT** prove global fair sharing, independent process quotas, full application concurrency, vLLM scheduler isolation, competing-project p95, or any guaranteed zero-impact behavior. Deployment with multiple app/worker processes must have an approved aggregate concurrency/queue policy. These tests use **no** network, GPU, model download, database, or confidential input and require no infrastructure access.
+
+**Suggested Simorgh operator verification, after `git pull --ff-only origin main`:**
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
+  tests/test_stage07_local_llm.py
+```
+
+Do not change `appsettings*.yaml`, start a Worker or use `--execute-approved` on the shared service merely to run these tests. Continue to use the **existing** loopback 8000 model as a *candidate* only until the shared service owner approves actual client limits, credentials, model artifact identity and low-impact benchmark. Stage11 remains `BLOCKED` with 56 original enterprise tests `PENDING_SERVER`, Stage12 `NOT_STARTED`.
