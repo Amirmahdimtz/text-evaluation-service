@@ -63,3 +63,19 @@ PY
 4. Only then measure controlled sequential candidate quality and competing-project latency/error/queue impact, stop on any violation, and preserve evidence per mandatory Stage11 test oracle.
 
 **No new live model request or server operation was performed by drafting this document.** The previously granted one-request synthetic permission has been consumed. Existing defaults remain fail-closed. All 56 enterprise Stage11 test IDs remain `PENDING_SERVER`, `Stage11=BLOCKED`, `Stage12=NOT_STARTED`.
+
+## Simorgh approved read-only shared-runtime observation — 2026-10-31
+
+The operator ran the documented non-invasive commands on Simorgh and supplied these **aggregate, redacted results**:
+
+| Check | Observed | Interpretation |
+|---|---|---|
+| `nvidia-smi --query-gpu=index,memory.total,memory.used,utilization.gpu` | GPU index 0; total **24576 MiB**; used **18847 MiB**; instantaneous utilization **0%** | Simple arithmetic difference **5729 MiB** of unallocated reported VRAM at that snapshot, **not** sustained headroom, spare safe VRAM or cross-project reservation |
+| Previously approved `127.0.0.1:8000/v1/models` GET | HTTP **200**, **1 advertised model**, redacted ID | Exactly one model advertised **at this one endpoint**; not proof that other projects have no additional model servers elsewhere |
+| Inference submitted by this inspection | **0** | No prompt inference, Docker/GPU reconfiguration, model loading, GPU pressure test, endpoint discovery, or port scanning |
+
+**Engineering disposition:** reuse this already-running endpoint as the **first candidate for a later authorized bounded benchmark**, because its one-shot real synthetic CriterionInference smoke previously succeeded. Non-interference remains `UNVERIFIED`: zero instantaneous GPU activity does not preclude a busy queue or other projects' latency spikes; the previously recorded 18847 MiB VRAM allocation still occupies much of the 24576 MiB GPU. Do not add a second loaded model, raise concurrency, submit protected data or bypass authentication. For any other existing model candidate, require its owner's already-authorized endpoint and verified identity **privately**; do not discover it via probing/scanning.
+
+**Next external prerequisite:** shared serving owner's confirmation of which clients/models may be reused, current serving artifact revision/license, off-peak/test window, acceptable latency/error impact, request budget, fair-share quotas and immediate abort criteria; then separately approved, synthetic-only, sequential benchmarks with `max_inflight=1` and `max_attempts=1` on our side, subject to actual enforceable controls. No such approval or measured competing-workload baseline is present in this transcript.
+
+**No actual source or runtime configuration was changed by this observation; no new inference was sent.** All 56 original Stage11 enterprise test IDs remain `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
