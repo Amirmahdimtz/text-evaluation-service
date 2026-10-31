@@ -263,3 +263,109 @@ def test_stage11_workflow_yaml_is_valid(workflow_name):
     runs = [step.get("run", "") for job in jobs.values() for step in job["steps"]]
     assert any("--only-binary=:all:" in command for command in runs)
     assert all("--execute-approved" not in command for command in runs)
+
+
+def _diagnostic_result(*, completion: bytes):
+    """Only mocked HTTP responses; never connect to Simorgh."""
+    a, b = _connections(completion=completion)
+    with patch("http.client.HTTPConnection", side_effect=[a, b]) as http:
+        result = run(port=8000)
+    assert http.call_count == 2
+    assert result["status"] == "CRITERION_CONTRACT_UNVERIFIED"
+    assert result["model_output_logged"] is False
+    assert result["model_id_logged"] is False
+    assert _MODEL not in json.dumps(result, ensure_ascii=False)
+    assert _SOURCE not in json.dumps(result, ensure_ascii=False)
+    assert result["stage11_gate"] == "BLOCKED"
+    return result
+
+
+@pytest.mark.parametrize(("content", "expected"), [
+    ("NOT_PRIVATE_VALID_JSON", "JSON_OR_SCHEMA_REJECTED"),
+    ('{"status":"assessed","status":"assessed"}', "JSON_OR_SCHEMA_REJECTED"),
+    ('{"criterion_code":"clarity"}', "SCHEMA_REJECTED"),
+])
+def test_diagnostic_invalid_json_or_schema_is_redacted(content, expected):
+    result = _diagnostic_result(completion=_response_json(content=content))
+    assert result["failure_class"] == expected
+    assert result["usage_tokens"] == {
+        "prompt_tokens": 150, "completion_tokens": 90, "total_tokens": 240,
+    }
+    assert "NOT_PRIVATE_VALID_JSON" not in json.dumps(result)
+
+
+@pytest.mark.parametrize(("change", "category"), [
+    ("wrong_code", "CRITERION_CODE_MISMATCH"),
+    ("wrong_quote", "QUOTE_OFFSET_MISMATCH"),
+    ("wrong_offset", "QUOTE_OFFSET_MISMATCH"),
+    ("wrong_score_type", "SCHEMA_REJECTED"),
+    ("extra_field", "SCHEMA_REJECTED"),
+    ("abstain", "VALID_ABSTENTION_NO_ASSESSMENT"),
+])
+def test_diagnostic_refines_real_decoder_failure_without_leaking_text(change, category):
+    obj = _valid_criterion()
+    if change == "wrong_code":
+        obj["criterion_code"] = "another_criterion"
+    elif change == "wrong_quote":
+        obj["evidence"][0]["quote"] = "UNTRUSTED_MODEL_TEXT"
+    elif change == "wrong_offset":
+        obj["evidence"][0]["end_offset"] -= 1
+    elif change == "wrong_score_type":
+        obj["score"] = "4"
+    elif change == "extra_field":
+        obj["unexpected"] = "UNTRUSTED_MODEL_TEXT"
+    else:
+        obj.update(status="not_assessed", score=None, evidence=[])
+    response = _response_json(content=json.dumps(obj, ensure_ascii=False))
+    result = _diagnostic_result(completion=response)
+    assert result["failure_class"] == category
+    assert "UNTRUSTED_MODEL_TEXT" not in json.dumps(result)
+
+
+def test_diagnostic_output_limit_is_distinct_from_schema_failure():
+    outcome = _diagnostic_result(completion=_response_json(
+        content="UNTRUSTED_MODEL_TEXT", finish="length",
+    ))
+    assert outcome["failure_class"] == "OUTPUT_TOKEN_LIMIT"
+    assert outcome["http_status"] == 200
+
+
+def test_diagnostic_wrong_model_does_not_expose_model_id():
+    outcome = _diagnostic_result(completion=_response_json(
+        model="ANOTHER_PRIVATE_MODEL",
+    ))
+    assert outcome["failure_class"] == "MODEL_MISMATCH"
+    assert "ANOTHER_PRIVATE_MODEL" not in json.dumps(outcome)
+
+
+def test_diagnostic_malformed_envelope_is_sanitized():
+    outcome = _diagnostic_result(completion=b'{"model":"'+_MODEL.encode()+b'","choices":[]}')
+    assert outcome["failure_class"] == "ENVELOPE_INVALID"
+
+
+def test_diagnostic_assistant_refusal_is_not_silently_accepted():
+    envelope = json.loads(_response_json())
+    envelope["choices"][0]["message"]["refusal"] = "UNTRUSTED_PRIVATE_REFUSAL"
+    outcome = _diagnostic_result(completion=json.dumps(envelope).encode())
+    assert outcome["failure_class"] == "ASSISTANT_MESSAGE_INVALID"
+    assert "UNTRUSTED_PRIVATE_REFUSAL" not in json.dumps(outcome)
+
+
+def test_diagnostic_missing_or_untrusted_token_usage_not_echoed():
+    envelope = json.loads(_response_json(content="not JSON"))
+    envelope["usage"] = {
+        "prompt_tokens": True, "completion_tokens": -1,
+        "total_tokens": "PRIVATE_SECRET",
+    }
+    outcome = _diagnostic_result(completion=json.dumps(envelope).encode())
+    assert outcome["usage_tokens"] == {}
+    assert "PRIVATE_SECRET" not in json.dumps(outcome)
+
+
+def test_diagnostic_dry_run_requires_no_network(capsys):
+    with patch("http.client.HTTPConnection") as http:
+        assert main([]) == 0
+        http.assert_not_called()
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "DRY_RUN_NO_NETWORK"
+    assert "failure_class" not in result

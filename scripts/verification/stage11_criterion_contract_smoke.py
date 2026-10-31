@@ -110,6 +110,46 @@ def _validated_completion(envelope: dict[str, Any], model_id: str) -> dict[str, 
             "usage_tokens": token_count}
 
 
+
+def _failure_class(envelope: object, model_id: str) -> str:
+    """Redacted, fixed-category diagnosis; no model text or exception details."""
+    if not isinstance(envelope, dict):
+        return "ENVELOPE_INVALID"
+    if envelope.get("model") != model_id:
+        return "MODEL_MISMATCH"
+    choices = envelope.get("choices")
+    if not isinstance(choices, list) or len(choices) != 1 or not isinstance(choices[0], dict):
+        return "ENVELOPE_INVALID"
+    choice = choices[0]
+    if choice.get("finish_reason") == "length":
+        return "OUTPUT_TOKEN_LIMIT"
+    if choice.get("finish_reason") != "stop":
+        return "GENERATION_UNFINISHED"
+    message = choice.get("message")
+    if (not isinstance(message, dict) or message.get("role") != "assistant"
+            or not isinstance(message.get("content"), str)
+            or message.get("tool_calls") or message.get("refusal")):
+        return "ASSISTANT_MESSAGE_INVALID"
+    try:
+        decoded = decode_criterion_response(
+            message["content"], expected_code=_CRITERION, source_text=_SOURCE,
+            max_response_bytes=16384,
+        )
+    except ValidationError:
+        return "SCHEMA_REJECTED"
+    except ValueError as exc:
+        if str(exc) == "LLM_WRONG_CRITERION":
+            return "CRITERION_CODE_MISMATCH"
+        if str(exc) == "LLM_QUOTE_MISMATCH":
+            return "QUOTE_OFFSET_MISMATCH"
+        if str(exc) == "LLM_RESPONSE_TOO_LARGE":
+            return "OUTPUT_TOO_LARGE"
+        return "JSON_OR_SCHEMA_REJECTED"
+    if decoded.status == "not_assessed":
+        return "VALID_ABSTENTION_NO_ASSESSMENT"
+    return "CONTRACT_UNCLASSIFIED"
+
+
 def run(*, port: int) -> dict[str, Any]:
     if type(port) is not int or not 1 <= port <= 65535:
         raise ValueError("invalid loopback port")
@@ -130,8 +170,25 @@ def run(*, port: int) -> dict[str, Any]:
         envelope = _safe_json(_read_response(response, limit=_OUTPUT_LIMIT), limit=_OUTPUT_LIMIT)
         try:
             evidence = _validated_completion(envelope, model_id)
-        except (KeyError, TypeError, ValueError, ValidationError, UnicodeError, RecursionError):
-            return _status("CRITERION_CONTRACT_UNVERIFIED", http_status=200) | {"elapsed_ms": elapsed}
+        except (KeyError, TypeError, ValueError, ValidationError,
+                AttributeError, UnicodeError, RecursionError):
+            try:
+                failure = _failure_class(envelope, model_id)
+            except (KeyError, TypeError, ValueError, ValidationError,
+                    AttributeError, UnicodeError, RecursionError, OverflowError):
+                failure = "CONTRACT_UNCLASSIFIED"
+            usage = envelope.get("usage") if isinstance(envelope, dict) else None
+            token_counts = {}
+            if isinstance(usage, dict):
+                for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+                    value = usage.get(key)
+                    if type(value) is int and 0 <= value <= 100000:
+                        token_counts[key] = value
+            return _status("CRITERION_CONTRACT_UNVERIFIED", http_status=200) | {
+                "elapsed_ms": elapsed,
+                "failure_class": failure,
+                "usage_tokens": token_counts,
+            }
         return _status("PASS_SYNTHETIC_CRITERION_CONTRACT", http_status=200) | {"elapsed_ms": elapsed} | evidence
     except (OSError, TimeoutError, http.client.HTTPException):
         return _status("INFERENCE_TRANSPORT_OR_TIMEOUT")
