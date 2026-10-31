@@ -126,3 +126,23 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python scripts/verification/stage11_criterio
 Then repeat **only the read-only** `nvidia-smi` snapshot. This existing reviewed CLI sends one metadata GET, at most one synthetic `CriterionInference` POST with `max_tokens=320`, no retries, no model ID/text logging, and no write to a shared service. It is **not** the authenticated API→DB→Worker→LLM E2E. A before/after GPU snapshot is insufficient to measure another app's p95 latency or error-rate change; that requires the owner's permitted app-level monitoring. Do not load extra models, enable app config, restart containers, access other projects' ports/files or run additional probes. Do not repeat the inference after failure; request the sanitized status and observer assessment before planning further tests.
 
 **Evidence status now:** `APPROVED_ONCE_NOT_EXECUTED` by assistant/operator as of this documentation update; `SHARED_NON_INTERFERENCE_NOT_MEASURED`. Original 56 Stage11 enterprise IDs remain `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## Simorgh one-shot shared endpoint test executed — 2026-10-31
+
+The operator executed the **once-approved** read-only baseline → synthetic model request → read-only after-snapshot plan on Simorgh after fast-forward `f4bfa9b..a08069d`. Sanitized observed results:
+
+| Evidence | Actual operator-reported result |
+| --- | --- |
+| Runtime endpoint | Existing previously approved `127.0.0.1:8000`; no model changes |
+| One `CriterionInference` synthetic request | `PASS_SYNTHETIC_CRITERION_CONTRACT`, `HTTP 200`, `assessed` |
+| Strict criterion JSON schema | `criterion_schema_valid=true` |
+| Grounded quote/codepoint offsets | `grounded_evidence_valid=true`, `evidence_count=1` |
+| Observed HTTP elapsed | `6485 ms` for one inference (not p95 or SLO) |
+| Tokens | prompt `206`, completion `116`, total `322` (320 cap applies to completion only) |
+| Request budget | at most 1 inference POST; `retries=0`; the scope is consumed |
+| Pre-inference GPU0 | `memory.used=18847 MiB`, `utilization.gpu=0%` |
+| Post-inference GPU0 | `memory.used=18847 MiB`, `utilization.gpu=67%` |
+
+**Inference from observations:** The already-loaded single candidate supports the synthetic grounded contract **again**, with unchanged GPU memory at two sampled points. The 67% post-command utilization is an instantaneous observation, **not evidence of exclusive test causation, sustained load, idle competing tenants, or zero service disruption**. Shared-model scheduler/queue and other projects' latency/error metrics were **not supplied or measured**. No model ID, private prompt, raw model output, other project's secrets, or GPU process listing was published. No server configuration change, restart, second model load or retry was performed.
+
+**Decision:** `PASS_AUXILIARY_REPEAT_REAL_SYNTHETIC_CONTRACT / SHARED_NON_INTERFERENCE_UNVERIFIED`. The earlier `APPROVED_ONCE_NOT_EXECUTED` state has been **superseded** and its explicit one-request approval is **consumed**. No additional inference without renewed scoped approval and shared-service owner monitoring. This is not the complete protected authenticated API → encrypted DB → Worker → vLLM acceptance. All original **56 Stage11 test IDs remain `PENDING_SERVER`**, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

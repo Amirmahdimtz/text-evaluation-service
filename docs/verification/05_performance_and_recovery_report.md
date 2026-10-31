@@ -37,3 +37,14 @@ The Simorgh one-shot synthetic structured-output smoke reported **`elapsed_ms=14
 ## Simorgh shared vLLM passive GPU/model-list snapshot — 2026-10-31
 
 Operator-reported, non-inference read-only inspection: `nvidia-smi` GPU0 returned **24576 MiB total, 18847 MiB used, instantaneous GPU utilization 0%**. Arithmetic `5729 MiB` difference is **not** a safe capacity allocation, an estimate of free continuous KV cache, or proof that other users are idle. `GET 127.0.0.1:8000/v1/models` returned **HTTP 200** and **one advertised model** (ID redacted); `inference_requests=0`. One endpoint's model count does not inventory all other projects, processes or ports. No load, latency sampling, VRAM pressure test, or non-interference evidence has been gathered. Capacity/availability results stay `NOT_MEASURED`; shared GPU approval/quotas are `PENDING`. [Shared runtime plan](13_stage11_shared_vllm_reuse.md).
+
+## Shared GPU before/after one approved synthetic criterion — 2026-10-31
+
+The Simorgh operator completed one newly approved real `CriterionInference` synthetic POST on the existing shared vLLM endpoint (`HTTP 200`, exact evidence/schema PASS, `6485 ms`, `116` completion tokens, no retries). The attached **two instantaneous GPU0 observations**, each via the non-invasive `nvidia-smi` metadata query, were:
+
+| Time relative to the request | VRAM used | GPU utilization snapshot |
+| --- | ---: | ---: |
+| Before | 18847 MiB | 0% |
+| After | 18847 MiB | 67% |
+
+**Interpretation:** The same recorded VRAM amount at two points shows no **observed net memory increase** at those instants; it does not bound peak/transient VRAM allocation. The after-sample 67% does not identify whose kernel consumed GPU or which other project was queued. A single `6485 ms` request is **not throughput, p50/p95, resource isolation or other projects' latency/error impact**. Preserve all original performance acceptance cells as `NOT_MEASURED` and Stage11 as `BLOCKED`; request actual operator-authorized competing-project monitoring before asserting non-interference. See [shared vLLM runbook](13_stage11_shared_vllm_reuse.md).
