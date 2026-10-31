@@ -129,3 +129,29 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
   tests/test_stage07_local_llm.py
 ```
 **Result:** `144 passed in 1.47s`. The subsequent default, non-approved CLI invocation returned `DRY_RUN_NO_NETWORK` with no HTTP request to the model. This is `PASS_OPERATOR_REPORTED_SIMORGH_OFFLINE_CONTRACT_REGRESSION` only; it is **not** a new success of the real synthetic CriterionInference contract. The last real authorized request failed `QUOTE_OFFSET_MISMATCH`. Do **not** run `--execute-approved` on the basis of this offline pass; new approval is required. Original Stage11 56-ID test ledger remains `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## Successful Simorgh single-shot real CriterionInference contract — 2026-10-31
+
+**Operator-supplied sanitized evidence:** The operator ran `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python scripts/verification/stage11_criterion_contract_smoke.py --port 8000 --execute-approved` **once**, under a fresh one-request approval, after updating to the source with clarified Unicode quote-offset instructions. The script returned:
+
+| Field | Observed |
+| --- | --- |
+| `status` | `PASS_SYNTHETIC_CRITERION_CONTRACT` |
+| `http_status` | `200` |
+| `assessment_status` | `assessed` |
+| `criterion_schema_valid` | `true` |
+| `grounded_evidence_valid` | `true` |
+| `evidence_count` | `1` |
+| `elapsed_ms` | `6449` |
+| `usage_tokens.prompt_tokens` | `206` |
+| `usage_tokens.completion_tokens` | `116` |
+| `usage_tokens.total_tokens` | `322` |
+| `retries` / `max_inference_requests` | `0` / `1` |
+| `synthetic_only` / `model_id_logged` / `model_output_logged` | `true` / `false` / `false` |
+| `stage11_gate` | `BLOCKED` |
+
+The `max_tokens=320` argument limits **completion tokens**; `total_tokens=322` includes 206 prompt tokens and is therefore not a violation. The script verified a strict, assessed **single clarity criterion** and a quote exactly matching the original synthetic Persian input at its codepoint offsets. This shows real **schema + evidence** compatibility for one run, following previous failures, **not a quality benchmark or repeatability result**. The single `elapsed_ms` reading is not an SLO/p95 latency measurement. No model ID, generated text, organizational data, secrets or raw runtime output were recorded in the public evidence.
+
+**Acceptance:** `PASS_AUXILIARY_REAL_SYNTHETIC_CRITERION_CONTRACT` with **one grounded evidence item**. The previous `QUOTE_OFFSET_MISMATCH` failure stays in the defect history; it has a new positive observation but has not been statistically resolved for repeatability. This specific one-shot permission has been **consumed**. Do not run `--execute-approved` again without a newly bounded operational approval.
+
+**Next Stage11 gate work:** approve/pin the actual model artifact revision and legal/custody provenance, then conduct the two-candidate three-domain expert-labeled benchmark with separately approved GPU/time/data scopes; complete enforceable network No-Egress and authenticated protected API/Worker/PostgreSQL/LLM E2E plus capacity/recovery tests. Per the revised Implementation Plan, keep all **56 mandatory acceptance test IDs as `PENDING_SERVER`** until their full original acceptance oracles are demonstrated; `Stage11=BLOCKED`, `Stage12=NOT_STARTED`.
