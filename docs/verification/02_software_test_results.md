@@ -77,3 +77,12 @@ All three YAML files now use a `run: |` block with the same pinned pip command; 
 On main SHA `82595099e3ea67023b61e424542da16748403e75`, the following three workflows **completed successfully**, with actual job-step evidence rather than mere YAML parsing: criterion-contract `40696993930` (including direct isolated and module CLI dry-runs), read-only host/container preflight `40696993921`, and synthetic mock HTTP smoke `40696993968`. The preceding run failures on `5927429` had **zero jobs** and were confirmed invalid YAML, not failing model tests. After correction, local assistant-host suite also returned **75 passed in 1.75s** and both entry points returned `DRY_RUN_NO_NETWORK`.
 
 The user's Simorgh **70 passed** result (on SHA `20233d1`) remains valid for that revision; the direct script import error there was fixed in later commits. A post-fix user-server CLI dry-run has **not** been observed yet: `PENDING_USER_RETEST`. No new inference or protected-data processing was executed by assistant. All **56 mandatory Stage11 enterprise tests remain `PENDING_SERVER`**, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## Simorgh verified final direct-CLI regression retest — 2026-10-31
+
+User-reported Simorgh execution after fast-forwarding to source `f001794`:
+- The exact offline Stage11 criterion/synthetic smoke suite returned **75 passed in 0.62s**.
+- Direct invocation of `scripts/verification/stage11_criterion_contract_smoke.py` returned status `DRY_RUN_NO_NETWORK` and `stage11_gate=BLOCKED`, plus `http_status=null`, `synthetic_only=true`, `max_inference_requests=1`, `retries=0`, `model_id_logged=false`, `model_output_logged=false`; no traceback or import error was reported.
+- This closes the **CLI invocation/import defect** on the target Simorgh host (`PASS_OPERATOR_REPORTED_DIRECT_CLI_REGRESSION`). The dry-run is **strictly network-free**, so there was **no new model inference, criterion-scoring evidence, GPU test or enterprise deployment**.
+
+The prior single tiny-schema real-model completion remains independently recorded as an auxiliary PASS. This **offline** retest does not advance any of the original 56 mandatory enterprise acceptance tests to PASS; all are still `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`. [Runbook](10_stage11_criterion_contract_smoke.md).

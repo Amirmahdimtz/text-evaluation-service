@@ -65,3 +65,9 @@ GitHub Actions did not start jobs for the three Stage11 offline workflows before
 ## GitHub Actions outcomes after CLI/YAML fixes — 2026-10-28
 
 Checked the actual GitHub Actions job-level results at commit `82595099e3ea67023b61e424542da16748403e75`. All three relevant offline Stage11 workflows returned **success**: criterion-contract run `40696993930`, preflight run `40696993921`, synthetic smoke run `40696993968`. Direct isolated script and Python module dry-run steps both passed inside the criterion CI job. All are **offline/mock tests**, **not** new model inference or organizational acceptance. Simorgh must still pull and execute the fixed CLI default dry-run; no real criterion inference permitted without a separate explicit approved request. Enterprise test ledger 56 `PENDING_SERVER`; Stage11 `BLOCKED`.
+
+## Successful post-fix direct entrypoint verification on Simorgh — 2026-10-31
+
+After pulling revision `f001794`, the operator ran the two offline suites and reported **75 passed in 0.62s**. The **direct file-path CLI** then returned the expected sanitized `DRY_RUN_NO_NETWORK` JSON status (including `stage11_gate=BLOCKED`), with **no `ModuleNotFoundError`**. This confirms the specific direct-entrypoint import regression was repaired **on the target server**, not only in developer mocks/CI. The CLI was invoked without `--execute-approved`, so it made **no actual inference POST**. This verifies the command path and default fail-closed behavior only; it does not validate real `CriterionInference` output or model/AI quality.
+
+**Status:** `SIMORGH_DIRECT_CLI_REGRESSION_PASSED / REAL_CRITERION_INFERENCE_PENDING_APPROVAL`. The prior one-request synthetic inference permission has already been consumed. Do not rerun that inference or use `--execute-approved` without separate explicit authorization. The **56 original enterprise tests remain `PENDING_SERVER`**, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
