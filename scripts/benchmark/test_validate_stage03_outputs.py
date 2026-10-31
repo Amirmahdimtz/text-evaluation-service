@@ -357,5 +357,91 @@ class ValidatorTests(unittest.TestCase):
 
 
 
+    def test_optional_domain_summary_counts_errors_without_exposing_source(self):
+        from contextlib import redirect_stdout
+        from copy import deepcopy
+        from io import StringIO
+
+        speech = record()
+        media = deepcopy(speech)
+        media["case_id"] = "ME-01"
+        media["domain"] = "media"
+        media["original_text"] = "PRIVATE_SYNTHETIC_SENTINEL"
+        media["output"]["criterion_code"] = "media_message_clarity"
+        # The source quote cannot match these offsets: one rejected media attempt.
+        media["output"]["evidence"][0]["quote"] = "mismatch"
+        research = deepcopy(speech)
+        research["case_id"] = "RE-01"
+        research["domain"] = "research"
+        research["output"]["criterion_code"] = "research_coherence"
+
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "synthetic.jsonl"
+            path.write_text(
+                "\n".join(json.dumps(v, ensure_ascii=False) for v in
+                          (speech, media, research))
+                + "\n" + "{not-json}\n", encoding="utf-8",
+            )
+            stream = StringIO()
+            with redirect_stdout(stream):
+                rc = main(["--input", str(path), "--by-domain"])
+            output = stream.getvalue()
+            report = json.loads(output)
+            self.assertEqual(rc, 1)
+            self.assertEqual((report["records"], report["valid"], report["invalid"]),
+                             (4, 2, 2))
+            self.assertEqual(report["by_domain"], {
+                "speech": {"records": 1, "valid": 1, "invalid": 0},
+                "media": {"records": 1, "valid": 0, "invalid": 1},
+                "research": {"records": 1, "valid": 1, "invalid": 0},
+                "unclassified": {"records": 1, "valid": 0, "invalid": 1},
+            })
+            self.assertEqual(report["error_counts"]["QUOTE_MISMATCH"], 1)
+            self.assertEqual(report["error_counts"]["INVALID_JSON"], 1)
+            self.assertNotIn("PRIVATE_SYNTHETIC_SENTINEL", output)
+            self.assertNotIn(speech["original_text"], output)
+            self.assertNotIn(speech["model_id"], output)
+
+            default_stream = StringIO()
+            with redirect_stdout(default_stream):
+                self.assertEqual(main(["--input", str(path)]), 1)
+            self.assertNotIn("by_domain", json.loads(default_stream.getvalue()))
+
+    def test_domain_summary_handles_non_hashable_invalid_domain(self):
+        value = record()
+        value["domain"] = ["not", "a", "valid", "domain"]
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "synthetic.jsonl"
+            path.write_text(json.dumps(value, ensure_ascii=False) + "\n",
+                            encoding="utf-8")
+            counts = {name: __import__("collections").Counter()
+                      for name in ("speech", "media", "research", "unclassified")}
+            total, invalid, failures = inspect_file(path, domain_counts=counts)
+            self.assertEqual((total, invalid), (1, 1))
+            self.assertEqual(failures["INVALID_DOMAIN"], 1)
+            self.assertEqual(counts["unclassified"]["invalid"], 1)
+
+    def test_domain_summary_fail_closed_on_record_limit(self):
+        from collections import Counter
+        from unittest.mock import patch
+
+        value = record()
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "synthetic.jsonl"
+            path.write_text(
+                json.dumps(value, ensure_ascii=False) + "\n" +
+                json.dumps(value, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+            counts = {name: Counter() for name in
+                      ("speech", "media", "research", "unclassified")}
+            with patch("validate_stage03_outputs.MAX_RECORDS", 1):
+                total, invalid, failures = inspect_file(path, domain_counts=counts)
+            self.assertEqual((total, invalid), (2, 1))
+            self.assertEqual(failures["RECORD_LIMIT_EXCEEDED"], 1)
+            self.assertEqual(counts["speech"]["valid"], 1)
+            self.assertEqual(counts["unclassified"]["invalid"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

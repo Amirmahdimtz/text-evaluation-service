@@ -157,3 +157,19 @@ python scripts/benchmark/validate_stage03_outputs.py --input /approved/local/res
 ## ۸. D-017 — زمان اجرای Benchmark واقعی
 
 تمام اقدامات وابسته به سرور داخلی در بخش ۶ این سند `DEFERRED_TO_STAGE_11` هستند، نه معیار شکست Stage 03 و نه PASSED. برای هر آزمون شناسه، مجوز ورودی، مالک اجرای Stage 11، روش اندازه‌گیری و معیار موفقیت در [Ledger](03_benchmark_results.md#12-d-017-deferred-on-premise-test-ledger) ثبت شده است. شبیه‌سازی و Fixture آفلاین کیفیت مدل واقعی یا No-Egress سازمانی را اثبات نمی‌کنند؛ تست‌های آفلاین Validator در Stage 03 اجباری‌اند و نمی‌توان آن‌ها را تعویق داد.
+
+## ۹. Stage11 — گزارش اختیاری شمارنده‌های سه حوزه (آفلاین)
+
+پس از آماده‌شدن Dataset **مجاز و نسخه‌دار**، Validator موجود می‌تواند علاوه بر خطاهای کلی، تعداد Attemptهای معتبر و نامعتبر هر حوزه را با گزینه `--by-domain` جداگانه گزارش کند:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python scripts/benchmark/validate_stage03_outputs.py \
+  --input /approved/local/results.jsonl \
+  --manifest /approved/local/manifest.jsonl \
+  --by-domain
+```
+
+خروجی افزوده `by_domain` برای `speech`، `media`، `research` و `unclassified` فقط `records`، `valid` و `invalid` را نشان می‌دهد. JSON نامعتبر، Domain ناشناس یا رکوردی که به‌علت محدودیت حجم/تعداد خوانده نشده است در `unclassified` محاسبه می‌شود؛ **حذف شکست‌ها از مخرج مجاز نیست**. در صورت خطا یا عبور از سقف، وضعیت کلی همچنان `FAIL` است، حتی اگر تعدادی رکورد معتبر باشند. بدون این گزینه، خروجی قبلی CLI تغییر نمی‌کند.
+
+**مرز ادعا:** این شمارنده‌ها سنجش **Schema و تطبیق Quote/Offset** هستند؛ `AI accuracy`، `MAE`، ارتباط معنایی Evidence، اصالت Expert Labels، امنیت، No-Egress یا تأثیر GPU را نمی‌سنجند. هیچ متنی یا Model ID در گزارش چاپ نمی‌شود، اما شمارنده‌های داده داخلی نیز فقط باید طبق سیاست سازمان در محل مجاز باقی بمانند. اجرای Benchmark واقعی روی Simorgh بدون Corpus کارشناسی و مجوز بار مستقل انجام نمی‌شود.
+

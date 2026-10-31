@@ -220,10 +220,17 @@ def load_manifest(path: Path) -> dict[str, tuple[str, str]]:
 
 def inspect_file(
     path: Path, manifest: dict[str, tuple[str, str]] | None = None,
+    *, domain_counts: dict[str, Counter[str]] | None = None,
 ) -> tuple[int, int, Counter[str]]:
     total = invalid = 0
     failures: Counter[str] = Counter()
     seen: set[tuple[str, str, str, str]] = set()
+
+    def count_domain(domain: str, *, rejected: bool) -> None:
+        if domain_counts is not None:
+            counts = domain_counts[domain]
+            counts["records"] += 1
+            counts["invalid" if rejected else "valid"] += 1
     with path.open("rb") as stream:
         while True:
             line = stream.readline(MAX_LINE_BYTES + 1)
@@ -233,17 +240,23 @@ def inspect_file(
             if len(line) > MAX_LINE_BYTES:
                 invalid += 1
                 failures["OVERSIZED_RECORD"] += 1
+                count_domain("unclassified", rejected=True)
                 break  # Do not parse partial lines or allocate beyond the safety cap.
             if total > MAX_RECORDS:
                 invalid += 1
                 failures["RECORD_LIMIT_EXCEEDED"] += 1
+                count_domain("unclassified", rejected=True)
                 break  # Fail closed; remaining attempts are not counted.
             try:
                 record = strict_json_loads(line)
             except (ValueError, UnicodeDecodeError, RecursionError):
                 invalid += 1
                 failures["INVALID_JSON"] += 1
+                count_domain("unclassified", rejected=True)
                 continue
+            domain = record.get("domain") if isinstance(record, dict) else None
+            if not isinstance(domain, str) or domain not in CRITERIA:
+                domain = "unclassified"
             errors = validate_record(record)
             if manifest is not None and isinstance(record, dict):
                 case_id = record.get("case_id")
@@ -270,6 +283,7 @@ def inspect_file(
             if errors:
                 invalid += 1
                 failures.update(set(errors))
+            count_domain(domain, rejected=bool(errors))
     return total, invalid, failures
 
 
@@ -279,6 +293,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="Approved local JSONL. Raw source text stays on host.")
     parser.add_argument("--manifest", type=Path,
                         help="Optional approved case manifest JSONL; checks case, domain and SHA-256.")
+    parser.add_argument("--by-domain", action="store_true",
+                        help="Include redacted record counts per domain; no source text or model IDs.")
     args = parser.parse_args(argv)
     try:
         manifest = load_manifest(args.manifest) if args.manifest else None
@@ -289,7 +305,13 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"status": "FAIL", "error": "INVALID_MANIFEST"}))
         return 2
     try:
-        total, invalid, failures = inspect_file(args.input, manifest)
+        domain_counts = (
+            {domain: Counter() for domain in (*CRITERIA, "unclassified")}
+            if args.by_domain else None
+        )
+        total, invalid, failures = inspect_file(
+            args.input, manifest, domain_counts=domain_counts,
+        )
     except OSError:
         print(json.dumps({"status": "FAIL", "error": "INPUT_IO_ERROR"}))
         return 2
@@ -302,6 +324,15 @@ def main(argv: list[str] | None = None) -> int:
         "manifest_check": "STRUCTURE_AND_SOURCE_HASH" if manifest is not None else "NOT_PROVIDED",
         "scope": "structure_and_exact_source_offsets_only; NOT_AI_QUALITY_OR_AUTHORIZATION",
     }
+    if domain_counts is not None:
+        result["by_domain"] = {
+            domain: {
+                "records": counts["records"],
+                "valid": counts["valid"],
+                "invalid": counts["invalid"],
+            }
+            for domain, counts in domain_counts.items()
+        }
     print(json.dumps(result, ensure_ascii=True, sort_keys=True))
     return 0 if total and not invalid else 1
 

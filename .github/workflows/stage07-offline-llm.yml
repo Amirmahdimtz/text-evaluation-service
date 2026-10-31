@@ -9,6 +9,7 @@ on:
       - "src/host/res/appsettings*.yaml"
       - "scripts/verification/check_stage04_safety.py"
       - "tests/test_stage07_*.py"
+      - "scripts/benchmark/**"
       - "requirements*.txt"
       - ".github/workflows/stage07-offline-llm.yml"
   workflow_dispatch:
