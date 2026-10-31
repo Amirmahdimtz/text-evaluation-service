@@ -87,3 +87,9 @@ The GitHub Actions [offline criterion CI run 41181109595](https://github.com/Ami
 **Authorization:** this active generation has **already occurred**; treat that execution allowance as consumed. **Do not rerun** `--execute-approved`, increase max tokens, inspect sensitive server log content, or conduct live benchmarks without a separately approved test scope and resource window. The default CLI remains `DRY_RUN_NO_NETWORK`.
 
 **Enterprise gate:** all original 56 mandatory Stage11 acceptance IDs remain `PENDING_SERVER`, no model-quality score is produced, `Stage11=BLOCKED`, `Stage12=NOT_STARTED`.
+
+## Updated diagnostic CLI validated on Simorgh, without new inference — 2026-10-31
+
+Operator successfully fast-forwarded the repo `c8f10ba..63fb8e3` after an earlier temporary GitHub DNS failure. On Simorgh's `.venv`, the two Stage11 contract/smoke suites returned **90 passed in 0.67s**. This confirms the redacted failure-classification test harness is locally installed and its **mock tests** pass. It **does not** establish a specific failure class for the earlier HTTP 200/`CRITERION_CONTRACT_UNVERIFIED` request: that old run cannot be decoded retrospectively. No `--execute-approved` invocation occurred in this retest; further inference needs new scoped authorization.
+
+A previously reported untracked nested `text-evaluation-service/` directory is of unknown origin and must **not** be deleted or staged without read-only inspection. All 56 original Stage11 enterprise tests remain `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
