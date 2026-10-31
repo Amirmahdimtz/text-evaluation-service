@@ -40,6 +40,10 @@ _FIXTURE = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "stage06
 _MAX_POSTS = 6
 _PAUSE_SECONDS = 3.0
 _MAX_COMPLETION_TOKENS = 640
+_SAFE_TRANSIENT_KINDS = frozenset({
+    "HTTP_429", "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504",
+    "REQUEST_TIMEOUT", "TRANSPORT_ERROR",
+})
 _EXAMPLES = {
     "speech": (
         "همکاران گرامی، امروز درباره کاهش مصرف آب صحبت می‌کنیم. "
@@ -236,8 +240,15 @@ def main(argv: list[str] | None = None) -> int:
         # Only fixed error codes from trusted code paths; never raw model content.
         code = str(exc)
         safe = code if re.fullmatch(r"[A-Z][A-Z0-9_]{2,80}", code) else "EVALUATION_FAILED"
+        category = (
+            exc.failure_kind
+            if isinstance(exc, LlmProviderError)
+            and exc.failure_kind in _SAFE_TRANSIENT_KINDS
+            else "UNCLASSIFIED"
+        )
         print(json.dumps({
             "status": "FAIL", "error_code": safe,
+            "failure_category": category,
             "inference_requests_attempted": bounded.calls if bounded else 0,
             "max_inference_requests": _MAX_POSTS,
             "retries": 0,

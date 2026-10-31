@@ -26,6 +26,11 @@ from src.infrastructure.providers.llm.structured_response import (
 class LlmProviderError(RuntimeError):
     """Public-safe fixed error code; never copy upstream exception or response."""
 
+    def __init__(self, code: str, *, failure_kind: str | None = None) -> None:
+        super().__init__(code)
+        # Fixed server-status/transport category only; never a response body.
+        self.failure_kind = failure_kind
+
 
 _RETRYABLE = frozenset({429, 500, 502, 503, 504})
 _MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_./-]{0,127}$")
@@ -131,6 +136,7 @@ class LocalLlmProvider:
             raise LlmProviderError("LLM_ADMISSION_TIMEOUT") from None
         try:
             for attempt in range(settings.max_attempts):
+                failure_kind: str | None = None
                 if self._closed:
                     raise LlmProviderError("LLM_PROVIDER_CLOSED")
                 if self._open_until > time.monotonic():
@@ -144,7 +150,10 @@ class LocalLlmProvider:
                         if response.is_redirect:
                             raise LlmProviderError("LLM_REDIRECT_DENIED")
                         if response.status_code in _RETRYABLE:
-                            raise LlmProviderError("LLM_TRANSIENT_HTTP")
+                            raise LlmProviderError(
+                                "LLM_TRANSIENT_HTTP",
+                                failure_kind=f"HTTP_{response.status_code}",
+                            )
                         if not 200 <= response.status_code < 300:
                             raise LlmProviderError("LLM_HTTP_REJECTED")
                         chunks: list[bytes] = []
@@ -179,16 +188,23 @@ class LocalLlmProvider:
                 except LlmProviderError as exc:
                     if str(exc) != "LLM_TRANSIENT_HTTP":
                         raise
-                except (httpx.RequestError, asyncio.TimeoutError):
-                    pass
+                    failure_kind = exc.failure_kind
+                except (httpx.TimeoutException, asyncio.TimeoutError):
+                    failure_kind = "REQUEST_TIMEOUT"
+                except httpx.RequestError:
+                    failure_kind = "TRANSPORT_ERROR"
                 except (ValueError, UnicodeError, RecursionError):
                     raise LlmProviderError("LLM_INVALID_RESPONSE") from None
                 self._failures += 1
                 if self._failures >= settings.circuit_failures:
                     self._open_until = time.monotonic() + settings.circuit_reset_seconds
-                    raise LlmProviderError("LLM_CIRCUIT_OPEN")
+                    raise LlmProviderError(
+                        "LLM_CIRCUIT_OPEN", failure_kind=failure_kind,
+                    )
                 if attempt + 1 == settings.max_attempts:
-                    raise LlmProviderError("LLM_RETRY_EXHAUSTED")
+                    raise LlmProviderError(
+                        "LLM_RETRY_EXHAUSTED", failure_kind=failure_kind,
+                    )
                 await asyncio.sleep(
                     min(settings.timeout_seconds, settings.retry_backoff_seconds * (2 ** attempt))
                     * (0.5 + random.random())

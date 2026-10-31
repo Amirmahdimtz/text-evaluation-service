@@ -134,3 +134,52 @@ def test_rejects_non_development_environment_or_invalid_model_id(monkeypatch):
     monkeypatch.setenv("TES_ENVIRONMENT", "development")
     with pytest.raises(ValueError, match="^STAGE11_MODEL_ID_INCOMPATIBLE$"):
         smoke._local_config("../bad-model")
+
+
+@pytest.mark.parametrize("category", [
+    "HTTP_429", "HTTP_503", "REQUEST_TIMEOUT", "TRANSPORT_ERROR",
+    "private-secret-detail",
+])
+def test_live_harness_failure_is_categorized_without_exposing_upstream_data(
+    monkeypatch, capsys, category,
+):
+    monkeypatch.setenv("TES_ENVIRONMENT", "development")
+    monkeypatch.setattr(
+        smoke, "_query_one_model",
+        lambda *, port: ("synthetic-test-only-model", None),
+    )
+
+    class FailingProvider:
+        def __init__(self, *_args, **_kwargs):
+            self.closed = False
+
+        def declared_configuration(self):
+            return {
+                "model_id": "synthetic-test-only-model",
+                "model_revision": "synthetic-unverified",
+                "revision_verified": False,
+                "max_input_characters": 2048,
+            }
+
+        async def evaluate_async(self, **_kwargs):
+            raise LlmProviderError(
+                "LLM_CIRCUIT_OPEN", failure_kind=category,
+            )
+
+        async def aclose(self):
+            self.closed = True
+
+    monkeypatch.setattr(smoke, "LocalLlmProvider", FailingProvider)
+    result = smoke.main(["--domain", "speech", "--execute-approved"])
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert result == 1
+    assert payload["status"] == "FAIL"
+    assert payload["error_code"] == "LLM_CIRCUIT_OPEN"
+    assert payload["failure_category"] == (
+        category if category in smoke._SAFE_TRANSIENT_KINDS
+        else "UNCLASSIFIED"
+    )
+    assert payload["inference_requests_attempted"] == 1
+    assert payload["retries"] == 0
+    assert "private-secret-detail" not in output

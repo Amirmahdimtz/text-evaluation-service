@@ -459,3 +459,56 @@ def test_shared_vllm_busy_endpoint_never_retries_with_single_attempt(status):
     asyncio.run(exercise())
     assert len(requests) == 1
     assert requests[0].url.path == "/v1/chat/completions"
+
+
+@pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
+def test_single_attempt_circuit_preserves_only_safe_http_failure_category(status):
+    calls = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(status, text="private-upstream-response-and-token")
+
+    provider = make_provider(handler, overrides={
+        "circuit_failures": 1, "max_attempts": 1,
+    })
+
+    async def run():
+        try:
+            with pytest.raises(LlmProviderError, match="^LLM_CIRCUIT_OPEN$") as error:
+                await invoke(provider)
+            assert error.value.failure_kind == f"HTTP_{status}"
+            assert "private-upstream-response" not in str(error.value)
+        finally:
+            await provider.aclose()
+
+    asyncio.run(run())
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("error,category", [
+    (httpx.ReadTimeout("private-read-timeout-details"), "REQUEST_TIMEOUT"),
+    (httpx.ConnectError("private-socket-details"), "TRANSPORT_ERROR"),
+])
+def test_single_attempt_circuit_redacts_transport_failure_categories(error, category):
+    calls = []
+
+    async def handler(request):
+        calls.append(request)
+        raise error
+
+    provider = make_provider(handler, overrides={
+        "circuit_failures": 1, "max_attempts": 1,
+    })
+
+    async def run():
+        try:
+            with pytest.raises(LlmProviderError, match="^LLM_CIRCUIT_OPEN$") as err:
+                await invoke(provider)
+            assert err.value.failure_kind == category
+            assert "private-" not in str(err.value)
+        finally:
+            await provider.aclose()
+
+    asyncio.run(run())
+    assert len(calls) == 1
