@@ -13,11 +13,11 @@ from uuid import uuid4
 from src.core.services.text_evaluation.evaluation_worker_service import (
     EvaluationWorkerService, JobExecutor, WorkerPolicy,
 )
+from src.core.services.text_evaluation.protected_evaluation_executor import ProtectedEvaluationExecutor
 from src.infrastructure.di.bootstrap import bootstrap_di
 from src.infrastructure.di.inject import resolve
 from src.infrastructure.utils.config_reader import ConfigReader
 from src.infrastructure.context.sql_db.psql_dbcontext import PsqlDbContext
-from src.infrastructure.providers.llm.local_llm_provider import LocalLlmProvider
 
 
 def _load_worker_policy(config: ConfigReader) -> tuple[str, WorkerPolicy]:
@@ -49,7 +49,6 @@ async def run_with_approved_executor(executor: JobExecutor) -> None:
     config = resolve(ConfigReader)
     organization_id, policy = _load_worker_policy(config)
     db = resolve(PsqlDbContext)
-    llm = resolve(LocalLlmProvider)
     stop = asyncio.Event()
     running_loop = asyncio.get_running_loop()
     for flag in (signal.SIGINT, signal.SIGTERM):
@@ -64,8 +63,11 @@ async def run_with_approved_executor(executor: JobExecutor) -> None:
             policy=policy, executor=executor, stop_event=stop,
         )
     finally:
-        await llm.aclose()
-        await db.close()
+        try:
+            if isinstance(executor, ProtectedEvaluationExecutor):
+                await executor.aclose()
+        finally:
+            await db.close()
 
 
 def main() -> None:
@@ -74,9 +76,13 @@ def main() -> None:
     config = resolve(ConfigReader)
     if not config.settings.worker.enabled:
         raise SystemExit("WORKER_DISABLED")
-    # Stage09 has deliberately no approved protected-text resolver or KMS.
-    # A future trusted composition root must call run_with_approved_executor().
-    raise SystemExit("WORKER_SECURE_EXECUTOR_NOT_CONFIGURED")
+    # Only the isolated development database and explicitly enabled internal
+    # services may execute. This is not a production deployment entrypoint.
+    if (config.environment != "development"
+            or not config.settings.http_security.enabled
+            or not config.settings.llm.enabled):
+        raise SystemExit("WORKER_SECURE_EXECUTOR_NOT_CONFIGURED")
+    asyncio.run(run_with_approved_executor(resolve(ProtectedEvaluationExecutor)))
 
 
 if __name__ == "__main__":

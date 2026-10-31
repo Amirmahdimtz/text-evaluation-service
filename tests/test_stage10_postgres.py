@@ -412,3 +412,138 @@ def test_stage10_http_validation_rate_limits_backpressure_and_disabled_security(
         finally:
             await db.close()
     asyncio.run(exercise())
+
+
+def test_stage11_protected_executor_from_signed_api_through_isolated_postgres(
+    isolated_stage10_schema, monkeypatch,
+):
+    """Real encrypted-source DB + fenced Worker + synthetic engine; no vLLM."""
+    from dataclasses import replace
+    from decimal import Decimal
+    from types import SimpleNamespace
+
+    from src.core.services.text_evaluation.criterion_evaluation_service import CriterionAssessment
+    from src.core.services.text_evaluation.protected_evaluation_executor import ProtectedEvaluationExecutor
+
+    key = setup_auth(monkeypatch)
+    org = "synthetic-protected-worker-" + uuid4().hex
+    cfg = resolve(ConfigReader)
+    monkeypatch.setattr(cfg, "settings", cfg.settings.model_copy(update={
+        "worker": cfg.settings.worker.model_copy(update={
+            "enabled": True, "organization_id": org,
+        }),
+        "llm": cfg.settings.llm.model_copy(update={
+            "enabled": True, "max_input_characters": 4096,
+        }),
+    }))
+
+    class SyntheticEngine:
+        def __init__(self):
+            self.calls = 0
+
+        async def evaluate_async(self, *, original_text, rubric,
+                                 chunk_char_limit, max_inference_characters):
+            self.calls += 1
+            assert original_text == SOURCE
+            assert chunk_char_limit == 4096
+            assert max_inference_characters == 4096
+            first = rubric.snapshot.criteria[0]
+            criteria = (CriterionAssessment(
+                criterion_code=first.criterion_code, status="assessed",
+                score=4, reason="شواهد ساختگی معتبرند.", reason_code=None,
+                evidence=((SOURCE, 0, len(SOURCE)),),
+            ),) + tuple(CriterionAssessment(
+                criterion_code=item.criterion_code, status="not_assessed",
+                score=None, reason="INSUFFICIENT_EVIDENCE",
+                reason_code="INSUFFICIENT_EVIDENCE",
+            ) for item in rubric.snapshot.criteria[1:])
+            return SimpleNamespace(
+                rubric_version_id=rubric.rubric_version_id,
+                evaluation_type=rubric.evaluation_type,
+                rubric_checksum=rubric.checksum,
+                publishable_as_official_score=False,
+                result_status="partial",
+                criteria=criteria,
+                coverage_fraction=Decimal("0.2"),
+                model_revision="synthetic-unverified-model",
+                prompt_version="synthetic-stage11",
+            )
+
+    async def exercise():
+        db = resolve(PsqlDbContext)
+        try:
+            await seed_rubric(db, org)
+            app = create_app()
+            identity = token(key, org)
+            engine = SyntheticEngine()
+            repository = resolve(EvaluationRepository)
+            executor = ProtectedEvaluationExecutor(
+                repository, engine, resolve(EncryptedContentService), cfg,
+            )
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://127.0.0.1:8000",
+            ) as client:
+                route = "/api/v1/text_evaluation"
+                submitted = await client.post(
+                    route + "/evaluations", headers=headers(identity), json=payload(),
+                )
+                assert submitted.status_code == 202, submitted.text
+                evaluation_id = UUID(submitted.json()["evaluation_id"])
+
+                worker = resolve(EvaluationWorkerService)
+                policy = WorkerPolicy(
+                    lease_seconds=8, heartbeat_seconds=0.1,
+                    execution_timeout_seconds=3, max_attempts=1,
+                    retry_base_seconds=0, retry_cap_seconds=0.1,
+                    max_inflight=1, max_queue_depth=8, poll_seconds=0.1,
+                    recovery_batch_size=8, drain_seconds=1,
+                )
+                assert await worker.process_once_async(
+                    organization_id=org, worker_id="synthetic-protected-worker",
+                    policy=policy, executor=executor,
+                ) == "completed_review"
+                assert engine.calls == 1
+
+                report = await client.get(
+                    route + "/evaluations/" + str(evaluation_id),
+                    headers=headers(identity),
+                )
+                assert report.status_code == 200, report.text
+                data = report.json()
+                assert data["status"] == "partial"
+                assert data["publishable_as_official_score"] is False
+                assert data["provisional_score"] is None
+                assessed = [
+                    item for item in data["criteria"] if item["status"] == "assessed"
+                ]
+                assert len(assessed) == 1
+                assert assessed[0]["details"]["evidence"][0]["quote"] == SOURCE
+                assert assessed[0]["details"]["evidence"][0]["end_offset"] == len(SOURCE)
+
+                outsider = token(key, "different-org")
+                denied = await client.get(
+                    route + "/evaluations/" + str(evaluation_id),
+                    headers=headers(outsider),
+                )
+                assert denied.status_code == 404
+                assert SOURCE not in denied.text
+
+            async with db.session() as session:
+                evaluation = (await session.scalars(select(Evaluation).where(
+                    Evaluation.id == evaluation_id,
+                ))).one()
+                source = (await session.scalars(select(ProtectedText).where(
+                    ProtectedText.id == evaluation.protected_text_ref,
+                ))).one()
+                criteria = (await session.scalars(select(CriterionResult).where(
+                    CriterionResult.evaluation_id == evaluation_id,
+                ))).all()
+                assert SOURCE.encode("utf-8") not in source.ciphertext
+                assert criteria and all(
+                    SOURCE.encode("utf-8") not in row.encrypted_details for row in criteria
+                )
+        finally:
+            await db.close()
+
+    asyncio.run(exercise())

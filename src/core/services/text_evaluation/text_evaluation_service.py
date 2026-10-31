@@ -140,3 +140,7 @@ class TextEvaluationService:
             exact_score_ratio=score.exact_score_ratio,
             exact_coverage_ratio=score.exact_coverage_ratio,
         )
+
+    async def close_async(self) -> None:
+        """Release the provider used by this engine, not a fresh DI instance."""
+        await self._criteria.close_async()

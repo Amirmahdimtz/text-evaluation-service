@@ -262,3 +262,49 @@ class EvaluationRepository(BaseRepository[Evaluation]):
             ).order_by(CriterionResult.criterion_code))).all()
             return evaluation, tuple(rows)
 
+
+    async def load_protected_worker_material_async(
+        self, *, context: WorkerEvaluationContext,
+    ) -> tuple[ProtectedText, RubricVersion] | None:
+        """Resolve only the active evaluation's scoped encrypted source and rubric.
+
+        The Worker service acquired a fenced lease before supplying this context.
+        Finalization still rechecks fencing inside its own atomic transaction.
+        No plaintext is fetched from or returned to the database layer.
+        """
+        if (not isinstance(context, WorkerEvaluationContext)
+                or not isinstance(context.evaluation_id, UUID)
+                or not isinstance(context.rubric_version_id, UUID)
+                or not isinstance(context.protected_text_ref, UUID)
+                or not context.organization_id or not context.owner_id
+                or context.evaluation_type not in ("speech", "media", "research")):
+            raise ValueError("DB_WORKER_MATERIAL_SCOPE_INVALID")
+        async with self._db.session() as session:
+            evaluation = (await session.scalars(select(Evaluation).where(
+                Evaluation.id == context.evaluation_id,
+                Evaluation.organization_id == context.organization_id,
+                Evaluation.owner_id == context.owner_id,
+                Evaluation.evaluation_type == context.evaluation_type,
+                Evaluation.rubric_version_id == context.rubric_version_id,
+                Evaluation.protected_text_ref == context.protected_text_ref,
+                Evaluation.status == "processing",
+            ))).one_or_none()
+            if evaluation is None:
+                return None
+            protected = (await session.scalars(select(ProtectedText).where(
+                ProtectedText.id == context.protected_text_ref,
+                ProtectedText.organization_id == context.organization_id,
+                ProtectedText.owner_id == context.owner_id,
+            ))).one_or_none()
+            if protected is None:
+                return None
+            rubric = (await session.scalars(select(RubricVersion).where(
+                RubricVersion.id == context.rubric_version_id,
+                RubricVersion.organization_id == context.organization_id,
+                RubricVersion.evaluation_type == context.evaluation_type,
+                RubricVersion.status == "published",
+            ))).one_or_none()
+            if rubric is None:
+                return None
+            return protected, rubric
+

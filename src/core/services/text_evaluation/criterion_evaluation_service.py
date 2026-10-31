@@ -179,3 +179,7 @@ class CriterionEvaluationService:
             recommendations=combined.recommendations, evidence=tuple(mapped),
             quality_flags=("DOCUMENT_SYNTHESIS_UNVERIFIED", "SEMANTIC_REVIEW_REQUIRED"),
         )
+
+    async def close_async(self) -> None:
+        """Close the actual inference provider bound to this evaluation service."""
+        await self._provider.aclose()
