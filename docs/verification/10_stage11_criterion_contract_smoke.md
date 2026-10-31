@@ -93,3 +93,28 @@ The GitHub Actions [offline criterion CI run 41181109595](https://github.com/Ami
 Operator successfully fast-forwarded the repo `c8f10ba..63fb8e3` after an earlier temporary GitHub DNS failure. On Simorgh's `.venv`, the two Stage11 contract/smoke suites returned **90 passed in 0.67s**. This confirms the redacted failure-classification test harness is locally installed and its **mock tests** pass. It **does not** establish a specific failure class for the earlier HTTP 200/`CRITERION_CONTRACT_UNVERIFIED` request: that old run cannot be decoded retrospectively. No `--execute-approved` invocation occurred in this retest; further inference needs new scoped authorization.
 
 A previously reported untracked nested `text-evaluation-service/` directory is of unknown origin and must **not** be deleted or staged without read-only inspection. All 56 original Stage11 enterprise tests remain `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## Real Simorgh second criterion smoke: evidence/offset mismatch — 2026-10-31
+
+The authorized operator ran exactly one additional synthetic `--execute-approved` criterion request against local vLLM. The supplied **sanitized JSON** reported: `HTTP 200`, `elapsed_ms=6010`, `status=CRITERION_CONTRACT_UNVERIFIED`, `failure_class=QUOTE_OFFSET_MISMATCH`, `prompt_tokens=166`, `completion_tokens=113`, `total_tokens=279`, `retries=0`, `max_inference_requests=1`, `synthetic_only=true`, `model_id_logged=false`, `model_output_logged=false`, `stage11_gate=BLOCKED`.
+
+**What the result actually proves:** the received candidate output reached the Pydantic criterion schema and expected criterion-code checks, but **at least one quoted evidence string did not equal** `original_text[start_offset:end_offset]`. The validator's previous single error code combined (a) a quote absent verbatim anywhere in the original and (b) a quote present with incorrect boundaries. **Which subcase occurred is not recoverable** from this redacted output; we must not speculate about bytes vs Unicode, tag offsets, character normalization or hallucinated quotations. `finish_reason` had to be `stop` to reach this validation. With 113 completion tokens against a 320-token cap, this event is **not evidenced as output truncation**. One elapsed time is not p95 or an SLO.
+
+**Corrective code, without automatic evidence repair:** commit `fd072f1e18c866479c6462b0a026d1dbe660969e` changes the parser to keep strict fail-closed equality and distinguish `LLM_QUOTE_NOT_FOUND` vs `LLM_QUOTE_OFFSET_INVALID`; only static diagnostic labels `QUOTE_NOT_FOUND_IN_SOURCE` and `QUOTE_OFFSET_INCORRECT` are exposed by the smoke. It does **not** normalize, relocate, guess, repair or accept any mismatched quote/offset. The synthetic prompt now unambiguously specifies its entire source's exact Python Unicode codepoint length and half-open `[start,end)` positions excluding wrapper tags. The real `LocalLlmProvider` prompt now states the same offset convention for arbitrary sources, including original length, with no prompt logging. `PROMPT_VERSION` advances from `stage08-prompt-candidate-0.1` to `stage08-prompt-candidate-0.2` for traceability. This is a **proposed model instruction improvement**, not evidence that the real model will comply.
+
+**Actual regression evidence on the code revision:** all seven GitHub Actions workflows succeeded, including isolated-PostgreSQL Stage10 E2E run `41182886734` with **391 passed**, Stage07 internal provider run `41182886707` with **53 passed** (its broad non-DB suite 376 passed/8 skipped), Stage08 offline run `41182886739` with **37 engine tests passed** and 376 passed/8 skipped, Stage09 worker run `41182886685` with **391 passed** full suite, Stage11 criterion offline run `41182886694` with **91 passed**; Stage05 `41182886717` and Stage06 `41182886745` also succeeded. These are synthetic/fixture tests, **not a repeat real-model test**.
+
+**Next safe operator actions (offline only):**
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
+  tests/test_stage11_criterion_contract_smoke.py \
+  tests/test_stage11_synthetic_inference_smoke.py \
+  tests/test_stage07_local_llm.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
+  scripts/verification/stage11_criterion_contract_smoke.py
+```
+The last command **must** be `DRY_RUN_NO_NETWORK`. **Do not run** `--execute-approved` again automatically: the user's prior one-inference scope was consumed by this latest request. The current source is still available on GitHub; a Git pull to a controlled checkout does not require exposing real model or organization data.
+
+**Unchanged Gate:** `AUXILIARY_LIVE_CRITERION_SMOKE_FAILED_TO_VERIFY`, all original 56 enterprise test IDs `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`. New scoped operator/infrastructure authorization is required before any next real generation; no raw model payload, token/credential, private artifact identity or confidential source should be pasted into public evidence.

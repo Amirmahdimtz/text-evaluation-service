@@ -123,3 +123,9 @@ This is useful **auxiliary pre-acceptance software integration**, not a PASS for
 ## Simorgh operator-reported protected Worker offline tests — 2026-10-31
 
 At the `c8f10ba` checkout, `tests/test_stage11_protected_worker.py` and `tests/test_stage09_worker.py` jointly returned **36 passed in 0.87s**. These are synthetic offline contracts and failure-injection cases running in the real Simorgh Python environment, not tests that call a real GPU/LLM, network isolation, or protected enterprise PostgreSQL. Record as **auxiliary code execution evidence**, not acceptance oracles for any of the 56 mandatory `PENDING_SERVER` test IDs. Stage11 remains `BLOCKED`; Stage12 `NOT_STARTED`.
+
+## Second full-criterion live smoke — failure category, not acceptance — 2026-10-31
+
+Operator-reported real Simorgh one-shot returned HTTP 200, `failure_class=QUOTE_OFFSET_MISMATCH`, `elapsed_ms=6010`, `completion_tokens=113`, `prompt_tokens=166`, `total_tokens=279`. Its `CriterionInference` schema and expected criterion passed up to evidence verification, but an exact original-text quote/offset comparison failed. This is **auxiliary negative evidence**, not proof of any of the 56 complete real Stage11 acceptance oracles, and not an AI quality benchmark. Previous authorizations are consumed.
+
+An offline source correction in `fd072f1` preserved strict fail-closed validation, disambiguated quote absent vs wrong offset and clarified Unicode codepoint instructions to the internal model. Seven GitHub mock/isolated database workflows passed on that revision, but **no actual model call tested the change**. All original enterprise Stage11 test IDs remain `PENDING_SERVER` until their full separate prerequisites/oracles are satisfied. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
