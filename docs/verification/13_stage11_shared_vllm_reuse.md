@@ -105,3 +105,24 @@ GitHub Actions [Stage07 run 41188403013](https://github.com/Amirmahdimtz/text-ev
 ## Operator verification of shared-client offline safeguards on Simorgh — 2026-10-31
 
 The operator pulled `f4bfa9b` and executed the exact Stage07 mock provider suite on Simorgh: **56 passed in 0.97s**. This demonstrates the single-instance concurrency/no-retry guard test additions actually execute under the target server's local Python dependencies; it is **not** an active benchmark or a proof of non-interference with other projects. A separate serving-owner-approved shared concurrency policy (including multiple processes, request budgets and stop conditions) is still needed before production/shared-model traffic is enabled. No Inference POST, Docker change, model download or GPU allocation was made by these tests. Enterprise Stage11 has **56 PENDING_SERVER** IDs and remains `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## Approved one-shot, owner-observed shared-endpoint check — 2026-10-31
+
+The user explicitly approved proceeding with the previously discussed **limited real connection** and checking potential impact on other projects. This establishes scope for **one** additional synthetic request on the already validated loopback port `8000`, rather than permission for a sustained benchmark or any change to another project's serving container. Infrastructure ownership and fair-share conditions must still be checked by the server operator; **one successful request cannot demonstrate zero interference**.
+
+Before invoking the existing command, the operator should confirm a safe window and any accessible, authorized counters for other affected projects (latency, errors, serving queue) and stop if those are degraded. A basic **non-invasive host snapshot** before and after can be taken with:
+
+```bash
+nvidia-smi --query-gpu=index,memory.total,memory.used,utilization.gpu --format=csv,noheader,nounits
+```
+
+Once, and **only once** under the approved scope:
+
+```bash
+cd /srv/projects/text-evaluation-service
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python scripts/verification/stage11_criterion_contract_smoke.py --port 8000 --execute-approved
+```
+
+Then repeat **only the read-only** `nvidia-smi` snapshot. This existing reviewed CLI sends one metadata GET, at most one synthetic `CriterionInference` POST with `max_tokens=320`, no retries, no model ID/text logging, and no write to a shared service. It is **not** the authenticated API→DB→Worker→LLM E2E. A before/after GPU snapshot is insufficient to measure another app's p95 latency or error-rate change; that requires the owner's permitted app-level monitoring. Do not load extra models, enable app config, restart containers, access other projects' ports/files or run additional probes. Do not repeat the inference after failure; request the sanitized status and observer assessment before planning further tests.
+
+**Evidence status now:** `APPROVED_ONCE_NOT_EXECUTED` by assistant/operator as of this documentation update; `SHARED_NON_INTERFERENCE_NOT_MEASURED`. Original 56 Stage11 enterprise IDs remain `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
