@@ -173,3 +173,6 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python scripts/benchmark/validate_stage03_ou
 
 **مرز ادعا:** این شمارنده‌ها سنجش **Schema و تطبیق Quote/Offset** هستند؛ `AI accuracy`، `MAE`، ارتباط معنایی Evidence، اصالت Expert Labels، امنیت، No-Egress یا تأثیر GPU را نمی‌سنجند. هیچ متنی یا Model ID در گزارش چاپ نمی‌شود، اما شمارنده‌های داده داخلی نیز فقط باید طبق سیاست سازمان در محل مجاز باقی بمانند. اجرای Benchmark واقعی روی Simorgh بدون Corpus کارشناسی و مجوز بار مستقل انجام نمی‌شود.
 
+### Stage11 offline validation evidence (2026-10-31)
+
+The backward-compatible optional `--by-domain` reporting was verified by GitHub Actions [run `41192672964`](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41192672964) on commit `c9110b8`: **41 synthetic benchmark unit tests PASS**, `56` provider stub tests PASS and `379` broad non-DB tests PASS (`8` skipped). These counts are CI tests, **not golden dataset samples or actual model results**. Run the CLI on approved *local* JSONL datasets only, keep all confidential outputs and even restricted aggregate results in internal storage, and do not infer MAE or AI accuracy without adjudicated reference labels. The real two-model/three-domain benchmark remains `PENDING_SERVER`.
