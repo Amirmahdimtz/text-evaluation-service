@@ -33,3 +33,11 @@ The user authorized exactly one minimal synthetic-only inference against the exi
 ## Progress checkpoint: one authorized synthetic model completion succeeded — 2026-10-28
 
 The operator reported a single real loopback synthetic completion on source `0ba42a2`: HTTP 200, valid one-field strict JSON object, `finish_reason=stop`, 149ms POST timing, 70 prompt + 10 completion tokens. Source tests (35 on Simorgh) and dry-run also passed. **This retires only the auxiliary "can one synthetic JSON-schema request complete?" uncertainty**, not B11-01..B11-10, the secure product Worker integration, signed model/provenance, production network/data controls, required golden benchmark, load/SLO, approved IAM/KMS or release authorization. The one-request permission was consumed. **Stage11 `BLOCKED` and all 56 mandatory organization tests `PENDING_SERVER`**; Stage12 `NOT_STARTED`. [Evidence](09_stage11_single_inference_smoke.md).
+
+## Stage11 execution dependencies — 2026-10-31
+
+A dependency-ordered [Stage11 closure execution packet](11_stage11_gate_closure_execution.md) now provides Wave 0 organizational approval/limits; Wave 1 immutable model/runtime provenance; Wave 2 real criterion validation and adjudicated dual-model tri-domain gold results; Wave 3 No-Egress/IAM/KMS/log-redaction; Wave 4 protected application/Worker E2E; Wave 5 SLO/Load/Backup/Recovery; Wave 6 independent full 56-ID release-gate review. Each wave identifies original owners and evidence; **no protected step is declared authorized or completed by publishing this packet**.
+
+The repository's production config still has `llm.enabled=false`, `worker.enabled=false` and `http_security.enabled=false`. The secure organizational Worker source resolver is not wired; safe actual integration is therefore a **P0 blocker**, not simply a test-environment switch. One live minimal schema smoke was completed previously; this does not prove the broader `CriterionInference` or enterprise gate. An independent parse confirms 56 unique original Stage11 test IDs in the ledger, not their execution.
+
+**Gate:** all 56 enterprise tests remain `PENDING_SERVER`; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; no network/model/production actions authorized by this documentation change.
