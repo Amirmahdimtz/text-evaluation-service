@@ -118,3 +118,14 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
 The last command **must** be `DRY_RUN_NO_NETWORK`. **Do not run** `--execute-approved` again automatically: the user's prior one-inference scope was consumed by this latest request. The current source is still available on GitHub; a Git pull to a controlled checkout does not require exposing real model or organization data.
 
 **Unchanged Gate:** `AUXILIARY_LIVE_CRITERION_SMOKE_FAILED_TO_VERIFY`, all original 56 enterprise test IDs `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`. New scoped operator/infrastructure authorization is required before any next real generation; no raw model payload, token/credential, private artifact identity or confidential source should be pasted into public evidence.
+
+## Simorgh dry-run and local provider regression after quote-offset fix — 2026-10-31
+
+On the operator's Simorgh working copy, `git pull --ff-only origin main` completed successfully and `git rev-parse --short HEAD` printed `a5fd771`. Actual reported command:
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
+  tests/test_stage11_criterion_contract_smoke.py \
+  tests/test_stage11_synthetic_inference_smoke.py \
+  tests/test_stage07_local_llm.py
+```
+**Result:** `144 passed in 1.47s`. The subsequent default, non-approved CLI invocation returned `DRY_RUN_NO_NETWORK` with no HTTP request to the model. This is `PASS_OPERATOR_REPORTED_SIMORGH_OFFLINE_CONTRACT_REGRESSION` only; it is **not** a new success of the real synthetic CriterionInference contract. The last real authorized request failed `QUOTE_OFFSET_MISMATCH`. Do **not** run `--execute-approved` on the basis of this offline pass; new approval is required. Original Stage11 56-ID test ledger remains `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
