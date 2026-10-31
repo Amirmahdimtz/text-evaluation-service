@@ -97,3 +97,7 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
 ```
 
 Do not change `appsettings*.yaml`, start a Worker or use `--execute-approved` on the shared service merely to run these tests. Continue to use the **existing** loopback 8000 model as a *candidate* only until the shared service owner approves actual client limits, credentials, model artifact identity and low-impact benchmark. Stage11 remains `BLOCKED` with 56 original enterprise tests `PENDING_SERVER`, Stage12 `NOT_STARTED`.
+
+## Verified offline shared-client guard tests — 2026-10-31
+
+GitHub Actions [Stage07 run 41188403013](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41188403013) **SUCCEEDED** on `360563cc`: provider tests `56 passed in 0.83s`; broad non-database regressions `379 passed, 8 skipped in 2.82s`. Synthetic test cases verified **per-provider** one-at-a-time client admission and zero retry to failed 429/503 model responses. Actual shared service **was not contacted**; global capacity, other-project interference, model provenance, dataset benchmark and corporate protected E2E remain unverified. No defaults were enabled or service containers changed.
