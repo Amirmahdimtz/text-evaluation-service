@@ -60,3 +60,9 @@ The **development/test** protected-source Worker integration gap has been addres
 ## B11-06 host-side offline regression result — 2026-10-31
 
 The operator ran the protected Worker and prior Worker unit suites after pulling `c8f10ba` on Simorgh: **36 passed in 0.87s**. This closes uncertainty about Python import/dependency compatibility of these synthetic Worker tests on that host and reinforces **B11-06 offline integration**; it does not close the P0 blocker for corporate secured API → DB → real on-prem LLM E2E, IAM/key lifecycle, or staging deployment. The original 56 mandatory enterprise tests remain `PENDING_SERVER`, Stage11 `BLOCKED`; Stage12 not started.
+
+## Active full-criterion contract smoke did not pass — 2026-10-31
+
+The operator-provided Simorgh output for one approved synthetic on-prem criterion request showed `HTTP 200` but `CRITERION_CONTRACT_UNVERIFIED` and `6047 ms` elapsed; this is **not PASS**. The one-field JSON smoke previously succeeded, but the actual multi-field criterion/evidence/offset contract has **not been demonstrated**. The old diagnostic discarded the cause category, so the blocker cannot be responsibly attributed to vLLM, model, token limit or prompt without additional authorized evidence. The request has occurred and must **not** be automatically retried.
+
+The redacted offline harness now distinguishes broad failure categories for a **future specifically authorized synthetic run**; GitHub Actions `41181109595` passed **90 tests**. This does not close `B11-02/03/06` or change the enterprise 56-ID gate. Stage11 remains `BLOCKED`; Stage12 `NOT_STARTED`. [Evidence and runbook](10_stage11_criterion_contract_smoke.md).
