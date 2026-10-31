@@ -275,6 +275,11 @@ class LocalLlmProvider:
                     "role": "user", "content": (
                         "Rubric SHA256: " + rubric_checksum + "\nCriterion: " + criterion_code
                         + "\nEvaluation instructions: " + instructions
+                        + "\nEvidence offsets: Python Unicode codepoint indexes in "
+                        + "the original source text ONLY, not the <source> tags or "
+                        + "newlines surrounding them. Start is inclusive; end is exclusive. "
+                        + "Do not count UTF-8 bytes, normalize the quote, or invent text."
+                        + "\nOriginal source codepoint length: " + str(len(source_text))
                         + "\nUntrusted source text follows:\n<source>\n"
                         + source_text + "\n</source>"
                     ),

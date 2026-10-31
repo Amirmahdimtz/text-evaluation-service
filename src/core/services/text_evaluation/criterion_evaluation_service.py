@@ -8,7 +8,7 @@ from src.infrastructure.di.inject import inject
 from src.infrastructure.providers.llm.local_llm_provider import LocalLlmProvider
 from src.infrastructure.providers.llm.structured_response import CriterionInference
 
-PROMPT_VERSION = "stage08-prompt-candidate-0.1"
+PROMPT_VERSION = "stage08-prompt-candidate-0.2"
 
 
 @dataclass(frozen=True)

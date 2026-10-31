@@ -67,8 +67,13 @@ def decode_criterion_response(raw: str, *, expected_code: str, source_text: str,
         if result.criterion_code != expected_code:
             raise ValueError("LLM_WRONG_CRITERION")
         for ev in result.evidence:
-            if ev.end_offset <= ev.start_offset or source_text[ev.start_offset:ev.end_offset] != ev.quote:
-                raise ValueError("LLM_QUOTE_MISMATCH")
+            if ev.end_offset <= ev.start_offset:
+                raise ValueError("LLM_QUOTE_OFFSET_INVALID")
+            if source_text[ev.start_offset:ev.end_offset] != ev.quote:
+                # Do not guess, normalize, relocate, or accept invented evidence.
+                if ev.quote not in source_text:
+                    raise ValueError("LLM_QUOTE_NOT_FOUND")
+                raise ValueError("LLM_QUOTE_OFFSET_INVALID")
         return result
     except (UnicodeError, RecursionError, OverflowError):
         raise ValueError("LLM_INVALID_JSON") from None

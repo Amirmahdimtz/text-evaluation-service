@@ -100,7 +100,11 @@ def test_success_structured_output_pooled_client_model_metadata_and_health():
         assert payload["stream"] is False and "tools" not in payload
         assert payload["model"] == "approved-local-model"
         assert "thinking" not in payload
-        assert SOURCE in payload["messages"][1]["content"]
+        content = payload["messages"][1]["content"]
+        assert SOURCE in content
+        assert "Original source codepoint length: " + str(len(SOURCE)) in content
+        assert "not the <source> tags" in content
+        assert "Start is inclusive; end is exclusive" in content
         return answer()
     provider = make_provider(handler)
     async def run():
@@ -370,3 +374,23 @@ def test_health_bounded_by_configured_deadline():
         assert await provider.health_async() is False
         await provider.aclose()
     asyncio.run(run())
+
+
+def test_malformed_quote_diagnoses_not_in_source_vs_incorrect_offset():
+    """A grounded quote with wrong offsets still fails; no automatic repair."""
+    import json
+    from src.infrastructure.providers.llm.structured_response import decode_criterion_response
+
+    wrong_offset = expected_result()
+    wrong_offset["evidence"][0]["start_offset"] = 1
+    wrong_offset["evidence"][0]["end_offset"] = 5
+    with pytest.raises(ValueError, match="^LLM_QUOTE_OFFSET_INVALID$"):
+        decode_criterion_response(json.dumps(wrong_offset, ensure_ascii=False),
+                                  expected_code=CODE, source_text=SOURCE,
+                                  max_response_bytes=4096)
+    missing_quote = expected_result()
+    missing_quote["evidence"][0]["quote"] = "THIS_IS_NOT_IN_THE_SOURCE"
+    with pytest.raises(ValueError, match="^LLM_QUOTE_NOT_FOUND$"):
+        decode_criterion_response(json.dumps(missing_quote, ensure_ascii=False),
+                                  expected_code=CODE, source_text=SOURCE,
+                                  max_response_bytes=4096)

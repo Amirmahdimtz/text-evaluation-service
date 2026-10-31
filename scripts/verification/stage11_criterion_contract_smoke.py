@@ -64,7 +64,11 @@ def make_request(model_id: str) -> dict[str, Any]:
                 "For assessed status, provide a score 0..5 and one evidence item "
                 "whose quote matches an exact slice of the following text; "
                 "start_offset and end_offset are Python Unicode codepoint indices. "
-                "The source may be quoted whole, from offset 0 through its length. "
+                "Offsets exclude the <source> tags; start is inclusive and end "
+                "is exclusive. Do not count UTF-8 bytes or normalize the quote. "
+                "For this short synthetic example, quote the ENTIRE original "
+                "source exactly, with start_offset=0 and end_offset="
+                + str(len(_SOURCE)) + ". "
                 "Untrusted synthetic source follows:\n<source>" + _SOURCE + "</source>"
             )},
         ],
@@ -142,6 +146,10 @@ def _failure_class(envelope: object, model_id: str) -> str:
             return "CRITERION_CODE_MISMATCH"
         if str(exc) == "LLM_QUOTE_MISMATCH":
             return "QUOTE_OFFSET_MISMATCH"
+        if str(exc) == "LLM_QUOTE_NOT_FOUND":
+            return "QUOTE_NOT_FOUND_IN_SOURCE"
+        if str(exc) == "LLM_QUOTE_OFFSET_INVALID":
+            return "QUOTE_OFFSET_INCORRECT"
         if str(exc) == "LLM_RESPONSE_TOO_LARGE":
             return "OUTPUT_TOO_LARGE"
         return "JSON_OR_SCHEMA_REJECTED"

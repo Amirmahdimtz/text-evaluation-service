@@ -296,8 +296,8 @@ def test_diagnostic_invalid_json_or_schema_is_redacted(content, expected):
 
 @pytest.mark.parametrize(("change", "category"), [
     ("wrong_code", "CRITERION_CODE_MISMATCH"),
-    ("wrong_quote", "QUOTE_OFFSET_MISMATCH"),
-    ("wrong_offset", "QUOTE_OFFSET_MISMATCH"),
+    ("wrong_quote", "QUOTE_NOT_FOUND_IN_SOURCE"),
+    ("wrong_offset", "QUOTE_OFFSET_INCORRECT"),
     ("wrong_score_type", "SCHEMA_REJECTED"),
     ("extra_field", "SCHEMA_REJECTED"),
     ("abstain", "VALID_ABSTENTION_NO_ASSESSMENT"),
@@ -369,3 +369,14 @@ def test_diagnostic_dry_run_requires_no_network(capsys):
     result = json.loads(capsys.readouterr().out)
     assert result["status"] == "DRY_RUN_NO_NETWORK"
     assert "failure_class" not in result
+
+
+def test_synthetic_prompt_has_deterministic_codepoint_boundaries():
+    """The prompt must explain Unicode offsets without changing strict decoding."""
+    request = make_request(_MODEL)
+    content = request["messages"][1]["content"]
+    assert "start_offset=0 and end_offset=" + str(len(_SOURCE)) in content
+    assert "Offsets exclude the <source> tags" in content
+    assert "UTF-8 bytes" in content
+    assert _SOURCE in content
+    assert request["max_tokens"] == 320
