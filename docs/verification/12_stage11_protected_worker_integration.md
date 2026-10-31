@@ -57,3 +57,15 @@ Do **not** invoke `tests/test_stage10_postgres.py` on a shared or nonisolated da
 - B11-06: development protected-worker code integration **PASS** with synthetic execution, but on-prem protected enterprise API → actual authorized model E2E **`PENDING_SERVER`**, and the current Host/DB environment safeguards deliberately deny staging/production. Approved production-capable deployment wiring and IAM/DB/KMS remain needed before running with real protected organizational data.
 - B11-01..05, B11-07..10: approvals, exact real model artifact provenance, two-model / three-domain expert benchmark, enforceable No-Egress, enterprise IAM/key lifecycle, measured capacity and backup/restore remain unverified.
 - All original **56 mandatory Stage11 test IDs remain `PENDING_SERVER`** until each full original oracle is independently satisfied. Auxiliary smoke, CI and this integration code are **not** a substitute. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## User-reported Simorgh offline retest — 2026-10-31
+
+On Simorgh, operator fast-forwarded the repository from `f001794` to commit `c8f10ba` and executed these two **offline** suites:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
+  tests/test_stage11_protected_worker.py \
+  tests/test_stage09_worker.py
+```
+
+**Actual operator-reported result:** `36 passed in 0.87s` with no reported skips/failures. The tests confirm local Worker integration/negative-case contracts in the Simorgh Python environment. They do **not** access the real inference server or validate a corporate PostgreSQL connection. The prior CI's 374 passing tests had a separate **isolated ephemeral PostgreSQL + synthetic engine**; do not conflate the two runs. The original 56 enterprise acceptance items remain `PENDING_SERVER`; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`. No inference/production authorization is implied.
