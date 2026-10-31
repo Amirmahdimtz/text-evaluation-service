@@ -188,3 +188,18 @@ Diagnostic source commit `02e78eb`: actual GitHub Actions returned **SUCCESS on 
 - Stage09 job 41198491125, Stage06 job 41198491159, Stage05 job 41198491083, and Stage10 job 41198491155 all **job SUCCESS** with their configured test suites (isolated GitHub-hosted PostgreSQL for the database workflows).
 
 **Scope:** this is actual offline/mock/isolated CI confirmation of the diagnostic code change, **not** a successful new live Simorgh inference. The previous operator's real `speech` attempt remains `FAIL LLM_CIRCUIT_OPEN` with one attempted POST, 0 retries and no report. New `failure_category` can distinguish allowlisted `HTTP_429/500/502/503/504`, `REQUEST_TIMEOUT` and `TRANSPORT_ERROR` if and only if a future operator-authorized attempt actually fails. It contains no raw response or exception text and does not change the same one-failure circuit threshold, per-domain six-request hard cap, serial calls or shared server deployment. **No new on-prem inference was performed**. Stage11 remains `BLOCKED` and all original 56 acceptance IDs remain `PENDING_SERVER`.
+
+## Simorgh offline provider and Persian-domain harness verification — 2026-10-31
+
+The operator reported a successful fast-forward `main` update from `18bd4a9` to `459c4a5`, followed by:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest \
+  -q -p no:cacheprovider \
+  tests/test_stage11_persian_domain_smoke.py \
+  tests/test_stage07_local_llm.py
+```
+
+**Observed operator transcript:** `75 passed in 1.08s`, no failed tests. This is a **Simorgh operator-reported offline Python regression**, not an independent assistant test run. The test suites exercise synthetic fake-provider/HTTP-contract behaviors; this command did **not** invoke `--execute-approved`, send live vLLM inference, or validate GPU utilization, competing workloads, corporate No-Egress, signed end-to-end encrypted-source processing, or model accuracy. The prior real shared-vLLM `speech` attempt ended with `LLM_CIRCUIT_OPEN` after one attempted request; the later software change adds safe failure classification, not a retroactive root-cause determination. There is no approval here for an automatic rerun.
+
+**Disposition:** `PASS_OPERATOR_REPORTED_SIMORGH_OFFLINE_75`; live full-domain assessment, B11-06 secure deployment and original 56 Stage11 enterprise acceptance IDs remain `PENDING_SERVER`; `Stage11=BLOCKED`, `Stage12=NOT_STARTED`.
