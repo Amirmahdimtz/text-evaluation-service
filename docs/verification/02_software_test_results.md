@@ -270,3 +270,9 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest \
 Stage05/06/08/09 workflows on `f8eeafc` also completed `SUCCESS`. This is software execution on isolated CI resources; no assistant execution on Simorgh, real vLLM/GPU, company IAM/KMS, organization firewalls or backup/restore is claimed. The latest reported Simorgh-specific test remains **12 passed, 26 deselected in 0.46s** on `b66f858`.
 
 **Behavioral contract:** `provisional_score` is a read-time **candidate, never an approved official grade**. It is computed from complete stored per-criterion results and validated, frozen Rubric; incomplete and no-assessment reports remain `null`. Stored `overall_score=NULL`, `publishable_as_official_score=false`, `OD-04 OPEN` for official precision/rounding/coverage. No migration or schema/secret change was made. New `compose.stage11-isolated-db.yml` is opt-in test-only and **has not been deployed/tested with Docker**.
+
+## Stage11 operator-run isolated preflight, Compose and auth contracts — 2026-11-02
+
+**Operator transcript:** `git pull --ff-only origin main` updated `b66f858..8fecbbd` without a merge. Then `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_isolated_runtime_preflight.py tests/test_stage11_isolated_compose_contract.py tests/test_stage10_auth.py` returned **`33 passed in 1.86s`**, no failures. These checks ran in the user's Simorgh Python environment and validate the no-network configuration preflight, opt-in isolated Compose policy **as a static file**, and API authentication contracts. **No Docker/DB started and no Worker/API live integration or inference ran** in this command.
+
+Evidence classification `PASS_USER_SERVER_REPORTED_OFFLINE`; the assistant did not execute the command on Simorgh. This does not change the 56 original Stage11 enterprise test statuses; model/GPU/live-path tests remain `PENDING_SERVER`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
