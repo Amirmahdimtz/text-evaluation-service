@@ -40,7 +40,12 @@ P0 means product implementation or intended functionality may be unproven/unship
 - [x] Produce an operator-safe GPU-free installation/validation/handoff runbook without inventing Docker deployment or live secrets.
 - [x] Add project README with correct no-network regression commands and Stage11 readiness caveats.
 - [ ] Resolve G11-P01 (a safe real service runtime distribution/activation design) **without** modifying the shared server. Private dev-only configuration loading is an offline partial step, not a complete deployable package.
-- [ ] Resolve G11-P04 (numeric provisional vs official score contract) after a scope/business decision; no unapproved scoring semantics.
+- [x] Document and test the **current review-only** aggregate response
+  contract without fabricating an official score
+  ([contract](../architecture/04_stage11_review_only_scoring_contract.md)).
+- [ ] Resolve G11-P04 numeric delivery/rounding/coverage policy after OD-04
+  owner approval; do not silently promote the candidate Decimal into
+  `Numeric(6,3)`.
 - [ ] Prove G11-P05 with a fresh isolated installation/artifact build, not merely markdown.
 - [ ] Real model-dependent G11-P02/03/06/07/08 remain pending until a future separately permitted GPU window.
 

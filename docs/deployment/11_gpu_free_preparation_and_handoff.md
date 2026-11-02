@@ -88,7 +88,44 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
 
 These tests may create/modify **test-only data**; their safe execution requires a dedicated database. GitHub Actions already runs equivalent isolated PostgreSQL 17 and synthetic-engine suites, not Simorgh's shared DB.
 
-## 5. Service activation is NOT currently a turnkey step
+## 5. Reproducible isolated runtime preflight (NO network, NO GPU)
+
+A new read-only CLI validates the **actual private development configuration** and
+its locally injected key references without making a DB connection, starting an
+API/Worker, opening an HTTP socket or invoking a model.
+
+Before attempting a live demonstration, a separately approved isolated database,
+private settings file, runtime-injected test JWT public key and AES key, and
+an approved local model endpoint must exist. Use the current typed Settings schema
+in `src/infrastructure/utils/config_reader.py`; do not commit private settings
+or substitute real production credentials. The configuration must explicitly enable
+HTTP security, worker and model; Worker max inflight and LLM concurrency/attempts
+are restricted to 1 by this **Stage 11 preflight**, not by general production policy.
+
+```bash
+cd /srv/projects/text-evaluation-service
+# Only after a dedicated test-only environment has been provisioned privately:
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
+  scripts/verification/stage11_isolated_runtime_preflight.py
+```
+
+Expected success is `CONFIG_VALIDATED_NO_NETWORK` and states
+`ISOLATED_DSN_FORMAT_ONLY` / `LOCAL_ENDPOINT_FORMAT_ONLY`. It checks
+credentials *locally* but never prints their values. It does **not** prove DB
+connectivity, authentic model availability, JWT issuer trust, actual network
+no-egress, concurrency safety or deployment readiness. A failure returns
+`STAGE11_ISOLATED_CONFIG_INVALID` without details.
+
+The existing checked-in isolated PostgreSQL 17 CI is still the reproducible
+software-integration proof for synthetic tests. Once the user separately approves
+an isolated development startup with an operational local model, run the existing
+`python -m src.host.app` and `python -m src.host.evaluation_worker` in
+separate **supervised** terminals using the same private configuration and
+isolated DB environment. Do not run these entrypoints while the shared GPU is
+reserved by another project. API and Worker startup are **not** performed by
+this preflight.
+
+## 6. Service activation is NOT currently a turnkey step
 
 Do **not** merely set three `enabled` flags in committed YAML or launch `python -m src.host.evaluation_worker`. The current `main` enforces:
 
@@ -102,7 +139,7 @@ The isolated HTTP health routes `/health/live` and `/health/ready` are not proof
 
 **Engineering work before a fully runnable demonstration:** the new file-selector removes the need to edit checked-in settings for an approved isolated development run, but a **live** demonstration still needs a separately provisioned `tes_stage05_*` test database, configured secret references and JWT issuer, authorized model availability and an operator-controlled execution window. It is not production wiring. Decide and implement the expected provisional-versus-official reporting contract; build and verify a reproducible packaging/startup procedure based on the selected deployment target. These are concrete product gaps, **not** demands for organization-wide SSO/KMS/firewall procurement.
 
-## 6. When GPU becomes free (separately authorized later)
+## 7. When GPU becomes free (separately authorized later)
 
 1. Confirm the other project's activity has ended; obtain owner-approved model restart and a low-impact observation window. Do not assume stopped vLLM or instantaneous `nvidia-smi` utilization grants permission.
 2. Privately inventory existing model/runtime identity, tokenizer/chat template, permitted endpoint, resource budget and abort conditions; avoid second concurrent model load.
@@ -111,7 +148,7 @@ The isolated HTTP health routes `/health/live` and `/health/ready` are not proof
 5. Exercise authenticated API -> encrypted isolated DB -> fenced Worker -> real local vLLM -> exact quote/Unicode offsets -> encrypted scoped report. Verify error handling and no unauthorized text leakage.
 6. Finish product-specific acceptance, then hand over recipient-owned infrastructure/operational obligations according to the [56-ID responsibility proposal](../verification/14_stage11_product_handoff_scope_matrix.md). Stage 11 stays `BLOCKED` until the revised product Gate is explicitly accepted and proven; Stage 12 is not started.
 
-## 7. Handoff bundle and evidence status
+## 8. Handoff bundle and evidence status
 
 - Exact Git commit SHA, dependency pins (`requirements.txt` / `requirements-dev.txt`), Python and PostgreSQL versions used by the accepted run.
 - Reproducible isolated DB schema/migration revision, setup and non-destructive recovery instructions; never include real credentials or private DSNs.

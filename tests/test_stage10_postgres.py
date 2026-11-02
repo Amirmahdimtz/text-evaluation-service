@@ -518,6 +518,9 @@ def test_stage11_protected_executor_from_signed_api_through_isolated_postgres(
                 assert data["status"] == "partial"
                 assert data["publishable_as_official_score"] is False
                 assert data["provisional_score"] is None
+                assert data["publishable_as_official_score"] is False
+                assert data["needs_human_review"] is True
+                assert data["coverage"] is not None
                 assessed = [
                     item for item in data["criteria"] if item["status"] == "assessed"
                 ]

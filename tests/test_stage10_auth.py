@@ -264,3 +264,38 @@ def test_stage10_body_guard_accepts_matching_content_length():
     assert forwarded == [
         {"type": "http.request", "body": body, "more_body": False},
     ]
+
+
+
+def test_stage11_review_only_http_score_contract_is_explicit():
+    """No accidental official/numeric aggregate from the provisional API DTO."""
+    from decimal import Decimal
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
+    report = EvaluationResponseDto.model_validate({
+        "evaluation_id": uuid4(),
+        "status": "partial",
+        "evaluation_type": "speech",
+        "rubric_version_id": uuid4(),
+        "created_at": datetime.now(timezone.utc),
+        "completed_at": datetime.now(timezone.utc),
+        "needs_human_review": True,
+        "publishable_as_official_score": False,
+        "provisional_score": None,
+        "coverage": Decimal("0.2"),
+        "model_revision": "synthetic-unverified",
+        "prompt_version": "stage11-synthetic",
+        "criteria": [{
+            "criterion_code": "speech_clarity",
+            "status": "assessed",
+            "score": 4,
+            "details": {"evidence": [{"quote": "synthetic", "start_offset": 0,
+                                      "end_offset": 9}]},
+        }],
+    })
+    assert report.provisional_score is None
+    assert report.publishable_as_official_score is False
+    assert report.needs_human_review is True
+    assert report.criteria[0].score == 4
+    assert report.coverage == Decimal("0.2")
