@@ -24,6 +24,7 @@ on:
       - "src/host/app.py"
       - "src/host/request_body_guard.py"
       - "tests/test_stage10_*.py"
+      - "tests/test_stage11_process_e2e.py"
       - ".github/workflows/stage10-api.yml"
   workflow_dispatch:
 
@@ -83,6 +84,10 @@ jobs:
         run: python -m pytest -q -p no:cacheprovider tests/test_stage09_postgres.py
       - name: Run Stage10 authenticated isolated PostgreSQL E2E
         run: python -m pytest -q -p no:cacheprovider tests/test_stage10_postgres.py
+      - name: Run Stage11 supervised API and Worker subprocess integration (mock model only)
+        env:
+          TES_STAGE11_PROCESS_E2E: "1"
+        run: python -m pytest -q -p no:cacheprovider tests/test_stage11_process_e2e.py
       - name: Run existing Stage05 real PostgreSQL integration suite
         run: python -m pytest -q -p no:cacheprovider tests/test_stage05_postgres.py
       - name: Run Stage02 and Stage03 regression suites
