@@ -211,3 +211,13 @@ Source commit `626e9e8929cfe8a14d40f0033a8f35ad52e3765b` (`main`) introduces a s
 **Actually executed:** [GitHub Actions Stage10 run `41403832886`](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41403832886) — `SUCCESS`, full Python regression `417 passed in 5.68s`; independent steps for migration/schema, rubrics, worker/recovery, signed API, PostgreSQL E2E and dependency audit also `SUCCESS`. Real on-prem GPU requests **0**. No test was executed locally by the assistant or on Simorgh for this change.
 
 **Limit:** The tests establish software contract behavior under synthetic data and isolated PostgreSQL. They do not establish actual Persian model assessment quality, model provenance, organizational network no-egress, enterprise IAM/KMS or concurrent shared-GPU non-interference. Preserve unexecuted obligations explicitly as pending rather than passed.
+
+## Stage11 follow-up: operator offline regression and HTTP framing hardening — 2026-11-02
+
+**Simorgh operator transcript:** fast-forward `cf05b11..ce5e930`; existing tests `tests/test_stage11_protected_worker.py`, `tests/test_stage08_engine.py`, `tests/test_stage11_persian_domain_smoke.py` **66 passed in 0.97s**. No GPU, vLLM invocation, real model revision or confidential input was involved.
+
+**Follow-up code:** `a54cb0f943fdce7b445aaed1d662e0fcd4a79841` changes only `src/host/request_body_guard.py`, `tests/test_stage10_auth.py`, and the matching Stage10 GitHub Actions workflow. It eliminates duplicate header collapse and requires unambiguous, bounded request framing before JSON parsing. Six invalid-header/body tests must reject before calling the downstream ASGI app; a properly declared request must still pass through unchanged.
+
+**Actual GitHub CI evidence:** [Stage10 run `41405074852`](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41405074852) `SUCCESS`: full `pytest tests` run **424 passed in 5.52s**; isolated real PostgreSQL migration, schema, API E2E with synthetic engine, worker/recovery, security tests and dependency audit all completed successfully. No assistant-local or newer Simorgh test was executed for the HTTP guard patch.
+
+**Remaining:** model-on-GPU quality, full live protected-source E2E, shared system impact and organizational environment handover remain outside these test results. No mandatory live acceptance item is marked `PASS` from this offline work.
