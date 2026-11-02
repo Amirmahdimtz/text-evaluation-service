@@ -37,6 +37,8 @@ class FakeEngine:
     def __init__(self):
         self.calls = 0
         self.bad_evidence = False
+        self.bad_coverage = False
+        self.bad_status = False
         self.closed = False
 
     async def close_async(self):
@@ -64,9 +66,10 @@ class FakeEngine:
             evaluation_type=rubric.evaluation_type,
             rubric_checksum=rubric.checksum,
             publishable_as_official_score=False,
-            result_status="partial",
+            result_status="needs_human_review" if self.bad_status else "partial",
             criteria=(item, *remaining),
-            coverage_fraction=Decimal("0.2"),
+            coverage_fraction=(Decimal("0.9") if self.bad_coverage
+                               else Decimal(rubric.snapshot.criteria[0].weight) / 100),
             model_revision="unverified-local-revision",
             prompt_version="synthetic-stage11-prompt",
         )
@@ -121,7 +124,7 @@ def test_real_encryption_roundtrip_and_provisional_result(monkeypatch):
     outcome = asyncio.run(executor(ctx))
     assert engine.calls == 1 and repo.lookups == 1
     assert outcome.result_status == "partial"
-    assert outcome.coverage == 0.2
+    assert outcome.coverage == engine.binding.snapshot.criteria[0].weight / 100
     assert outcome.model_revision == "unverified-local-revision"
     assert len(outcome.criterion_results) == len(engine.binding.snapshot.criteria)
     assert _SOURCE.encode("utf-8") not in str(outcome).encode("utf-8")
@@ -199,6 +202,18 @@ def test_untrusted_quote_offsets_rejected_before_encrypted_result(monkeypatch):
     with pytest.raises(WorkerTerminalError, match="WORKER_EVIDENCE_INVALID"):
         asyncio.run(executor(ctx))
     assert engine.calls == 1
+
+
+@pytest.mark.parametrize("flag,error_code", [
+    ("bad_coverage", "WORKER_COVERAGE_INCONSISTENT"),
+    ("bad_status", "WORKER_RESULT_STATUS_INCONSISTENT"),
+])
+def test_inconsistent_engine_metadata_is_rejected(monkeypatch, flag, error_code):
+    ctx, _, repo, engine, _, executor = _fixture(monkeypatch)
+    setattr(engine, flag, True)
+    with pytest.raises(WorkerTerminalError, match=f"^{error_code}$"):
+        asyncio.run(executor(ctx))
+    assert engine.calls == 1 and repo.lookups == 1
 
 
 def test_cross_resource_decryption_rejected_by_aad(monkeypatch):

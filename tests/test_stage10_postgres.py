@@ -101,22 +101,25 @@ def headers(bearer, *, key="synthetic-idempotency-001"):
     return {"Authorization": "Bearer " + bearer, "Idempotency-Key": key}
 
 
-def payload():
+def payload(domain="speech"):
+    rubric = RubricSnapshot.model_validate(
+        json.loads(FIXTURES.read_text(encoding="utf-8"))[domain]
+    )
     return {
-        "text": SOURCE, "evaluation_type": "speech",
-        "rubric_code": "speech_quality", "rubric_version": "candidate-0.1",
+        "text": SOURCE, "evaluation_type": domain,
+        "rubric_code": rubric.code, "rubric_version": rubric.version,
         "target_audience": "synthetic readers", "purpose": "synthetic integration",
     }
 
 
-async def seed_rubric(db, org):
-    raw = json.loads(FIXTURES.read_text(encoding="utf-8"))["speech"]
+async def seed_rubric(db, org, domain="speech"):
+    raw = json.loads(FIXTURES.read_text(encoding="utf-8"))[domain]
     candidate = RubricSnapshot.model_validate(raw)
     rubric_id = uuid4()
     async with db.session() as session:
         async with session.begin():
             session.add(RubricVersion(
-                id=rubric_id, organization_id=org, evaluation_type="speech",
+                id=rubric_id, organization_id=org, evaluation_type=domain,
                 code=candidate.code, version=candidate.version, status="published",
                 checksum=candidate.fingerprint(), criteria_snapshot=candidate.canonical_dict(),
                 published_at=datetime.now(timezone.utc),
@@ -414,8 +417,9 @@ def test_stage10_http_validation_rate_limits_backpressure_and_disabled_security(
     asyncio.run(exercise())
 
 
+@pytest.mark.parametrize("domain", ["speech", "media", "research"])
 def test_stage11_protected_executor_from_signed_api_through_isolated_postgres(
-    isolated_stage10_schema, monkeypatch,
+    isolated_stage10_schema, monkeypatch, domain,
 ):
     """Real encrypted-source DB + fenced Worker + synthetic engine; no vLLM."""
     from dataclasses import replace
@@ -464,7 +468,7 @@ def test_stage11_protected_executor_from_signed_api_through_isolated_postgres(
                 publishable_as_official_score=False,
                 result_status="partial",
                 criteria=criteria,
-                coverage_fraction=Decimal("0.2"),
+                coverage_fraction=Decimal(first.weight) / Decimal(100),
                 model_revision="synthetic-unverified-model",
                 prompt_version="synthetic-stage11",
             )
@@ -472,7 +476,7 @@ def test_stage11_protected_executor_from_signed_api_through_isolated_postgres(
     async def exercise():
         db = resolve(PsqlDbContext)
         try:
-            await seed_rubric(db, org)
+            await seed_rubric(db, org, domain=domain)
             app = create_app()
             identity = token(key, org)
             engine = SyntheticEngine()
@@ -486,7 +490,7 @@ def test_stage11_protected_executor_from_signed_api_through_isolated_postgres(
             ) as client:
                 route = "/api/v1/text_evaluation"
                 submitted = await client.post(
-                    route + "/evaluations", headers=headers(identity), json=payload(),
+                    route + "/evaluations", headers=headers(identity), json=payload(domain),
                 )
                 assert submitted.status_code == 202, submitted.text
                 evaluation_id = UUID(submitted.json()["evaluation_id"])

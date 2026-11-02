@@ -17,6 +17,8 @@ on:
       - "tests/test_stage09_*.py"
       - "src/application/text_evaluation/**"
       - "src/core/services/text_evaluation/evaluation_api_service.py"
+      - "src/core/services/text_evaluation/protected_evaluation_executor.py"
+      - "tests/test_stage11_protected_worker.py"
       - "src/infrastructure/security/signed_identity.py"
       - "src/infrastructure/security/encrypted_content.py"
       - "src/host/app.py"

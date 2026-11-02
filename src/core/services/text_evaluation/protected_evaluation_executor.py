@@ -7,6 +7,7 @@ explicitly wired into a permissioned worker; it never publishes an official grad
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from uuid import UUID
 
 from src.core.services.text_evaluation.criterion_evaluation_service import CriterionAssessment
@@ -156,9 +157,30 @@ class ProtectedEvaluationExecutor:
                 ),
             ))
 
+        # Reconcile engine metadata against the actual rubric-bound outcomes.
+        # Never persist an inaccurate coverage/status even for provisional results.
+        assessed_codes = {
+            item.criterion_code for item in criteria if item.status == "assessed"
+        }
+        expected_coverage = Decimal(sum(
+            criterion.weight for criterion in snapshot.criteria
+            if criterion.criterion_code in assessed_codes
+        )) / Decimal(100)
+        if (type(report.coverage_fraction) is not Decimal
+                or not report.coverage_fraction.is_finite()
+                or report.coverage_fraction != expected_coverage):
+            raise WorkerTerminalError("WORKER_COVERAGE_INCONSISTENT")
+        expected_status = (
+            "not_assessed" if not assessed_codes
+            else "needs_human_review" if len(assessed_codes) == len(snapshot.criteria)
+            else "partial"
+        )
+        if report.result_status != expected_status:
+            raise WorkerTerminalError("WORKER_RESULT_STATUS_INCONSISTENT")
+
         return WorkerResult(
             criterion_results=tuple(rows),
-            coverage=float(report.coverage_fraction),
+            coverage=float(expected_coverage),
             model_revision=report.model_revision,
             prompt_version=report.prompt_version,
             result_status="partial" if report.result_status == "partial"
