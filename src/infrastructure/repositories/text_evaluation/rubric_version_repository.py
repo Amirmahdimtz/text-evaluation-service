@@ -39,6 +39,23 @@ class RubricVersionRepository(BaseRepository[RubricVersion]):
             stmt = stmt.order_by(RubricVersion.published_at.desc(), RubricVersion.id).limit(1)
             return (await session.scalars(stmt)).one_or_none()
 
+    async def get_scoped_historical_async(
+        self, *, organization_id: str, evaluation_type: str,
+        rubric_version_id: UUID,
+    ) -> RubricVersion | None:
+        """Resolve the pinned revision, including a subsequently retired version."""
+        self._scope(organization_id)
+        if (evaluation_type not in ("speech", "media", "research")
+                or not isinstance(rubric_version_id, UUID)):
+            raise ValueError("RUBRIC_HISTORY_SCOPE_INVALID")
+        async with self._db.session() as session:
+            return (await session.scalars(select(RubricVersion).where(
+                RubricVersion.id == rubric_version_id,
+                RubricVersion.organization_id == organization_id,
+                RubricVersion.evaluation_type == evaluation_type,
+                RubricVersion.status.in_(("published", "retired")),
+            ))).one_or_none()
+
     async def insert_candidate_async(
         self, *, organization_id: str, actor_id: str, correlation_id: UUID,
         evaluation_type: str, code: str, version: str, snapshot: dict,

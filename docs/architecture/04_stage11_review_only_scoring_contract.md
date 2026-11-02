@@ -14,12 +14,15 @@ score. Source reviewed 2026-11-02.
 - `coverage`: measured assessed Rubric weight divided by the 100 total
   candidate weights; stored and returned for a finished report. Missing and
   pending reports may have `coverage=null`. Coverage is **not** a quality score.
-- `provisional_score`: **currently null in the persisted/HTTP report**, even
-  when criterion scores exist. This is intentional: current
-  `EvaluationWorkerService` passes `overall_score=None` for all
-  `partial` / `needs_human_review` results, and the repository forbids
-  persisting a nonnull score for these statuses. Do not substitute a model
-  score or make an unofficial figure look like an official grade.
+- `provisional_score`: when a completed review-only result contains the **full
+  pinned criterion set**, the API reconstructs the **candidate aggregate**
+  deterministically via `ScoringService.calculate` and returns its
+  high-precision `Decimal` value. It is `null` for pending, failed,
+  incomplete/legacy criterion sets, and zero-assessed results.
+  **This value is not an official published grade.** The historical
+  `Evaluation.overall_score` remains `NULL`: the Worker intentionally
+  writes `overall_score=None` until OD-04 approves rounding and publication.
+  No model output is accepted as a final score.
 - `needs_human_review`: `true` for `partial` and
   `needs_human_review` reporting states. An actual published official
   score is unsupported; `publishable_as_official_score=false` on this API.
@@ -63,7 +66,10 @@ aggregate without deciding OD-04.**
 5. Evaluate actual model quality before accepting any generated criterion score
    as business-grade.
 
-**Current status:** engineering transport contract documented and regression
-tested; numeric overall-score publication policy **OPEN_OD04**, Stage11
+**Current status:** candidate numeric aggregate is available **only on an
+authorized completed-report read** and never persisted as an official grade.
+The immutable snapshot and stored per-criterion scores are used for deterministic
+reconstruction. Numeric overall-score publication/rounding policy
+**OPEN_OD04**, Stage11
 `BLOCKED`, Stage12 `NOT_STARTED`. This document does **not** make an
 unapproved rubric official.

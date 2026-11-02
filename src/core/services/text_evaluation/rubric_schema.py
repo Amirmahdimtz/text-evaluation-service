@@ -68,10 +68,13 @@ class RubricSnapshot(BaseModel):
                              separators=(",", ":"), allow_nan=False).encode("utf-8")
         return hashlib.sha256(payload).hexdigest()
 
-def validated_persisted_snapshot(row: object) -> RubricSnapshot:
-    """Reject incomplete, corrupt or unapproved persisted rows before they are consumed."""
+def validated_persisted_snapshot(
+    row: object, *, allow_retired: bool = False,
+) -> RubricSnapshot:
+    """Verify an immutable technical snapshot, optionally for historical reports."""
     try:
-        if getattr(row, "status", None) != "published":
+        accepted = ("published", "retired") if allow_retired else ("published",)
+        if getattr(row, "status", None) not in accepted:
             raise ValueError("RUBRIC_NOT_PUBLISHED")
         snapshot = RubricSnapshot.model_validate(getattr(row, "criteria_snapshot"))
         if (snapshot.code != row.code or snapshot.version != row.version

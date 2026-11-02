@@ -16,6 +16,9 @@ from src.infrastructure.repositories.text_evaluation.evaluation_feedback_reposit
 from src.infrastructure.repositories.text_evaluation.rubric_version_repository import RubricVersionRepository
 from src.infrastructure.repositories.text_evaluation.http_rate_limit_repository import HttpRateLimitRepository
 from src.core.services.text_evaluation.rubric_schema import validated_persisted_snapshot
+from src.core.services.text_evaluation.scoring_service import (
+    CriterionScore, ScoringService,
+)
 
 
 class AccessDenied(ValueError):
@@ -54,6 +57,7 @@ class EvaluationApiService:
         rate_repository: HttpRateLimitRepository,
         encryption: EncryptedContentService,
         config_reader: ConfigReader,
+        scoring_service: ScoringService,
     ) -> None:
         self._evaluations = evaluation_repository
         self._rubrics = rubric_repository
@@ -61,6 +65,7 @@ class EvaluationApiService:
         self._rate = rate_repository
         self._crypto = encryption
         self._config = config_reader
+        self._scoring = scoring_service
 
     def _settings(self):
         settings = self._config.settings.http_security
@@ -191,12 +196,55 @@ class EvaluationApiService:
                 "status": row.status, "score": row.score,
                 "details": decoded,
             })
+
+        # Historical numeric overall_score remains NULL until OD-04 approves
+        # an official precision and publishing policy. A provisional score is
+        # reconstructed for authorized readers only from a complete, pinned
+        # rubric/criterion set; no silent database rounding or extra writes.
+        provisional_score = None
+        if evaluation.status in ("partial", "needs_human_review") and rows:
+            rubric_row = await self._rubrics.get_scoped_historical_async(
+                organization_id=identity.organization_id,
+                evaluation_type=evaluation.evaluation_type,
+                rubric_version_id=evaluation.rubric_version_id,
+            )
+            if rubric_row is None:
+                raise ApiNotConfigured("API_REPORT_INVALID")
+            try:
+                snapshot = validated_persisted_snapshot(
+                    rubric_row, allow_retired=True,
+                )
+                if len(rows) == len(snapshot.criteria):
+                    outcomes = []
+                    for item in details:
+                        fields = item["details"]
+                        if (fields.get("criterion_code") != item["criterion_code"]
+                                or fields.get("status") != item["status"]
+                                or fields.get("score") != item["score"]):
+                            raise ValueError("API_CRITERION_DETAILS_INCONSISTENT")
+                        outcomes.append(CriterionScore(
+                            criterion_code=item["criterion_code"],
+                            status=item["status"], score=item["score"],
+                            reason_code=fields.get("reason_code"),
+                        ))
+                    computed = self._scoring.calculate(
+                        rubric=snapshot, outcomes=tuple(outcomes),
+                    )
+                    if (evaluation.coverage is None
+                            or computed.coverage_fraction != evaluation.coverage
+                            or (computed.result_status != evaluation.status
+                                and not (computed.result_status == "not_assessed"
+                                         and evaluation.status == "needs_human_review"))):
+                        raise ValueError("API_AGGREGATE_INCONSISTENT")
+                    provisional_score = computed.provisional_score_0_100
+            except ValueError:
+                raise ApiNotConfigured("API_REPORT_INVALID") from None
         return {
             "evaluation_id": evaluation.id,
             "status": evaluation.status,
             "evaluation_type": evaluation.evaluation_type,
             "rubric_version_id": evaluation.rubric_version_id,
-            "provisional_score": evaluation.overall_score,
+            "provisional_score": provisional_score,
             "coverage": evaluation.coverage,
             "model_revision": evaluation.model_revision,
             "prompt_version": evaluation.prompt_version,

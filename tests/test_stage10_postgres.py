@@ -517,10 +517,15 @@ def test_stage11_protected_executor_from_signed_api_through_isolated_postgres(
                 data = report.json()
                 assert data["status"] == "partial"
                 assert data["publishable_as_official_score"] is False
-                assert data["provisional_score"] is None
+                assert Decimal(str(data["provisional_score"])) == Decimal("80")
                 assert data["publishable_as_official_score"] is False
                 assert data["needs_human_review"] is True
                 assert data["coverage"] is not None
+                assert Decimal(str(data["coverage"])) == (
+                    Decimal(RubricSnapshot.model_validate(json.loads(
+                        FIXTURES.read_text(encoding="utf-8")
+                    )[domain]).criteria[0].weight) / 100
+                )
                 assessed = [
                     item for item in data["criteria"] if item["status"] == "assessed"
                 ]
