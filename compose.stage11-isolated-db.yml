@@ -25,7 +25,11 @@ services:
 
 networks:
   isolated:
-    internal: true
+    # Host-launched Python processes must reach the DB via the loopback-only
+    # published port. internal:true prevents that path in Docker bridge setups.
+    # Test-only synthetic data; this is NOT a proven no-egress production network.
+    driver: bridge
+    internal: false
 
 volumes:
   stage11_postgres_data:

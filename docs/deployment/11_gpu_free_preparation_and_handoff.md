@@ -207,8 +207,14 @@ docker compose --project-name tes-stage11-isolated \
 The Compose stack has **no API, Worker or vLLM container**: use the validated
 Python host processes and `TES_STAGE05_DATABASE_URL` pointing only to this
 dedicated loopback test DB (properly percent-encoding DSN credentials).
-The optional isolated Docker bridge has no external networks; the real
-loopback port reachability has not yet been demonstrated on Simorgh.
+The dedicated test bridge is **not an internal:no-egress network**: Docker
+`internal: true` prevents Host-side Python clients from reaching the published
+PostgreSQL port on affected Docker engines (reproduced in GitHub CI). The
+test-only bridge uses `driver: bridge` and `internal: false`, with a
+strict **127.0.0.1-only port publish** and only synthetic credentials/data.
+It is not a proof of corporate no-egress, host firewall enforcement, or
+production networking. The actual host reachability on Simorgh remains
+`PENDING_OPERATOR`; no production or shared DB should connect to this network.
 The image tag is a development candidate, not a pinned release digest.
 Do not use `docker compose down -v` or remove volumes: these actions delete
 test-state data and require separately approved data disposal.

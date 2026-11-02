@@ -58,3 +58,29 @@ If there are preconfigured database credentials or a currently active server dep
 - `G11-P03` actual quality of the three Persian domains against expert-labeled data, provenance and GPU benchmarks remains `PENDING_SERVER`.
 - `G11-P04` policy on **official** rounding/publication and minimum coverage remains `OPEN_OD04`; the displayed 80 in this test is only a Python-derived synthetic provisional candidate.
 - Original 56 mandatory Stage11 IDs and responsibility classification remain traceable; synthetic CI success does not mark real-model or organization environment checks PASS.
+
+## Failed Simorgh operator run and reproduced Docker network issue — 2026-11-02
+
+Operator updated `8fecbbd..4190150`, observed `DRY_RUN_NO_DOCKER_NO_NETWORK`,
+then ran opt-in `--execute-isolated` with Docker Compose v5.6.1.
+Project `tes-stage11-413cbc50dfe4` was created, stopped, volume retained,
+and `STAGE11_ISOLATED_RUN_ABORTED` returned. **No test PASS occurred on
+Simorgh.** The original runner suppressed the precise error phase.
+
+Reproducing the actual Compose invocation in [CI run
+41424875201](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41424875201)
+confirmed the failure at **`postgres_readiness`** after a successful
+`compose up`: the Host Python client cannot connect to the published port on
+this `internal:true` Docker bridge. That CI run is `FAILED` and must not
+be recorded as success. The script now reports fixed, redacted failure phases,
+never a secret, DSN or traceback; attempts to stop its uniquely named
+container even when Compose startup partly fails.
+
+The test-only Compose network is changed to an ordinary dedicated bridge with
+`127.0.0.1` host-only PostgreSQL publishing. Because this permits container
+egress under default Docker networking, the manifest uses **only synthetic test
+credentials/data**, not confidential user input, and no production no-egress
+validation is inferred. The repaired Docker orchestration must pass CI and then
+be explicitly rerun by the authorized operator before marking the Simorgh
+scenario passed. Previous failed test volume is retained: no deletion was
+performed or authorized.
