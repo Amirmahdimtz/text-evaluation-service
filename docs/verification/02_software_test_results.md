@@ -241,3 +241,16 @@ The optional `TES_STAGE11_SETTINGS_FILE` source/test addition is restricted to l
 **Executed CI:** all six of the Stage05–Stage10 workflows completed successfully: [Stage05 41407566253](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41407566253), [Stage06 41407566317](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41407566317), [Stage07 41407566229](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41407566229), [Stage08 41407566333](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41407566333), [Stage09 41407566305](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41407566305), [Stage10 41407566452](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41407566452). The Stage10 real isolated PostgreSQL synthetic full test suite logged **436 passed in 5.45s**; Stage08 non-DB suite logged **419 passed, 10 skipped in 2.21s**. No failures in these workflows; these results do **not** measure real inference or enterprise security policy.
 
 **Earlier operator validation:** `70 passed in 0.98s` on Simorgh after `git pull ... d29f853`, covering API auth, protected worker and evaluation engine; that run predates the external-settings patch. A Simorgh-specific retest of the new settings test is `PENDING_OPERATOR`. No assistant-side server test, live vLLM POST, shared DB migration, GPU allocation, or infrastructure modification occurred.
+
+## Stage11 operator-run private settings focused regression — 2026-11-02
+
+The user supplied an actual `simorgh` terminal transcript showing `git pull --ff-only origin main` fast-forward from `d29f853` through `b66f858`. The subsequent command was:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest \
+  -q -p no:cacheprovider tests/test_foundation.py -k stage11_private_settings
+```
+
+**Observed result:** **12 passed, 26 deselected in 0.46s**. The twelve selected tests cover the opt-in owner-only external YAML and fail-closed policy checks. The other 26 tests were not selected by the `-k` filter; no success claim is made for them in this run.
+
+**Evidence level:** operator-run, genuine Python software tests against the updated Simorgh checkout; no actual GPU/vLLM, private source, isolated or shared PostgreSQL E2E, KMS/SSO certification or real model benchmark. The previous `PENDING_OPERATOR` check for this specific focused run is closed as `OFFLINE_TEST_PASS`. Original 56-ID Stage11 ledger statuses are not overwritten; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
