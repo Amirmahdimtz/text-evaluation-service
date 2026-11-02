@@ -1,6 +1,6 @@
 # Stage 11 — GPU-free preparation, local setup and engineering handoff
 
-**Status:** `PREPARED_NOT_DEPLOYED`, 2026-11-02. This is a Stage 11 pre-execution document, **not** Stage 12 deployment or a claim of operational readiness. Source review baseline: `main` through `80c0635`. The shared Simorgh vLLM was stopped by the operator to reserve GPU VRAM for another project.
+**Status:** `PREPARED_NOT_DEPLOYED`, 2026-11-02. This is a Stage 11 pre-execution document, **not** Stage 12 deployment or a claim of operational readiness. Source review baseline: source reviewed through the Stage11 GPU-free 2026-11-02 changes. The shared Simorgh vLLM was stopped by the operator to reserve GPU VRAM for another project.
 
 ## 1. Confirmed implementation boundary
 
@@ -166,7 +166,7 @@ Do **not** merely set three `enabled` flags in committed YAML or launch `python 
 - ConfigReader reads YAML; it does not bind per-field environment overrides. A separately approved *development-only* external YAML may be selected with `TES_STAGE11_SETTINGS_FILE` (an absolute, owner-only `0600` regular file outside the repo; not a symlink, maximum 64 KiB). It must contain the **complete existing Settings schema**, and any secrets must be `env://` references, never raw values. This file is rejected for `staging` and `production`. The selector `TES_ENVIRONMENT` alone cannot enable services.
 - The API requires a configured trusted JWT issuer, RSA verification key reference, encryption key reference and quotas. The Worker also requires an organization scope and complete timeout/lease/concurrency policy. Secrets must stay in an authorized runtime secret source, not the repository.
 - `PsqlDbContext`, the Worker Host and `ProtectedEvaluationExecutor` currently deny non-development deployment. The model provider requires a permitted private **literal-IP** endpoint with validated contract and pinned configured identity; it is not automatically found by a Docker alias.
-- In the current API/report behavior, protected Worker results are **review-only**. The Python engine calculates a provisional score, but the stored/report `provisional_score` is currently `null`; a final published overall grade requires explicit rubric/scoring-policy resolution.
+- Protected Worker results remain **review-only**. The signed/scoped API now reconstructs a **candidate `provisional_score`** from a complete encrypted criterion set and the pinned immutable Rubric (including retired historical Rubrics); pending/legacy-incomplete/fully-abstained assessments still return `null`. The database's official `overall_score` is still `NULL`, and `publishable_as_official_score` is always `false`. The business-approved rounding/publication policy is still `OPEN_OD04`. See [scoring contract](../architecture/04_stage11_review_only_scoring_contract.md).
 
 The isolated HTTP health routes `/health/live` and `/health/ready` are not proof of full application functionality or model health. The development API port `18080` and vLLM port `8000` must not be repurposed without coordination.
 

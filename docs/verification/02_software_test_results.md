@@ -254,3 +254,19 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest \
 **Observed result:** **12 passed, 26 deselected in 0.46s**. The twelve selected tests cover the opt-in owner-only external YAML and fail-closed policy checks. The other 26 tests were not selected by the `-k` filter; no success claim is made for them in this run.
 
 **Evidence level:** operator-run, genuine Python software tests against the updated Simorgh checkout; no actual GPU/vLLM, private source, isolated or shared PostgreSQL E2E, KMS/SSO certification or real model benchmark. The previous `PENDING_OPERATOR` check for this specific focused run is closed as `OFFLINE_TEST_PASS`. Original 56-ID Stage11 ledger statuses are not overwritten; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## Stage11 isolated development activation and provisional-score implementation — 2026-11-02
+
+**Actual GitHub CI evidence (all completed `SUCCESS`):**
+
+| Source SHA | Workflow | Tests | Scope |
+|---|---|---|---|
+| `57942f8` | [41409534700](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41409534700) | **58 passed** | Private configuration preflight static/offline; no network or GPU |
+| `57942f8` | [41409534730](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41409534730) | **452 passed** | Full isolated PostgreSQL/API/Worker synthetic regression |
+| `f8eeafc` | [41410025934](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41410025934) | **452 passed** | Candidate score reconstruction per tenant and immutable Rubric; full isolated PostgreSQL suite |
+| `1f9647d` | [41410247714](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41410247714) | **59 passed** | Preflight + Compose manifest contract; Docker not started |
+| `0937858` | [41410409946](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41410409946) | **453 passed** | Full isolated PostgreSQL suite, tri-domain aggregate and historical retirement report |
+
+Stage05/06/08/09 workflows on `f8eeafc` also completed `SUCCESS`. This is software execution on isolated CI resources; no assistant execution on Simorgh, real vLLM/GPU, company IAM/KMS, organization firewalls or backup/restore is claimed. The latest reported Simorgh-specific test remains **12 passed, 26 deselected in 0.46s** on `b66f858`.
+
+**Behavioral contract:** `provisional_score` is a read-time **candidate, never an approved official grade**. It is computed from complete stored per-criterion results and validated, frozen Rubric; incomplete and no-assessment reports remain `null`. Stored `overall_score=NULL`, `publishable_as_official_score=false`, `OD-04 OPEN` for official precision/rounding/coverage. No migration or schema/secret change was made. New `compose.stage11-isolated-db.yml` is opt-in test-only and **has not been deployed/tested with Docker**.
