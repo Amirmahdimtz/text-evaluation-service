@@ -125,6 +125,39 @@ isolated DB environment. Do not run these entrypoints while the shared GPU is
 reserved by another project. API and Worker startup are **not** performed by
 this preflight.
 
+
+
+### Optional dedicated PostgreSQL 17 test container (operator approval required)
+
+The repository now contains `compose.stage11-isolated-db.yml` for a **separate,
+test-only** PostgreSQL 17 container, with a dedicated named volume/network,
+loopback-only host publishing, explicit `isolated` profile and **no default
+username, password, database or port**. The operator must privately select
+`TES_STAGE11_DB_USER`, `TES_STAGE11_DB_PASSWORD`,
+`TES_STAGE11_DB_NAME` (prefix `tes_stage05_`) and a free
+`TES_STAGE11_DB_PORT`. Do not store credentials in a shell history, Compose
+file, public .env, Git or screenshots.
+
+**This is a documented opt-in startup path, NOT a command to execute now on
+the busy shared server.** After an owner-approved isolated environment is
+available and the image has been pre-imported/authorized:
+
+```bash
+docker compose --project-name tes-stage11-isolated \
+  -f compose.stage11-isolated-db.yml --profile isolated up -d postgres
+docker compose --project-name tes-stage11-isolated \
+  -f compose.stage11-isolated-db.yml --profile isolated ps
+```
+
+The Compose stack has **no API, Worker or vLLM container**: use the validated
+Python host processes and `TES_STAGE05_DATABASE_URL` pointing only to this
+dedicated loopback test DB (properly percent-encoding DSN credentials).
+The optional isolated Docker bridge has no external networks; the real
+loopback port reachability has not yet been demonstrated on Simorgh.
+The image tag is a development candidate, not a pinned release digest.
+Do not use `docker compose down -v` or remove volumes: these actions delete
+test-state data and require separately approved data disposal.
+
 ## 6. Service activation is NOT currently a turnkey step
 
 Do **not** merely set three `enabled` flags in committed YAML or launch `python -m src.host.evaluation_worker`. The current `main` enforces:

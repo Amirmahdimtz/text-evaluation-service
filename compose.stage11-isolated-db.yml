@@ -1,0 +1,31 @@
+# Stage11 dedicated development PostgreSQL only; not a production deployment.
+# Operator-controlled: never invoke this stack on shared Simorgh without approval.
+name: tes-stage11-isolated
+services:
+  postgres:
+    profiles: ["isolated"]
+    image: postgres:17
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${TES_STAGE11_DB_USER:?set test-only user}
+      POSTGRES_PASSWORD: ${TES_STAGE11_DB_PASSWORD:?inject private test-only password}
+      POSTGRES_DB: ${TES_STAGE11_DB_NAME:?name must begin tes_stage05_}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "127.0.0.1:${TES_STAGE11_DB_PORT:?choose an unoccupied loopback port}:5432"
+    volumes:
+      - stage11_postgres_data:/var/lib/postgresql/data
+    networks:
+      - isolated
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+networks:
+  isolated:
+    internal: true
+
+volumes:
+  stage11_postgres_data:

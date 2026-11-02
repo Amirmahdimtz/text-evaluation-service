@@ -10,6 +10,8 @@ on:
       - "tests/test_stage11_container_metadata.py"
       - "scripts/verification/stage11_isolated_runtime_preflight.py"
       - "tests/test_stage11_isolated_runtime_preflight.py"
+      - "compose.stage11-isolated-db.yml"
+      - "tests/test_stage11_isolated_compose_contract.py"
       - ".github/workflows/stage11-preflight.yml"
   workflow_dispatch:
 
@@ -33,7 +35,7 @@ jobs:
       - name: Run synthetic-only safety tests (not Simorgh GPU tests)
         env:
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python -m pytest -q -p no:cacheprovider tests/test_stage11_readonly_preflight.py tests/test_stage11_container_metadata.py tests/test_stage11_isolated_runtime_preflight.py
+        run: python -m pytest -q -p no:cacheprovider tests/test_stage11_readonly_preflight.py tests/test_stage11_container_metadata.py tests/test_stage11_isolated_runtime_preflight.py tests/test_stage11_isolated_compose_contract.py
       - name: Offline import/CLI sanity without querying GPU
         env:
           PYTHONDONTWRITEBYTECODE: "1"
