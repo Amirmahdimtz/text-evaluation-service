@@ -159,3 +159,108 @@ def test_stage10_feedback_only_comment_no_official_approval():
         CreateFeedbackDto.model_validate({"comment": "approve", "decision_code": "APPROVE"})
     with pytest.raises(ValidationError):
         CreateFeedbackDto.model_validate({"comment": " "})
+
+
+@pytest.mark.parametrize("headers,expected", [
+    ([(b"content-type", b"application/json"),
+      (b"content-type", b"text/plain")], 400),
+    ([(b"content-type", b"application/json"),
+      (b"Content-Type", b"application/json")], 400),
+    ([(b"content-type", b"application/json"),
+      (b"content-length", b"3"),
+      (b"content-length", b"20")], 400),
+    ([(b"content-type", b"application/json"),
+      (b"content-length", b"1")], 400),
+    ([(b"content-type", b"application/json"),
+      (b"content-length", b"z")], 400),
+    ([(b"content-type", b"application/json"),
+      (b"content-length", b"9" * 5000)], 413),
+])
+def test_stage10_body_guard_rejects_ambiguous_or_incorrect_framing(headers, expected):
+    """ASGI framing checks are tested without a database or live inference."""
+    import asyncio
+
+    from src.host.request_body_guard import RequestBodyGuard
+
+    body = b'{"synthetic":"yes"}'
+    downstream_calls = []
+
+    async def downstream(_scope, receive, send):
+        downstream_calls.append(await receive())
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    cfg = SimpleNamespace(
+        get_api_prefix=lambda: "/api/v1",
+        settings=SimpleNamespace(
+            http_security=SimpleNamespace(max_request_bytes=256),
+        ),
+    )
+
+    async def run():
+        messages = [{"type": "http.request", "body": body, "more_body": False}]
+        sent = []
+
+        async def receive():
+            return messages.pop(0) if messages else {"type": "http.disconnect"}
+
+        async def send(message):
+            sent.append(message)
+
+        await RequestBodyGuard(downstream, cfg)(
+            {"type": "http", "method": "POST",
+             "path": "/api/v1/text_evaluation/evaluations",
+             "headers": headers},
+            receive, send,
+        )
+        return sent
+
+    result = asyncio.run(run())
+    assert result[0]["status"] == expected
+    assert downstream_calls == []
+
+
+def test_stage10_body_guard_accepts_matching_content_length():
+    import asyncio
+
+    from src.host.request_body_guard import RequestBodyGuard
+
+    body = b'{"synthetic":"yes"}'
+    forwarded = []
+
+    async def downstream(_scope, receive, send):
+        forwarded.append(await receive())
+        await send({"type": "http.response.start", "status": 204, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    cfg = SimpleNamespace(
+        get_api_prefix=lambda: "/api/v1",
+        settings=SimpleNamespace(
+            http_security=SimpleNamespace(max_request_bytes=256),
+        ),
+    )
+
+    async def run():
+        messages = [{"type": "http.request", "body": body, "more_body": False}]
+        sent = []
+
+        async def receive():
+            return messages.pop(0) if messages else {"type": "http.disconnect"}
+
+        async def send(message):
+            sent.append(message)
+
+        await RequestBodyGuard(downstream, cfg)(
+            {"type": "http", "method": "POST",
+             "path": "/api/v1/text_evaluation/evaluations",
+             "headers": [(b"Content-Type", b"application/json"),
+                         (b"Content-Length", str(len(body)).encode("ascii"))]},
+            receive, send,
+        )
+        return sent
+
+    result = asyncio.run(run())
+    assert result[0]["status"] == 204
+    assert forwarded == [
+        {"type": "http.request", "body": body, "more_body": False},
+    ]

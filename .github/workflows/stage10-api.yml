@@ -22,6 +22,7 @@ on:
       - "src/infrastructure/security/signed_identity.py"
       - "src/infrastructure/security/encrypted_content.py"
       - "src/host/app.py"
+      - "src/host/request_body_guard.py"
       - "tests/test_stage10_*.py"
       - ".github/workflows/stage10-api.yml"
   workflow_dispatch:
