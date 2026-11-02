@@ -39,7 +39,7 @@ P0 means product implementation or intended functionality may be unproven/unship
 - [x] Inspect actual architecture, defaults, entrypoints, runtime restrictions and CI/Simorgh evidence.
 - [x] Produce an operator-safe GPU-free installation/validation/handoff runbook without inventing Docker deployment or live secrets.
 - [x] Add project README with correct no-network regression commands and Stage11 readiness caveats.
-- [ ] Resolve G11-P01 (a safe real service runtime distribution/activation design) **without** modifying the shared server. Private dev-only configuration loading is an offline partial step, not a complete deployable package.
+- [ ] Resolve G11-P01 full **deployable package** without modifying the shared server. A real API+Worker **two-process** E2E against CI-isolated PostgreSQL 17 and a synthetic loopback model now passes ([runbook](16_stage11_isolated_process_e2e.md)); an opt-in on-host Docker runner exists but has **not** run on Simorgh. No production deployment readiness claim.
 - [x] Document and test the **candidate read-only** aggregate response
   contract without fabricating an official score
   ([contract](../architecture/04_stage11_review_only_scoring_contract.md)).
