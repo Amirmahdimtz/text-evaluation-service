@@ -221,3 +221,9 @@ Source commit `626e9e8929cfe8a14d40f0033a8f35ad52e3765b` (`main`) introduces a s
 **Actual GitHub CI evidence:** [Stage10 run `41405074852`](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41405074852) `SUCCESS`: full `pytest tests` run **424 passed in 5.52s**; isolated real PostgreSQL migration, schema, API E2E with synthetic engine, worker/recovery, security tests and dependency audit all completed successfully. No assistant-local or newer Simorgh test was executed for the HTTP guard patch.
 
 **Remaining:** model-on-GPU quality, full live protected-source E2E, shared system impact and organizational environment handover remain outside these test results. No mandatory live acceptance item is marked `PASS` from this offline work.
+
+## Simorgh operator offline HTTP-guard regression — 2026-11-02
+
+The operator reported a clean `main` fast-forward `ce5e930..e7699be` and **16 passed in 0.96s** from `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage10_auth.py`. This verifies latest offline host-side Python dependency/ASGI-body guard tests. **Assistant did not independently run tests on Simorgh**; there was no live model inference, GPU request or enterprise network test.
+
+An accompanying [56-ID classification proposal](14_stage11_product_handoff_scope_matrix.md) separates product implementation tests from recipient environment certification without changing source-ledger `PENDING_SERVER` statuses or releasing the Stage11 gate.
