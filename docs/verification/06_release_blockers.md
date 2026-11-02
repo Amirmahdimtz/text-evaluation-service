@@ -94,3 +94,11 @@ Product-owned blockers still include validated API and authorization behavior, p
 ## Stage11 product versus organization acceptance-owner proposal — 2026-11-02
 
 Following user direction D-020, the [56-ID ownership matrix](14_stage11_product_handoff_scope_matrix.md) proposes **40 product-owned tests** and **16 recipient-owned organization test oracles**. Original 56 test IDs, the complete requirement descriptions and all original `PENDING_SERVER` statuses are unchanged. Mixed requirements retain both product guard test assertions and recipient-specific deployment obligations; an ownership change does not constitute a successful test or official Stage11 gate waiver. Stage11 remains `BLOCKED` until applicable product gates are verified on the real temporary server and the revised acceptance scope is expressly accepted.
+
+## Stage11 GPU-free product source audit and installation handoff — 2026-11-02
+
+[Runbook](../deployment/11_gpu_free_preparation_and_handoff.md) and [priority gap review](15_stage11_product_gap_review.md) now document the verified startup limits and operator-safe no-GPU commands. No working container image, Docker Compose topology, non-development PostgreSQL runtime configuration, credential material or shared server changes have been claimed or created.
+
+**Newly explicit product P0 blockers:** `G11-P01` (secure non-test-only runtime/distribution), `G11-P02` (real signed API -> encrypted PostgreSQL -> Worker -> local vLLM E2E), `G11-P03` (three-domain model quality/second-candidate policy), and `G11-P04` (decision on exposing/persisting provisional overall scores versus reviewer-only reporting). G11-P01/P04 are suitable for further development without GPU once their configuration/report policy is agreed; G11-P02/P03 need a future authorized GPU window. Exact other gaps and acceptance evidence are tracked in the review document. Organization-owned SSO, KMS, firewall, retention and operational Go-Live checks are listed for recipient handoff but **not** marked PASS.
+
+The static runbook work itself executed no new pytest, CI, PostgreSQL or model call. Previously observed GitHub Actions `41405074852` completed with 424 synthetic/offline tests; operator-reported Simorgh runs had 66 and 16 offline PASS. The original 56-ID ledger and Stage11 `BLOCKED`, Stage12 `NOT_STARTED` remain unchanged.
