@@ -84,3 +84,11 @@ validation is inferred. The repaired Docker orchestration must pass CI and then
 be explicitly rerun by the authorized operator before marking the Simorgh
 scenario passed. Previous failed test volume is retained: no deletion was
 performed or authorized.
+
+## Root-cause remediation and on-host follow-up — 2026-11-02
+
+The first actual Simorgh operator run (source `4190150`, project `tes-stage11-413cbc50dfe4`) **FAILED** after container startup; the script stopped that test DB and retained the volume. A new, credential-redacting `failure_phase` field reproduced the failure as `postgres_readiness` in CI [`41424875201`](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41424875201), then the test-only network was changed from `internal:true` (unreachable for Host clients in that CI environment) to a dedicated bridge with **strict loopback-only host publishing**. This permits Docker bridge egress and therefore **does not** constitute No-Egress certification. Only synthetic sources and transient keys are permitted.
+
+CI [`41425225692`](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41425225692) successfully executed the **actual guarded Docker Compose Runner** end to end, not merely the CI service-container process test: database ready, migrations applied, separate FastAPI + Worker synthetic six-criterion evaluation, container stop, volume retained; **12 runner safety passes**, **1 isolated-process E2E pass**, **465 full-suite passes, 1 intentional skip**. No GPU, model runtime, real text, or Simorgh shared DB was accessed.
+
+**On-host verification on corrected `main`:** requires renewed operator confirmation of resource availability on the shared host. The runner still refuses preconfigured DB/private-runtime variables, pulls no image, defaults to dry-run, prints no sensitive exception details and never deletes test volumes. Use the [scoped commands in the deployment runbook](../deployment/11_gpu_free_preparation_and_handoff.md); only `ISOLATED_PROCESS_E2E_PASS` in the actual Simorgh output would close `PENDING_OPERATOR`. Retained old test volume must not be deleted automatically.
