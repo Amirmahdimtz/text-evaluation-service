@@ -127,6 +127,61 @@ this preflight.
 
 
 
+### Stage11 controlled subprocess E2E on Simorgh (explicit opt-in)
+
+The actual independent-process test lives in
+`tests/test_stage11_process_e2e.py`. It starts a **real** FastAPI Python
+process, a **real** Worker Python process, and a synthetic loopback
+OpenAI-compatible HTTP stub. It uses only a dedicated test PostgreSQL
+database and synthetic Persian text and keys; it never connects to vLLM.
+
+CI [run 41420277103](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41420277103)
+executed **1 passing process E2E** in 3.37 seconds, then **453 passed,
+1 skipped** in the full regression suite. The skip in the full suite is
+intentional: the explicit opt-in environment variable is absent there.
+
+A new guarded runner can reproduce this with a **new unique project name,
+new synthetic credentials, a newly initialized `tes_stage05_*` database,
+and a dynamically chosen loopback-only port**. It requires `postgres:17`
+to be **already present locally** and `docker compose` v2 available.
+It refuses preconfigured existing DB/private runtime variables, downloads
+no images (`--pull never`), migrates only its new test database, and
+stops its own PostgreSQL container after a pass or failure. The Docker
+named volume is deliberately retained; no destructive cleanup occurs.
+
+The first command is an entirely safe no-operation:
+
+```bash
+cd /srv/projects/text-evaluation-service
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
+  scripts/verification/stage11_isolated_process_runner.py
+```
+
+**Only when the temporary host owner has permitted a small new CPU/RAM/disk
+Docker container and its loopback port**, and the shared GPU remains
+reserved for the other project, use the actual opt-in command:
+
+```bash
+cd /srv/projects/text-evaluation-service
+docker image inspect postgres:17 >/dev/null
+docker compose version
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
+  scripts/verification/stage11_isolated_process_runner.py --execute-isolated
+```
+
+The Python runner prints only safe status and the unique test project
+name. On completion it **stops** its own database and leaves its test
+volume, so its storage needs later authorized disposal. If an earlier
+private `TES_STAGE05_DATABASE_URL` or `TES_STAGE11_SETTINGS_FILE`
+environment variable is set, the runner **refuses** to operate rather
+than risk attaching to a different test environment. Do not unset such
+variables blindly in an active session.
+
+This is neither an instruction to run shared-vLLM GPU inference nor proof
+of non-development/organizational production deployment. Do not claim a
+Simorgh PASS until the host operator actually runs it and shares the
+sanitized result.
+
 ### Optional dedicated PostgreSQL 17 test container (operator approval required)
 
 The repository now contains `compose.stage11-isolated-db.yml` for a **separate,
