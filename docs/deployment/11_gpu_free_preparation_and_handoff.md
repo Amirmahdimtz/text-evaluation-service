@@ -7,7 +7,7 @@
 | Component | Verified location | Current behavior / constraint |
 |---|---|---|
 | API entrypoint | `src/host/app.py` | `create_app()` / `python -m src.host.app`; defaults to loopback; HTTP middleware returns sanitized errors |
-| Host config | `src/infrastructure/utils/config_reader.py`, `src/host/res/appsettings*.yaml` | `TES_ENVIRONMENT` chooses development vs generic YAML; **no generic environment-variable override** for setting `llm.enabled`, `worker.enabled` or `http_security.enabled` |
+| Host config | `src/infrastructure/utils/config_reader.py`, `src/host/res/appsettings*.yaml` | `TES_ENVIRONMENT` chooses development vs generic YAML; `TES_STAGE11_SETTINGS_FILE` provides an **optional complete private YAML** for isolated development only; no per-field runtime override or implicit enablement |
 | Default ports | `appsettings.development.yaml`, `appsettings.yaml` | Development API: `127.0.0.1:18080`; generic default: `127.0.0.1:8000` (**can collide with existing vLLM when restarted**) |
 | Database | `src/infrastructure/context/sql_db/psql_dbcontext.py` | Requires `TES_ENVIRONMENT=development` and a loopback `postgresql+asyncpg` DSN for a database whose name begins `tes_stage05_`; no approved general deployment adapter |
 | Migrations | `scripts/verification/run_stage05_migrations.py` | `current`, `check`, `upgrade`; guards the test DSN before touching PostgreSQL |
@@ -93,14 +93,14 @@ These tests may create/modify **test-only data**; their safe execution requires 
 Do **not** merely set three `enabled` flags in committed YAML or launch `python -m src.host.evaluation_worker`. The current `main` enforces:
 
 - `http_security.enabled=false`, `worker.enabled=false`, `llm.enabled=false` by default.
-- ConfigReader reads YAML; it does not bind a full product runtime configuration automatically from individual environment overrides. Its `TES_ENVIRONMENT` selector alone cannot enable the services.
+- ConfigReader reads YAML; it does not bind per-field environment overrides. A separately approved *development-only* external YAML may be selected with `TES_STAGE11_SETTINGS_FILE` (an absolute, owner-only `0600` regular file outside the repo; not a symlink, maximum 64 KiB). It must contain the **complete existing Settings schema**, and any secrets must be `env://` references, never raw values. This file is rejected for `staging` and `production`. The selector `TES_ENVIRONMENT` alone cannot enable services.
 - The API requires a configured trusted JWT issuer, RSA verification key reference, encryption key reference and quotas. The Worker also requires an organization scope and complete timeout/lease/concurrency policy. Secrets must stay in an authorized runtime secret source, not the repository.
 - `PsqlDbContext`, the Worker Host and `ProtectedEvaluationExecutor` currently deny non-development deployment. The model provider requires a permitted private **literal-IP** endpoint with validated contract and pinned configured identity; it is not automatically found by a Docker alias.
 - In the current API/report behavior, protected Worker results are **review-only**. The Python engine calculates a provisional score, but the stored/report `provisional_score` is currently `null`; a final published overall grade requires explicit rubric/scoring-policy resolution.
 
 The isolated HTTP health routes `/health/live` and `/health/ready` are not proof of full application functionality or model health. The development API port `18080` and vLLM port `8000` must not be repurposed without coordination.
 
-**Engineering work before a fully runnable demonstration:** provide and test an explicit safely scoped runtime configuration/deployment adapter without weakening fail-closed defaults; decide and implement the expected provisional-versus-official reporting contract; build a reproducible packaging/startup procedure based on the selected deployment target. These are concrete product gaps, **not** demands for organization-wide SSO/KMS/firewall procurement.
+**Engineering work before a fully runnable demonstration:** the new file-selector removes the need to edit checked-in settings for an approved isolated development run, but a **live** demonstration still needs a separately provisioned `tes_stage05_*` test database, configured secret references and JWT issuer, authorized model availability and an operator-controlled execution window. It is not production wiring. Decide and implement the expected provisional-versus-official reporting contract; build and verify a reproducible packaging/startup procedure based on the selected deployment target. These are concrete product gaps, **not** demands for organization-wide SSO/KMS/firewall procurement.
 
 ## 6. When GPU becomes free (separately authorized later)
 

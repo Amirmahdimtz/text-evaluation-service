@@ -38,4 +38,6 @@ See [GPU-free setup and handoff instructions](docs/deployment/11_gpu_free_prepar
 
 **Important:** The checked-in configuration has `llm.enabled=false`, `worker.enabled=false`, `http_security.enabled=false`; the API binds to loopback, and the PostgreSQL context accepts only an isolated `tes_stage05_*` development database. There is **no Dockerfile or Compose stack** in the reviewed revision. Running `python -m src.host.app` by itself therefore does not activate a working evaluation service.
 
+For a future approved *isolated development* demonstration, `TES_STAGE11_SETTINGS_FILE` may point to an absolute, owner-owned `0600` YAML file **outside this repository**. The file must contain the complete validated Settings schema and secret **references**, not secret values; it is not enabled by default. Production/staging cannot use this override. This does not grant approval to start vLLM or use a shared database. See the runbook for boundaries and tests.
+
 Never commit or paste real customer texts, model IDs, signed tokens, secret values, DB connection strings or internal infrastructure details into this public repository.

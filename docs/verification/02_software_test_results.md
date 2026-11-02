@@ -227,3 +227,9 @@ Source commit `626e9e8929cfe8a14d40f0033a8f35ad52e3765b` (`main`) introduces a s
 The operator reported a clean `main` fast-forward `ce5e930..e7699be` and **16 passed in 0.96s** from `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage10_auth.py`. This verifies latest offline host-side Python dependency/ASGI-body guard tests. **Assistant did not independently run tests on Simorgh**; there was no live model inference, GPU request or enterprise network test.
 
 An accompanying [56-ID classification proposal](14_stage11_product_handoff_scope_matrix.md) separates product implementation tests from recipient environment certification without changing source-ledger `PENDING_SERVER` statuses or releasing the Stage11 gate.
+
+## Stage11 Simorgh 70 offline regressions and private dev-config code — 2026-11-02
+
+User-supplied Simorgh terminal output shows a fast-forward `e7699be..d29f853` and exactly **70 pytest passes in 0.98s** from the three synthetic/offline suites `tests/test_stage10_auth.py`, `tests/test_stage11_protected_worker.py`, `tests/test_stage08_engine.py`. This is operator evidence, not an assistant-run server test; no model inference, GPU workload, or external services were exercised.
+
+The optional `TES_STAGE11_SETTINGS_FILE` source/test addition is restricted to local development and is covered by new synthetic tests. **No CI result is claimed until it actually completes.** The required real-model quality and full-path E2E remain `PENDING_SERVER`.

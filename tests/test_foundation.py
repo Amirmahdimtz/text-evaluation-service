@@ -309,3 +309,103 @@ def test_di_singleton_is_thread_safe():
     with ThreadPoolExecutor(max_workers=12) as executor:
         services = list(executor.map(lambda _: resolve(ConfigReader), range(64)))
     assert all(service is services[0] for service in services)
+
+
+
+def test_stage11_private_settings_opt_in_is_dev_only_and_off_by_default(monkeypatch, tmp_path):
+    """An external owner-only config can set isolated dev policy without Git edits."""
+    import yaml
+
+    monkeypatch.setenv("TES_ENVIRONMENT", "development")
+    monkeypatch.delenv("TES_STAGE11_SETTINGS_FILE", raising=False)
+    built_in = ConfigReader().settings
+    assert built_in.llm.enabled is False
+    assert built_in.worker.enabled is False
+    assert built_in.http_security.enabled is False
+
+    values = built_in.model_dump()
+    values["server"]["port"] = 18381
+    values["worker"]["organization_id"] = "synthetic-stage11"
+    file = tmp_path / "stage11-private.yaml"
+    file.write_text(yaml.safe_dump(values), encoding="utf-8")
+    file.chmod(0o600)
+    monkeypatch.setenv("TES_STAGE11_SETTINGS_FILE", str(file))
+
+    reader = ConfigReader()
+    assert reader.settings.server.port == 18381
+    assert reader.settings.worker.organization_id == "synthetic-stage11"
+    assert reader.settings.llm.enabled is False
+    assert reader.settings.worker.enabled is False
+    assert reader.settings.http_security.enabled is False
+
+    monkeypatch.setenv("TES_ENVIRONMENT", "staging")
+    with pytest.raises(ValueError, match="^CONFIG_STAGE11_DEV_ONLY$"):
+        ConfigReader()
+    monkeypatch.setenv("TES_ENVIRONMENT", "production")
+    with pytest.raises(ValueError, match="^CONFIG_STAGE11_DEV_ONLY$"):
+        ConfigReader()
+
+
+@pytest.mark.parametrize("failure", [
+    "relative_path",
+    "not_found",
+    "group_readable",
+    "world_readable",
+    "symlink",
+    "directory",
+    "oversize",
+    "invalid_yaml",
+    "invalid_loopback",
+    "disabled_egress",
+])
+def test_stage11_private_settings_fail_closed(monkeypatch, tmp_path, failure):
+    import yaml
+
+    monkeypatch.setenv("TES_ENVIRONMENT", "development")
+    monkeypatch.delenv("TES_STAGE11_SETTINGS_FILE", raising=False)
+    values = ConfigReader().settings.model_dump()
+    file = tmp_path / "private-stage11.yaml"
+    if failure == "invalid_loopback":
+        values["server"]["host"] = "0.0.0.0"
+    if failure == "disabled_egress":
+        values["security"]["deny_external_egress"] = False
+    content = (
+        "!!python/object/apply:os.system ['false']"
+        if failure == "invalid_yaml" else yaml.safe_dump(values)
+    )
+    if failure == "oversize":
+        content = " " * 65537
+    file.write_text(content, encoding="utf-8")
+    file.chmod(0o600)
+    config_path = file
+
+    if failure == "relative_path":
+        config_path = file.name
+    elif failure == "not_found":
+        config_path = tmp_path / "missing.yaml"
+    elif failure == "group_readable":
+        file.chmod(0o640)
+    elif failure == "world_readable":
+        file.chmod(0o604)
+    elif failure == "symlink":
+        config_path = tmp_path / "link.yaml"
+        config_path.symlink_to(file)
+    elif failure == "directory":
+        config_path = tmp_path
+
+    monkeypatch.setenv("TES_STAGE11_SETTINGS_FILE", str(config_path))
+    with pytest.raises(ValueError, match="^CONFIG_INVALID$") as error:
+        ConfigReader()
+    assert str(config_path) not in str(error.value)
+
+
+def test_stage11_private_settings_rejects_repo_local_file(monkeypatch):
+    import src.infrastructure.utils.config_reader as cfg_module
+
+    monkeypatch.setenv("TES_ENVIRONMENT", "development")
+    monkeypatch.setenv(
+        "TES_STAGE11_SETTINGS_FILE",
+        str(cfg_module._CONFIG_DIR / "appsettings.development.yaml"),
+    )
+    with pytest.raises(ValueError, match="^CONFIG_INVALID$"):
+        ConfigReader()

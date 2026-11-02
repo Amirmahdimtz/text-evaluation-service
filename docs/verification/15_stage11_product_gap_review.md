@@ -22,7 +22,7 @@
 
 | ID | Priority | Real source gap / open decision | Required completion evidence | GPU |
 |---|---|---|---|---|
-| G11-P01 | P0 | **Runtime activation / distribution:** `PsqlDbContext.get_test_database_url()`, API settings gate, Worker Host and protected executor are restricted to `development`/test-only DB. No general secure deployment wiring exists. Do not simply disable guards | Reviewed explicit runtime/deployment design; isolated signed API + Worker with policy/secret references and safe DB lifecycle; negative config tests | No to develop; real model E2E later |
+| G11-P01 | P0 | **Runtime activation / distribution:** private owner-only `TES_STAGE11_SETTINGS_FILE` now permits isolated development settings without Git edits. `PsqlDbContext.get_test_database_url()`, API settings gate, Worker Host and protected executor remain restricted to `development`/test-only DB. No general secure deployment wiring exists. Do not simply disable guards | Reviewed explicit runtime/deployment design; isolated signed API + Worker with policy/secret references and safe DB lifecycle; negative config tests | No to develop; real model E2E later |
 | G11-P02 | P0 | **Full internal inference E2E** not yet proven: signed HTTP -> encrypted DB -> Worker -> actual local model -> evidence -> authorized report | Authorized bounded synthetic whole-path result, valid quote/offsets and ciphertext on real target runtime | **Yes** |
 | G11-P03 | P0 | **Persian model quality/selection** for `speech`, `media`, `research` unvalidated against expert labels; earlier six-criterion `speech` live attempt had `LLM_CIRCUIT_OPEN` | Versioned authorized labels, per-domain quality/abstention/groundedness metrics, model comparison per applicable approved scope | **Yes** |
 | G11-P04 | P0 | **Delivered scoring contract unclear:** `TextEvaluationService` computes provisional score, but protected Worker intentionally persists `overall_score=None`; API report returns `provisional_score=null`, even after assessed criteria | Confirm policy for provisional overall score, official/human review and coverage; implement+test report persistence if accepted, without promoting uncertain result to official | No |
@@ -39,7 +39,7 @@ P0 means product implementation or intended functionality may be unproven/unship
 - [x] Inspect actual architecture, defaults, entrypoints, runtime restrictions and CI/Simorgh evidence.
 - [x] Produce an operator-safe GPU-free installation/validation/handoff runbook without inventing Docker deployment or live secrets.
 - [x] Add project README with correct no-network regression commands and Stage11 readiness caveats.
-- [ ] Resolve G11-P01 (a safe real service runtime distribution/activation design) **without** modifying the shared server.
+- [ ] Resolve G11-P01 (a safe real service runtime distribution/activation design) **without** modifying the shared server. Private dev-only configuration loading is an offline partial step, not a complete deployable package.
 - [ ] Resolve G11-P04 (numeric provisional vs official score contract) after a scope/business decision; no unapproved scoring semantics.
 - [ ] Prove G11-P05 with a fresh isolated installation/artifact build, not merely markdown.
 - [ ] Real model-dependent G11-P02/03/06/07/08 remain pending until a future separately permitted GPU window.

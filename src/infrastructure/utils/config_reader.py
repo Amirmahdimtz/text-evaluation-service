@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import stat
 from pathlib import Path
 
 import yaml
@@ -11,6 +12,41 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from src.infrastructure.di.inject import inject
 
 _CONFIG_DIR = Path(__file__).resolve().parents[2] / "host" / "res"
+_PRIVATE_SETTINGS_ENV = "TES_STAGE11_SETTINGS_FILE"
+_PRIVATE_SETTINGS_MAX_BYTES = 65536
+
+
+def _read_private_stage11_settings(path: str) -> str:
+    """Read an owner-only external YAML file, never following symlinks."""
+    candidate = Path(path)
+    if (os.name != "posix" or not hasattr(os, "O_NOFOLLOW")
+            or not candidate.is_absolute()
+            or candidate.is_relative_to(_CONFIG_DIR.parents[2])):
+        raise ValueError("CONFIG_INVALID")
+    descriptor = None
+    try:
+        descriptor = os.open(
+            candidate,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+            | getattr(os, "O_CLOEXEC", 0),
+        )
+        mode = os.fstat(descriptor)
+        if (not stat.S_ISREG(mode.st_mode)
+                or mode.st_uid != os.getuid()
+                or mode.st_mode & 0o077
+                or mode.st_size > _PRIVATE_SETTINGS_MAX_BYTES):
+            raise ValueError("CONFIG_INVALID")
+        with os.fdopen(descriptor, "r", encoding="utf-8") as stream:
+            descriptor = None
+            content = stream.read(_PRIVATE_SETTINGS_MAX_BYTES + 1)
+        if len(content.encode("utf-8")) > _PRIVATE_SETTINGS_MAX_BYTES:
+            raise ValueError("CONFIG_INVALID")
+        return content
+    except (OSError, UnicodeError, ValueError):
+        raise ValueError("CONFIG_INVALID") from None
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
 
 
 class _StrictSettings(BaseModel):
@@ -135,10 +171,18 @@ class ConfigReader:
             raise ValueError("CONFIG_INVALID_ENVIRONMENT")
         self.environment = env
         filename = "appsettings.development.yaml" if env == "development" else "appsettings.yaml"
+        private_file = os.environ.get(_PRIVATE_SETTINGS_ENV)
+        if _PRIVATE_SETTINGS_ENV in os.environ and env != "development":
+            raise ValueError("CONFIG_STAGE11_DEV_ONLY")
         try:
-            data = yaml.safe_load((_CONFIG_DIR / filename).read_text(encoding="utf-8"))
+            source = (
+                _read_private_stage11_settings(private_file)
+                if private_file is not None
+                else (_CONFIG_DIR / filename).read_text(encoding="utf-8")
+            )
+            data = yaml.safe_load(source)
             self.settings = Settings.model_validate(data)
-        except (OSError, yaml.YAMLError, ValidationError, TypeError):
+        except (OSError, UnicodeError, yaml.YAMLError, ValidationError, TypeError):
             raise ValueError("CONFIG_INVALID") from None
 
     def get(self, path: str) -> object:
