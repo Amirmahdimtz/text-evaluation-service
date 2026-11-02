@@ -27,6 +27,7 @@ on:
       - "tests/test_stage11_process_e2e.py"
       - "scripts/verification/stage11_isolated_process_runner.py"
       - "tests/test_stage11_isolated_process_runner.py"
+      - "compose.stage11-isolated-db.yml"
       - ".github/workflows/stage10-api.yml"
   workflow_dispatch:
 
@@ -90,6 +91,11 @@ jobs:
         run: |
           python -m pytest -q -p no:cacheprovider tests/test_stage11_isolated_process_runner.py
           python scripts/verification/stage11_isolated_process_runner.py
+      - name: Run actual unique Compose test container orchestration (no GPU)
+        # The already-running CI service provides locally cached postgres:17.
+        env:
+          TES_STAGE05_DATABASE_URL: ""
+        run: python scripts/verification/stage11_isolated_process_runner.py --execute-isolated
       - name: Run Stage11 supervised API and Worker subprocess integration (mock model only)
         env:
           TES_STAGE11_PROCESS_E2E: "1"

@@ -22,6 +22,14 @@ ROOT = Path(__file__).resolve().parents[2]
 COMPOSE = ROOT / "compose.stage11-isolated-db.yml"
 
 
+class IsolatedRunFailed(RuntimeError):
+    """Only an allowlisted phase can appear in a user-visible error."""
+
+    def __init__(self, phase: str) -> None:
+        self.phase = phase
+        super().__init__("STAGE11_ISOLATED_RUN_ABORTED")
+
+
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
@@ -68,11 +76,16 @@ def execute_isolated() -> int:
             or any(os.environ.get(key) for key in forbidden)):
         raise RuntimeError("STAGE11_EXISTING_ENVIRONMENT_REFUSED")
 
-    # Do not download an image or change existing deployment/container state.
-    _invoke(["docker", "image", "inspect", "postgres:17"],
-            env=os.environ.copy(), suppress_output=True)
-    _invoke(["docker", "compose", "version"],
-            env=os.environ.copy(), suppress_output=True)
+    # Validate prerequisites before creating any Docker resource.
+    phase = "image_check"
+    try:
+        _invoke(["docker", "image", "inspect", "postgres:17"],
+                env=os.environ.copy(), suppress_output=True)
+        phase = "compose_check"
+        _invoke(["docker", "compose", "version"],
+                env=os.environ.copy(), suppress_output=True)
+    except Exception:
+        raise IsolatedRunFailed(phase) from None
 
     project = "tes-stage11-" + uuid4().hex[:12]
     user = "tes_stage11"
@@ -98,34 +111,48 @@ def execute_isolated() -> int:
         "docker", "compose", "--project-name", project,
         "-f", str(COMPOSE), "--profile", "isolated",
     ]
-    started = False
+    attempted_start = False
+    phase = "compose_up"
     print(json.dumps({"status": "STARTING_ISOLATED_TEST_DATABASE", "project": project}),
           flush=True)
     try:
-        # --pull never ensures this operation cannot silently download an image.
+        # Compose may partially create a container before returning nonzero.
+        attempted_start = True
         _invoke(compose + ["up", "--pull", "never", "-d", "postgres"],
                 env=env, suppress_output=True)
-        started = True
+        phase = "postgres_readiness"
+        print(json.dumps({"status": "CHECKING_ISOLATED_POSTGRES", "project": project}),
+              flush=True)
         asyncio.run(_wait_for_database(env))
+        phase = "schema_migration"
+        print(json.dumps({"status": "MIGRATING_ISOLATED_TEST_DATABASE",
+                          "project": project}), flush=True)
         _invoke([sys.executable, "-m",
-                 "scripts.verification.run_stage05_migrations", "upgrade"], env=env)
+                 "scripts.verification.run_stage05_migrations", "upgrade"],
+                env=env, suppress_output=True)
+        phase = "api_worker_e2e"
+        print(json.dumps({"status": "RUNNING_SYNTHETIC_API_WORKER_E2E",
+                          "project": project}), flush=True)
         _invoke([
             sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
             "tests/test_stage11_process_e2e.py",
-        ], env=env)
+        ], env=env, suppress_output=True)
         print(json.dumps({"status": "ISOLATED_PROCESS_E2E_PASS",
                           "project": project, "gpu_requests": 0}), flush=True)
         return 0
+    except Exception:
+        # Never include subprocess command, DSN, secret or traceback.
+        raise IsolatedRunFailed(phase) from None
     finally:
-        # Do not remove named volumes or other Docker resources.
-        if started:
+        # Never delete test volumes or modify other Compose projects.
+        if attempted_start:
             try:
                 _invoke(compose + ["stop", "postgres"], env=env, suppress_output=True)
                 print(json.dumps({
                     "status": "ISOLATED_TEST_DATABASE_STOPPED_VOLUME_RETAINED",
                     "project": project,
                 }), flush=True)
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            except Exception:
                 print(json.dumps({"status": "ISOLATED_TEST_DATABASE_STOP_FAILED",
                                   "project": project}), flush=True)
 
@@ -141,11 +168,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     try:
         return execute_isolated()
-    except (RuntimeError, OSError, subprocess.CalledProcessError,
-            subprocess.TimeoutExpired, ValueError):
-        # Never print a DSN, password or subprocess exception/command line.
+    except Exception as exc:
+        # Return an allowlisted phase only, never the exception or its arguments.
+        phase = exc.phase if isinstance(exc, IsolatedRunFailed) else "environment"
         print(json.dumps({"status": "ISOLATED_PROCESS_E2E_FAILED",
-                          "error_code": "STAGE11_ISOLATED_RUN_ABORTED"}))
+                          "error_code": "STAGE11_ISOLATED_RUN_ABORTED",
+                          "failure_phase": phase}))
         return 2
 
 
