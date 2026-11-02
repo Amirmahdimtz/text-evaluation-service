@@ -426,6 +426,10 @@ def test_stage11_protected_executor_from_signed_api_through_isolated_postgres(
     from decimal import Decimal
     from types import SimpleNamespace
 
+    from src.infrastructure.repositories.text_evaluation.rubric_version_repository import (
+        RubricVersionRepository,
+    )
+
     from src.core.services.text_evaluation.criterion_evaluation_service import CriterionAssessment
     from src.core.services.text_evaluation.protected_evaluation_executor import ProtectedEvaluationExecutor
 
@@ -476,7 +480,7 @@ def test_stage11_protected_executor_from_signed_api_through_isolated_postgres(
     async def exercise():
         db = resolve(PsqlDbContext)
         try:
-            await seed_rubric(db, org, domain=domain)
+            rubric_id = await seed_rubric(db, org, domain=domain)
             app = create_app()
             identity = token(key, org)
             engine = SyntheticEngine()
@@ -532,6 +536,21 @@ def test_stage11_protected_executor_from_signed_api_through_isolated_postgres(
                 assert len(assessed) == 1
                 assert assessed[0]["details"]["evidence"][0]["quote"] == SOURCE
                 assert assessed[0]["details"]["evidence"][0]["end_offset"] == len(SOURCE)
+
+                # A historical report must retain its own frozen rubric even
+                # after that technical candidate is retired for new submissions.
+                await RubricVersionRepository(db).retire_candidate_async(
+                    organization_id=org, actor_id="synthetic-curator",
+                    correlation_id=uuid4(), rubric_id=rubric_id,
+                )
+                historical = await client.get(
+                    route + "/evaluations/" + str(evaluation_id),
+                    headers=headers(identity),
+                )
+                assert historical.status_code == 200, historical.text
+                assert historical.json()["provisional_score"] == data["provisional_score"]
+                assert historical.json()["coverage"] == data["coverage"]
+                assert historical.json()["publishable_as_official_score"] is False
 
                 outsider = token(key, "different-org")
                 denied = await client.get(
