@@ -300,3 +300,57 @@ def test_stage08_two_pass_document_synthesis_maps_quotes_to_original():
         for quote, start, end in item.evidence:
             assert text[start:end] == quote
     assert next(c for c in report.criteria if c.criterion_code == "speech_coherence").score is None
+
+
+@pytest.mark.parametrize("domain", ["speech", "media", "research"])
+def test_compact_prompt_version_and_required_rubric_contract_are_preserved(domain):
+    """No inference: inspect exactly the instructions sent to the real Provider API."""
+    selected = binding(domain)
+    criterion = selected.snapshot.criteria[0]
+    if criterion.criterion_code == "research_novelty":
+        criterion = selected.snapshot.criteria[1]
+    provider = SyntheticProvider()
+    assessment = asyncio.run(CriterionEvaluationService(provider).evaluate_criterion_async(
+        criterion=criterion, original_text=ORIGINAL, rubric_checksum=selected.checksum,
+    ))
+    assert assessment.status == "assessed"
+    assert assessment.evidence[0] == (ORIGINAL[:4], 0, 4)
+    assert len(provider.calls) == 1
+    original, code, instructions, checksum = provider.calls[0]
+    assert original == ORIGINAL
+    assert code == criterion.criterion_code
+    assert checksum == selected.checksum
+    payload = json.loads(instructions)
+    assert PROMPT_VERSION == "stage08-prompt-candidate-0.3"
+    assert payload["prompt_version"] == PROMPT_VERSION
+    assert payload["criterion_code"] == criterion.criterion_code
+    assert payload["operational_definition"] == criterion.operational_definition
+    assert payload["evaluation_instructions"] == criterion.evaluation_instructions
+    assert payload["evidence_requirements"] == criterion.evidence_requirements
+    assert payload["applicability_rules"] == criterion.applicability_rules
+    assert payload["score_anchors"] == criterion.scoring_anchors
+    assert "not_assessed with score null" in payload["important"]
+    guidance = payload["response_guidance"]
+    assert "concise" in guidance
+    assert "include all JSON fields" in guidance
+    assert "every evidence quote required by this rubric" in guidance
+    assert "Preserve exact original quotes and offsets" in guidance
+    assert "never abbreviate evidence" in guidance
+    assert "omit necessary justification" in guidance
+    assert "fabricate support" in guidance
+    assert "truncate JSON" in guidance
+
+
+def test_compact_prompt_does_not_force_assessment_without_evidence():
+    """Missing evidence remains an explicit abstention with no invented score."""
+    selected = binding("media")
+    criterion = selected.snapshot.criteria[0]
+    provider = SyntheticProvider(abstain_codes={criterion.criterion_code})
+    assessment = asyncio.run(CriterionEvaluationService(provider).evaluate_criterion_async(
+        criterion=criterion, original_text=ORIGINAL, rubric_checksum=selected.checksum,
+    ))
+    assert assessment.status == "not_assessed"
+    assert assessment.score is None
+    assert assessment.evidence == ()
+    assert "HUMAN_REVIEW_REQUIRED" in assessment.quality_flags
+    assert "response_guidance" in json.loads(provider.calls[0][2])
