@@ -72,3 +72,46 @@ waiting=0, rising KV fraction applied to the default-thinking run, not
 necessarily the non-thinking follow-up. Diagnosing token generation and
 the constrained JSON decoding path remains `PENDING_SERVER`; the shared
 GPU and database must remain untouched. No Stage11 performance gate passed.
+
+
+## Stage11 cumulative vLLM token-throughput snapshot — 2026-11-03
+
+Simorgh operator supplied a **read-only, shared-server** `/metrics` scrape:
+`generation_tokens_total=1930`,
+`prompt_tokens_total=2925`,
+`inter_token_latency_seconds_count=1923`,
+`inter_token_latency_seconds_sum=186.947`,
+`request_generation_tokens_count=3`,
+`request_generation_tokens_sum=174`,
+`request_decode_time_seconds_count=3`,
+`request_decode_time_seconds_sum=7.558`.
+
+Arithmetic: observed cumulative mean inter-token interval
+`186.947/1923≈0.0972s/token`, i.e. reciprocal ≈`10.29 tokens/s`
+**for the observed token-interval population**. Extrapolating
+`512*0.0972≈49.8s` reveals a plausible *budget/deadline mismatch*
+with the diagnostic probe's `max_output_tokens=512` and 45s timeout,
+even without queue delay. This is a **rough extrapolation**, not a
+measured throughput, token count or execution breakdown of the failed
+`media_message_clarity` request. The `request_generation_tokens`
+histogram recorded 3 requests totaling 174 generated tokens (mean 58).
+The counter/histogram populations need not be identical, so the
+`1930-174=1756` difference **must not** be interpreted as a count of
+wasted tokens, a number of failed requests or per-request output.
+
+Earlier operator samples during a different media probe showed
+`running=1`, `waiting=0` with rising KV cache; multiple media
+probes have failed at the 45s client deadline, including a
+non-thinking variant. The shared-service metrics have no per-project
+or per-request attribution and no synchronized before/after counter
+deltas. Thus *high output token count relative to deadline* is the
+current leading **engineering hypothesis**, not an accepted root cause.
+Do **not** change the shared model, timeout, output cap or GPU policies
+on this evidence alone. First design a single approved bounded
+per-request generation/termination diagnostic with non-sensitive data,
+and validate response-contract completeness and output cap against a
+representative workload.
+
+Stage11 model/capacity benchmarks remain `PENDING_SERVER`, Stage11
+`BLOCKED`, Stage12 `NOT_STARTED`. Reference: vLLM v0.10.2
+Production Metrics documentation.
