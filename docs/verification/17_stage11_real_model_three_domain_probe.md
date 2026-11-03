@@ -324,3 +324,11 @@ does not demonstrate quality; incomplete JSON, length termination or
 timeout is still FAILED. Historical 256-token truncation and
 512-token timeouts remain evidence, not successful measurements.
 Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## Real prompt v0.3 single-domain timeout evidence — 2026-11-03
+
+The operator pulled through commit `71d9509`, ran `172` focused tests successfully and verified dry-run without network, then ran one explicit synthetic media criterion using `--execute-live --domain media --disable-thinking --diagnostics` with default max output 512 and 45s timeout. The live attempt failed at 45,034ms with `REQUEST_TIMEOUT` and opened the local circuit. `finish_reason`, JSON syntax and per-request reported usage are **UNAVAILABLE** (not `length` or 0). No accepted score/evidence.
+
+Read-only shared metrics changed by +401 generated tokens, +635 prompt tokens and +44.876778 seconds across 400 inter-token samples, with no completed response histogram increment. This suggests extended generation/decoding in the monitored window but cannot prove how many tokens the project request itself generated. Relative to prior capped 256-token test (complete HTTP, length stop, invalid JSON, 23.427s), there is **no confirmed improvement** from new prompt wording. Do not continue repeated live tests or change the shared server/timeout without approval and a bounded hypothesis.
+
+The stage remains `BLOCKED` until separately required actual quality, provenance, No-Egress, performance and E2E gates are satisfied; Stage12 `NOT_STARTED`.
