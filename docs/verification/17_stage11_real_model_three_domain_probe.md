@@ -179,3 +179,77 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_
 The third command is a dry run; only the fourth sends exactly one inference request. A completed JSON contract does not establish independent Persian scoring quality; an HTTP 4xx would indicate request/runtime incompatibility rather than justify changing the shared service. 
 
 Actually executed offline on GitHub Actions 2026-11-03: Stage07 run 41648095259 `SUCCESS`, 66 provider checks passed and 484 non-database tests passed (11 skipped); Stage11 preflight run 41648095226 `SUCCESS`, 59 guard tests and 99 focused provider/probe tests passed. Live `--disable-thinking` result remains `PENDING_SERVER`. Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
+
+
+## Bounded per-criterion response and Prometheus delta diagnostics — 2026-11-03
+
+A Stage11-only opt-in diagnostic was added after real synthetic media failures
+with `REQUEST_TIMEOUT` at approximately 45s, including the
+`--disable-thinking` run. This is a troubleshooting aid, **not** a
+production-mode adjustment or proof of autonomous evaluation quality.
+
+`--diagnostics` **requires** one `--domain`. It creates a separate
+read-only loopback HTTP client with `trust_env=False`,
+`follow_redirects=False`, a 3s whole-request timeout and a 2 MiB
+response cap; at most two `GET /metrics` requests are made (before/after).
+One **synthetic** rubric criterion is evaluated, max_concurrency=1,
+max_attempts=1, with the same 45s deadline as before. No extra inference
+requests, model changes, DB access, secret logging or container lifecycle
+operations. The optional `--max-output-tokens 256` is accepted **only**
+with `--diagnostics` and a specific `--domain`; default remains 512.
+A 256-token limit may produce `finish_reason=length` and must be treated
+as `LLM_INCOMPLETE_GENERATION`, not a successful result.
+
+Only if the provider receives a complete HTTP response, the diagnostic
+captures the allowlisted `finish_reason` (`stop`, `length`,
+`tool_calls`, `content_filter`, otherwise `OTHER`/`UNAVAILABLE`),
+the JSON **syntax** category (`valid`, `invalid`, `UNAVAILABLE`) and
+server-reported `prompt_tokens`, `completion_tokens`,
+`total_tokens` as validated non-negative integers or null.
+**JSON syntax valid is not schema-valid or rubric-valid.** The actual
+`CriterionEvaluationService` and `LocalLlmProvider` fail-closed
+contract still determines `results[].contract`. No content, quotes,
+prompts, explanations, upstream raw errors, private labels or credentials
+are printed. If the client times out before receiving the response,
+`reported_usage=null`, `json_syntax=UNAVAILABLE` and
+`finish_reason=UNAVAILABLE`; those values must **not be inferred**.
+
+`shared_metrics_delta` contains before/after differences for a fixed
+allowlist of vLLM counters/histogram sums and counts. It **aggregates
+across all labels and all tenants**; the associated
+`metrics_attribution=SHARED_SERVICE_UNATTRIBUTED` prohibits treating
+the delta as the individual request's true token count. A telemetry
+read failure reports `metrics_status=UNAVAILABLE`; counter resets
+report `COUNTER_RESET_OR_INVALID`; neither can turn an otherwise valid
+LLM contract into a fabricated failure or success.
+
+On Simorgh, after an authorized bounded single-request window, run:
+
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py tests/test_stage07_local_llm.py
+# Offline preview; MUST return DRY_RUN_NO_NETWORK
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_model_criterion_probe --domain media --disable-thinking --diagnostics --max-output-tokens 256
+# Only if shared-service owner separately approves one synthetic inference
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_model_criterion_probe --execute-live --domain media --disable-thinking --diagnostics --max-output-tokens 256
+```
+
+If the reduced cap causes incomplete generation, record it as a **failed**
+contract; never force scores or repair malformed JSON in the diagnostic.
+No unattended reruns. If another tenant is busy, defer the live probe.
+Return only the sanitized JSON report for analysis; do not share full
+Prometheus output or model contents.
+
+**Actual offline validation:** [GitHub Actions 41656742019](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41656742019),
+`SUCCESS` on code commit `566a37761ed12caf96763a86beb6cf5eb0987417`:
+**59 Stage11 preflight passed**, **131 focused Provider/probe/metrics tests
+passed**, default no-network dry-run passed. MockTransport tests cover
+valid response usage, `length`, malformed JSON, timeouts, allowlist
+redaction, counter resets, no redirects/proxies, localhost-only metrics
+and the size bound. All results are **synthetic/offline**; no GPU
+inference, completed-response token usage or real model quality was
+measured by this change.
+
+The new live diagnostic remains `PENDING_SERVER`; Stage11 `BLOCKED`,
+Stage12 `NOT_STARTED`.
