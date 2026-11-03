@@ -1170,3 +1170,13 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   256-token/512-token measurements remain unchanged.
 - Stage11 `BLOCKED`; Stage12 `NOT_STARTED`; no pending mandatory
   quality, security or infrastructure gate is marked PASS.
+
+
+### Stage11 — prompt 0.3 live timeout at 512 output-token cap (2026-11-03)
+
+- **Operator execution:** Simorgh performed one explicitly invoked synthetic `media_message_clarity` evaluation using `stage08-prompt-candidate-0.3`, `--disable-thinking --diagnostics`, max 512 output tokens, one concurrent attempt and no retries. Elapsed 45,034ms; provider `LLM_CIRCUIT_OPEN`, `failure_kind=REQUEST_TIMEOUT`. **Real model contract FAILED**; no completed JSON, score or evidence.
+- **Safe completion metadata unavailable:** `finish_reason=UNAVAILABLE`, `json_syntax=UNAVAILABLE`, `reported_usage=null`. No valid claim that this request produced exactly 401 tokens or reached the 512-token cap.
+- **Shared-server metric window only:** `prompt_tokens_total +635`, `generation_tokens_total +401`, inter-token `count +400`, inter-token latency `sum +44.876778s`, `request_success_total +0`, completed request generation histogram `count +0`, preemptions `+0`. All `SHARED_SERVICE_UNATTRIBUTED`. The observed throughput hypothesis is about 8.91 tokens/s for these shared sampled intervals.
+- **Comparison limitation:** prior capped 256-token `v0.2` request completed at 23.427s with `prompt_tokens=558` but invalid JSON and `finish_reason=length`; prior default and non-thinking 512-token probes timed out at ~45s. This is not a controlled paired latency/quality A/B test. The v0.3 wording has shown no successful contract or proven reduction in output tokens. Do not claim a successful optimization.
+- **Decision:** no automatic retry, timeout extension, increase in token cap, model/server modification or additional live test on the shared service. Next: offline review of output JSON and guided decoding overhead, rubric evidence needs and realistic token budget, followed by explicitly approved bounded internal tests only when justified. Prompt 0.3 remains a candidate, not accepted model policy.
+- **Gates:** Stage11 `BLOCKED`; Stage12 `NOT_STARTED`; unresolved quality and hardware/security/E2E verification still `PENDING_SERVER`.
