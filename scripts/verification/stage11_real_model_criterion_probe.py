@@ -24,7 +24,8 @@ from src.infrastructure.providers.llm.local_llm_provider import (
 )
 from src.infrastructure.security.secrets import SecretResolver
 from scripts.verification.stage11_vllm_diagnostics import (
-    DiagnosticLocalLlmProvider, metrics_delta, read_metrics,
+    DiagnosticLocalLlmProvider, UnconstrainedDiagnosticLocalLlmProvider,
+    metrics_delta, read_metrics,
 )
 from src.infrastructure.utils.config_reader import ConfigReader
 
@@ -181,10 +182,14 @@ async def _run_cases(evaluator: CriterionEvaluationService, *, domain: str | Non
 async def _run_live(
     *, domain: str | None = None, disable_thinking: bool = False,
     diagnostics: bool = False, max_output_tokens: int = 512,
+    comparison_unconstrained: bool = False,
 ) -> dict:
     if (diagnostics and domain is None
             or max_output_tokens not in (256, 512)
-            or (max_output_tokens != 512 and not diagnostics)):
+            or (max_output_tokens != 512 and not diagnostics)
+            or (comparison_unconstrained and (
+                not diagnostics or domain != "media" or max_output_tokens != 256
+                or not disable_thinking))):
         raise ValueError("STAGE11_DIAGNOSTICS_SCOPE_INVALID")
     _require_safe_environment()
     config = ConfigReader()
@@ -206,7 +211,9 @@ async def _run_live(
     config.settings = config.settings.model_copy(update={"llm": llm_settings})
     before = await read_metrics() if diagnostics else None
     provider = (
-        DiagnosticLocalLlmProvider(config, SecretResolver())
+        UnconstrainedDiagnosticLocalLlmProvider(config, SecretResolver())
+        if comparison_unconstrained
+        else DiagnosticLocalLlmProvider(config, SecretResolver())
         if diagnostics else LocalLlmProvider(config, SecretResolver())
     )
     evaluator = CriterionEvaluationService(provider)
@@ -222,6 +229,9 @@ async def _run_live(
         status, deltas = metrics_delta(before, after)
         report["diagnostics"] = {
             "max_output_tokens": max_output_tokens,
+            "decoding_mode": (
+                "unconstrained" if comparison_unconstrained else "json_schema"
+            ),
             "response": provider.response_diagnostic or {
                 "finish_reason": "UNAVAILABLE",
                 "json_syntax": "UNAVAILABLE",
