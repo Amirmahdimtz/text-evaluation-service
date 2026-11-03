@@ -127,3 +127,10 @@ No live model result, reduced completion-token count or expert-validated
 Persian quality claim exists for this version. The previous 256-token
 incomplete JSON and 512-token timeout remain failed observations.
 Stage11 BLOCKED.
+
+
+## Stage11 prompt version 0.3 real media test failed timeout — 2026-11-03
+
+The Simorgh operator evaluated one synthetic `media_message_clarity` criterion with `stage08-prompt-candidate-0.3`, request-level `thinking_mode=disabled`, 512 max output tokens and a fixed 45s deadline. The provider returned `LLM_CIRCUIT_OPEN` with `failure_kind=REQUEST_TIMEOUT` after 45.034s. No HTTP completion metadata arrived: `finish_reason=UNAVAILABLE`, `json_syntax=UNAVAILABLE`, `reported_usage=null`. The contract **FAILED**; no score, evidence or quality measure was accepted.
+
+During the shared-server observation window, read-only aggregated Prometheus counters changed by `+401` generated tokens and `+44.876778s` of inter-token latencies, but the values cannot be attributed to this request alone. This does not prove a 512-token `length` stop; the actual finish reason is unobserved. Compared with prior `v0.2` tests, no improvement in complete validated output has been demonstrated. The new wording preserves schema/rubric rules in offline tests, but its **effectiveness and Persian semantic quality remain unverified**. Do not claim official quality, breakthrough, acceptable accuracy or a complete model contract. Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
