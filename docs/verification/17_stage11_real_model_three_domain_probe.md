@@ -158,3 +158,24 @@ automatic reruns or changes to shared GPU/PostgreSQL.
 single-domain selection, dry-run, sanitized failures and actual Provider
 MockTransport paths. The live single-domain diagnostic is
 `PENDING_OPERATOR`.
+
+
+## Simorgh time-correlated timeout evidence and optional non-thinking experiment — 2026-11-03
+
+The operator ran one real synthetic media criterion with read-only 3-second Prometheus sampling. From 13:44:23 through 13:45:05, `num_requests_running=1`, `num_requests_waiting=0`, and `kv_cache_usage_perc` increased from 0.006 to 0.011. The request ended with `REQUEST_TIMEOUT` at 45,093 ms and `probe_exit=2`. The preceding 13:44:20 sample showed idle GPU queue. These correlated snapshots strongly support execution inside the model engine rather than queue congestion; they do **not** independently identify the precise runtime bottleneck or whether the running request was the only service user. No accepted score/evidence resulted.
+
+The local `LocalLlmProvider` already exposes `thinking_mode`. The opt-in `disabled` mode now sends the Qwen3-supported request parameter `chat_template_kwargs: {enable_thinking: false}`; `runtime_default` (used by normal operations and prior runs) remains unchanged. The Stage11 probe accepts `--disable-thinking` only together with `--domain`, keeping this comparison to a **single** synthetic criterion. No vLLM container settings, other tenant settings, model weights, secrets, GPU concurrency, retry budget or 45-second timeout were changed. Compatibility on the actually installed vLLM is still `PENDING_OPERATOR`.
+
+After authorization from the shared service owner, run:
+
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage07_local_llm.py tests/test_stage11_real_model_criterion_probe.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_model_criterion_probe --domain media --disable-thinking
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_model_criterion_probe --execute-live --domain media --disable-thinking
+```
+
+The third command is a dry run; only the fourth sends exactly one inference request. A completed JSON contract does not establish independent Persian scoring quality; an HTTP 4xx would indicate request/runtime incompatibility rather than justify changing the shared service. 
+
+Actually executed offline on GitHub Actions 2026-11-03: Stage07 run 41648095259 `SUCCESS`, 66 provider checks passed and 484 non-database tests passed (11 skipped); Stage11 preflight run 41648095226 `SUCCESS`, 59 guard tests and 99 focused provider/probe tests passed. Live `--disable-thinking` result remains `PENDING_SERVER`. Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
