@@ -133,7 +133,7 @@ def test_mismatched_quote_is_rejected():
 
 
 def test_main_live_simulation_has_no_real_io(monkeypatch, capsys):
-    async def simulate(*, domain=None):
+    async def simulate(*, domain=None, disable_thinking=False):
         return {"status": "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS"}
     monkeypatch.setattr(probe, "_run_live", simulate)
     assert probe.main(["--execute-live"]) == 0
@@ -275,3 +275,37 @@ def test_only_selected_domain_is_invoked():
     assert report["requests_planned"] == report["requests_attempted"] == 1
     assert report["requests_not_attempted"] == 0
     assert report["results"][0]["failure_kind"] == "HTTP_503"
+
+
+
+def test_no_thinking_dry_run_selects_single_media_domain(capsys):
+    assert probe.main(["--disable-thinking", "--domain", "media"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["status"] == "DRY_RUN_NO_NETWORK"
+    assert report["requests_planned"] == 1
+    assert report["thinking_mode_requested"] == "disabled"
+
+
+def test_no_thinking_requires_single_domain_to_avoid_multiple_live_calls(capsys):
+    with pytest.raises(SystemExit) as err:
+        probe.main(["--execute-live", "--disable-thinking"])
+    assert err.value.code == 2
+    assert "requires --domain" in capsys.readouterr().err
+
+
+def test_no_thinking_opt_in_is_forwarded_without_network(monkeypatch, capsys):
+    observed = []
+
+    async def simulate(*, domain=None, disable_thinking=False):
+        observed.append((domain, disable_thinking))
+        return {
+            "status": "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS",
+            "thinking_mode_requested": "disabled",
+        }
+
+    monkeypatch.setattr(probe, "_run_live", simulate)
+    assert probe.main([
+        "--execute-live", "--domain", "media", "--disable-thinking",
+    ]) == 0
+    assert observed == [("media", True)]
+    assert "disabled" in capsys.readouterr().out

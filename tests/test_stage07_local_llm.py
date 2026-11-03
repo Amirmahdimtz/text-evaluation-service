@@ -512,3 +512,31 @@ def test_single_attempt_circuit_redacts_transport_failure_categories(error, cate
 
     asyncio.run(run())
     assert len(calls) == 1
+
+ 
+@pytest.mark.parametrize("mode,expected", [
+    ("runtime_default", None),
+    ("enabled", None),
+    ("disabled", {"enable_thinking": False}),
+])
+def test_opt_in_non_thinking_vllm_request_setting(mode, expected):
+    """No live server: assert exact wire payload and unchanged default mode."""
+    observed = []
+
+    def handler(request):
+        observed.append(json.loads(request.content))
+        return answer()
+
+    provider = make_provider(handler, overrides={"thinking_mode": mode})
+
+    async def run():
+        try:
+            assert (await invoke(provider)).score == 4
+        finally:
+            await provider.aclose()
+
+    asyncio.run(run())
+    assert len(observed) == 1
+    assert observed[0].get("chat_template_kwargs") == expected
+    assert observed[0]["temperature"] == 0
+    assert observed[0]["max_tokens"] == 1024
