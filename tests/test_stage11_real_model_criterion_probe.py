@@ -3,13 +3,21 @@ from __future__ import annotations
 
 import asyncio
 import json
+from types import SimpleNamespace
 
+import httpx
 import pytest
 
 from src.core.services.text_evaluation.criterion_evaluation_service import (
     CriterionAssessment,
 )
-from src.infrastructure.providers.llm.local_llm_provider import LlmProviderError
+from src.infrastructure.providers.llm.local_llm_provider import (
+    LlmProviderError, LocalLlmProvider,
+)
+from src.core.services.text_evaluation.criterion_evaluation_service import (
+    CriterionEvaluationService,
+)
+from src.infrastructure.utils.config_reader import ConfigReader
 from scripts.verification import stage11_real_model_criterion_probe as probe
 
 
@@ -130,3 +138,117 @@ def test_main_live_simulation_has_no_real_io(monkeypatch, capsys):
     monkeypatch.setattr(probe, "_run_live", simulate)
     assert probe.main(["--execute-live"]) == 0
     assert "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("kind", [
+    "REQUEST_TIMEOUT", "TRANSPORT_ERROR", "HTTP_429", "HTTP_500",
+    "HTTP_502", "HTTP_503", "HTTP_504",
+])
+def test_circuit_breaker_reports_allowed_kind_and_stops(kind):
+    requests = []
+
+    class FailingEvaluator:
+        async def evaluate_criterion_async(self, *, criterion, **kwargs):
+            requests.append(criterion.criterion_code)
+            raise LlmProviderError("LLM_CIRCUIT_OPEN", failure_kind=kind)
+
+    result = asyncio.run(probe._run_cases(FailingEvaluator()))
+    assert requests == ["speech_clarity"]
+    assert result["status"] == "REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE"
+    assert (result["requests_planned"], result["requests_attempted"],
+            result["requests_not_attempted"]) == (3, 1, 2)
+    assert result["stopped_after_circuit_open"] is True
+    assert len(result["results"]) == 1
+    assert result["results"][0]["failure_kind"] == kind
+
+
+@pytest.mark.parametrize("kind", [
+    None, "UNTRUSTED_MARKER", "HTTP_418", "HTTP_503-private",
+])
+def test_unexpected_diagnostic_is_redacted(kind):
+    class FailingEvaluator:
+        async def evaluate_criterion_async(self, **kwargs):
+            raise LlmProviderError("LLM_CIRCUIT_OPEN", failure_kind=kind)
+
+    result = asyncio.run(probe._run_cases(FailingEvaluator()))
+    assert result["results"][0]["failure_kind"] == "UNAVAILABLE"
+    assert "UNTRUSTED_MARKER" not in json.dumps(result)
+
+
+def test_other_provider_failures_dont_incorrectly_open_circuit():
+    called = []
+
+    class FailingEvaluator:
+        async def evaluate_criterion_async(self, *, criterion, **kwargs):
+            called.append(criterion.criterion_code)
+            raise LlmProviderError("LLM_SCHEMA_REJECTED")
+
+    result = asyncio.run(probe._run_cases(FailingEvaluator()))
+    assert len(called) == 3
+    assert result["requests_not_attempted"] == 0
+    assert result["stopped_after_circuit_open"] is False
+    assert all("failure_kind" not in item for item in result["results"])
+
+
+@pytest.mark.parametrize("upstream,expected", [
+    (429, "HTTP_429"), (503, "HTTP_503"),
+    ("timeout", "REQUEST_TIMEOUT"),
+    ("transport", "TRANSPORT_ERROR"),
+])
+def test_provider_mock_transport_failure_is_reported_without_extra_requests(
+    upstream, expected,
+):
+    calls = []
+
+    async def handler(request):
+        calls.append(request)
+        if upstream == "timeout":
+            raise httpx.ReadTimeout("fake-transport-detail")
+        if upstream == "transport":
+            raise httpx.ConnectError("fake-transport-detail")
+        return httpx.Response(upstream, text="fake-upstream-body")
+
+    settings = ConfigReader().settings.llm.__class__.model_validate({
+        "enabled": True,
+        "endpoint": "http://127.0.0.1:8000/v1",
+        "model_id": "shared-llm",
+        "model_revision": "unverified",
+        "max_input_characters": 2048,
+        "max_context_tokens": 8192,
+        "max_output_tokens": 512,
+        "timeout_seconds": 1,
+        "max_concurrency": 1,
+        "max_attempts": 1,
+        "retry_backoff_seconds": 0,
+        "circuit_failures": 1,
+        "circuit_reset_seconds": 10,
+        "temperature": 0,
+        "thinking_mode": "runtime_default",
+    })
+    config = SimpleNamespace(
+        environment="development",
+        settings=SimpleNamespace(llm=settings),
+    )
+    provider = LocalLlmProvider(
+        config, SimpleNamespace(resolve_reference=lambda ref: None),
+        transport=httpx.MockTransport(handler),
+    )
+    evaluator = CriterionEvaluationService(provider)
+
+    async def run():
+        try:
+            return await probe._run_cases(evaluator)
+        finally:
+            await provider.aclose()
+
+    result = asyncio.run(run())
+    assert len(calls) == 1
+    assert calls[0].url.path == "/v1/chat/completions"
+    assert result["requests_attempted"] == 1
+    assert result["requests_not_attempted"] == 2
+    assert result["stopped_after_circuit_open"] is True
+    assert result["results"][0]["error_code"] == "LLM_CIRCUIT_OPEN"
+    assert result["results"][0]["failure_kind"] == expected
+    summary = json.dumps(result)
+    assert "fake-upstream-body" not in summary
+    assert "fake-transport-detail" not in summary
