@@ -95,8 +95,10 @@ def _require_safe_environment() -> None:
         raise ValueError("STAGE11_PROBE_ENVIRONMENT_REFUSED")
 
 
-async def _run_cases(evaluator: CriterionEvaluationService) -> dict:
-    cases = _load_selected_rubrics()
+async def _run_cases(evaluator: CriterionEvaluationService, *, domain: str | None = None) -> dict:
+    cases = tuple(x for x in _load_selected_rubrics() if domain is None or x[0].domain == domain)
+    if not cases:
+        raise ValueError("STAGE11_PROBE_DOMAIN_INVALID")
     details = []
     circuit_opened = False
     for case, criterion, checksum in cases:
@@ -173,7 +175,7 @@ async def _run_cases(evaluator: CriterionEvaluationService) -> dict:
     }
 
 
-async def _run_live() -> dict:
+async def _run_live(*, domain: str | None = None) -> dict:
     _require_safe_environment()
     config = ConfigReader()
     if not config.settings.security.deny_external_egress:
@@ -195,7 +197,7 @@ async def _run_live() -> dict:
     provider = LocalLlmProvider(config, SecretResolver())
     evaluator = CriterionEvaluationService(provider)
     try:
-        return await _run_cases(evaluator)
+        return await _run_cases(evaluator, domain=domain)
     finally:
         await evaluator.close_async()
 
@@ -204,10 +206,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--execute-live", action="store_true",
                         help="Make exactly three sequential synthetic requests to the shared local vLLM.")
+    parser.add_argument("--domain", choices=("speech", "media", "research"),
+                        help="Use only one selected rubric criterion during diagnosis.")
     args = parser.parse_args(argv)
     if not args.execute_live:
         try:
-            choices = _load_selected_rubrics()
+            choices = tuple(x for x in _load_selected_rubrics()
+                            if args.domain is None or x[0].domain == args.domain)
             print(json.dumps({
                 "status": "DRY_RUN_NO_NETWORK",
                 "model_api_id": _MODEL_ID,
@@ -220,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"status": "STAGE11_PROBE_PREPARATION_FAILED"}))
             return 2
     try:
-        results = asyncio.run(_run_live())
+        results = asyncio.run(_run_live(domain=args.domain))
         print(json.dumps(results, ensure_ascii=False, sort_keys=True))
         return 0 if results["status"] == "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS" else 2
     except Exception:

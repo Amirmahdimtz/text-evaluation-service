@@ -133,7 +133,7 @@ def test_mismatched_quote_is_rejected():
 
 
 def test_main_live_simulation_has_no_real_io(monkeypatch, capsys):
-    async def simulate():
+    async def simulate(*, domain=None):
         return {"status": "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS"}
     monkeypatch.setattr(probe, "_run_live", simulate)
     assert probe.main(["--execute-live"]) == 0
@@ -252,3 +252,26 @@ def test_provider_mock_transport_failure_is_reported_without_extra_requests(
     summary = json.dumps(result)
     assert "fake-upstream-body" not in summary
     assert "fake-transport-detail" not in summary
+
+
+def test_dry_run_single_domain_never_uses_network(capsys):
+    assert probe.main(["--domain", "media"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["status"] == "DRY_RUN_NO_NETWORK"
+    assert report["requests_planned"] == 1
+    assert report["criteria"] == ["media_message_clarity"]
+
+
+def test_only_selected_domain_is_invoked():
+    seen = []
+
+    class Evaluator:
+        async def evaluate_criterion_async(self, *, criterion, **kwargs):
+            seen.append(criterion.criterion_code)
+            raise LlmProviderError("LLM_CIRCUIT_OPEN", failure_kind="HTTP_503")
+
+    report = asyncio.run(probe._run_cases(Evaluator(), domain="media"))
+    assert seen == ["media_message_clarity"]
+    assert report["requests_planned"] == report["requests_attempted"] == 1
+    assert report["requests_not_attempted"] == 0
+    assert report["results"][0]["failure_kind"] == "HTTP_503"
