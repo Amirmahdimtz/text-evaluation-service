@@ -87,3 +87,17 @@ separate staging tenancy, No-Egress and capacity gates remain open.
 
 No data owner approval or expert calibration threshold has been silently
 assumed.
+
+## Operator execution evidence: partial failure, not three-domain pass — 2026-11-03
+
+Source `a35fd3a`, Simorgh operator, shared `shared-llm`: actual `--execute-live` returned `REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE`.
+
+| Domain | Criterion | Contract | Status/diagnostic | Duration |
+|---|---|---|---|---|
+| speech | speech_clarity | valid | `not_assessed`, score null, no evidence | 1738 ms |
+| media | media_message_clarity | failed | `LLM_CIRCUIT_OPEN` | 45007 ms |
+| research | research_academic_writing | failed | `LLM_CIRCUIT_OPEN` (open breaker; not a confirmed upstream request) | 1 ms |
+
+The 45s media duration closely matches configured `timeout_seconds=45`, but upstream first-failure category is **not proven**. A provider with `circuit_failures=1` opens after any first transient HTTP 429/5xx, timeout or transport error; subsequent research call was rejected almost immediately. No retries and at most one request in flight. The previously guided single-criterion schema PASS remains valid but unrelated to autonomous model accuracy.
+
+**Status:** `FAIL_USER_SERVER_REPORTED_UNFORCED_TRI_DOMAIN_CONTRACT`, with one valid abstention and two failed calls. Three-domain real-model quality remains `PENDING_SERVER`. The next script version should safely report an allowlisted upstream failure category and avoid attempting further criteria once circuit is open, without printing any private text or expanding shared-GPU load. Do not claim `PASS` or proceed to Stage12.

@@ -84,3 +84,15 @@ Following the failed on-prem `speech` attempt, categorical redaction of first-fa
 **Ready for operator execution, not yet a measured result:** a minimal three-domain sequential live adapter probe now uses the actual app's `LocalLlmProvider` and `CriterionEvaluationService`, candidate rubric weight/anchors and *no preselected score or quote*. It performs exactly one synthetic criterion per domain and records only contract validity, optional criterion score, status, evidence count and elapsed duration. It is **not** a full three-domain benchmark; even 3 successful schemas cannot establish quantitative AI quality. `model_revision_verified=False`; the source revision is not attested.
 
 **Offline test evidence:** [CI `41639035765`](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41639035765) `SUCCESS`, 12 new probe contract/guard tests passed, Stage11 offline suite 59 passed. Live three-domain result `PENDING_SERVER_OPERATOR`. All real expert MAE/relevance/abstention assessments and two-model comparison remain `NOT_MEASURABLE` / `PENDING_SERVER`.
+
+## First unforced real three-domain criterion probe: observed partial failure — 2026-11-03
+
+The operator actually ran the new Stage11 `--execute-live` code on Simorgh at source `a35fd3a`. It used three static synthetic Persian texts, one selected candidate rubric criterion per domain, no fixed answer, one-at-a-time inference and zero retries. Summary output:
+
+- `speech_clarity`: **typed-valid `not_assessed`**, score null, evidence count zero, 1738 ms. Not a scoring accuracy/coverage success.
+- `media_message_clarity`: **`LLM_CIRCUIT_OPEN`**, 45007 ms. The configured 45s timeout makes a timeout plausible, but actual failure kind was not in the emitted report; `429/5xx` or other transport failures cannot be ruled out from this output alone.
+- `research_academic_writing`: **`LLM_CIRCUIT_OPEN`**, 1 ms, likely rejected without external inference due to the previous open circuit.
+
+Overall `REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE`. The `requests_attempted=3` field denotes attempts at evaluation in Python, not three successfully dispatched model requests. Model revision remains unverified; quality benchmark remains false. This is **not** three successful domain assessments or AI accuracy evidence. A valid abstention is intentionally preferred over fabricated scoring and is a separate future calibration metric.
+
+**Mandatory next work:** redacted first-failure classification, fail-fast circuit handling under the shared-GPU low-impact policy, re-run only with approved owner/limits, then collect representative expert reference labels and repeat a version-pinned multi-domain benchmark. Keep quality status `NOT_MEASURABLE` and Stage11 gate `BLOCKED`.

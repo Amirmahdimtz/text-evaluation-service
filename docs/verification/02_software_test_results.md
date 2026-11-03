@@ -322,3 +322,21 @@ Evidence classification `PASS_USER_SERVER_REPORTED_OFFLINE`; the assistant did n
 **Actually executed offline CI:** [GitHub Actions `41639035765`](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41639035765), commit `5554c5444615da18aa2facaf87864b8342ffd024`, `SUCCESS`; `59 passed in 1.55s` Stage11 preflight suite, `12 passed in 0.22s` new probe unit/validation/security tests, followed by `DRY_RUN_NO_NETWORK`. Prior first CI [`41638879762`](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41638879762) failed with a test-only assertion incorrectly requiring a literal synthetic marker in each fixed synthetic text; corrected in `5554c54`. Do not conceal first failure.
 
 **Evidence boundary:** one real *guided* score/quote contract `PASS_USER_SERVER_REPORTED`; new **unforced three-domain live test** `PENDING_SERVER_OPERATOR`; model quality, reference labels, second-candidate comparison, license/provenance, shared workload measurements, no-egress, secure full API/Worker/vLLM/DB E2E, real model quality and original 56 mandatory gates stay outstanding. Stage11 `BLOCKED`; Stage12 `NOT_STARTED`. [Operator runbook](17_stage11_real_model_three_domain_probe.md).
+
+## Stage11 — first unforced real three-domain vLLM probe on Simorgh: PARTIAL_FAILURE (2026-11-03)
+
+**Operator evidence:** On Simorgh, `git pull --ff-only origin main` fast-forwarded `43dd97c..a35fd3a`. The no-network dry run returned `DRY_RUN_NO_NETWORK` with three planned criteria and fixed local `shared-llm`. The operator explicitly ran `PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_model_criterion_probe --execute-live` with synthetic-only Persian inputs, `max_concurrent_requests=1`, `retries=0`.
+
+**Observed sanitized results:**
+
+| Domain | Criterion | Contract | Duration | Observed outcome |
+|---|---|---|---|---|
+| `speech` | `speech_clarity` | `valid` | 1738 ms | `not_assessed`, `score=null`, 0 evidence; valid abstention but **no quality success claimed** |
+| `media` | `media_message_clarity` | `failed` | 45007 ms | `LLM_CIRCUIT_OPEN`; near the configured 45s timeout but original failure kind was not emitted |
+| `research` | `research_academic_writing` | `failed` | 1 ms | `LLM_CIRCUIT_OPEN`; rejected by the already-open circuit, **not evidence of a third HTTP inference** |
+
+**Result:** `REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE`, `model_revision_verified=false`, `official_score=false`, `quality_benchmark=false`. The report's `requests_attempted=3` counts attempted criterion evaluations **including circuit short-circuits**, not three confirmed upstream model requests. No overall grade, expert labels, DB or confidential text used.
+
+**Code diagnosis:** `stage11_real_model_criterion_probe.py` configures `timeout_seconds=45`, `circuit_failures=1`, `circuit_reset_seconds=10`. `LocalLlmProvider._send` opens its circuit on the first retryable HTTP (`429/5xx`), request timeout or transport error and exposes only `LLM_CIRCUIT_OPEN` in the probe's output. **Initial failure category remains unverified**, although 45007 ms is consistent with timeout. Do not escalate shared GPU load, alter vLLM settings, assume readiness or count `speech` abstention as successful autonomous grading.
+
+**Next safe engineering step:** capture a fixed allowlisted `failure_kind` without logging request/response/credentials; stop further synthetic probe attempts once circuit is open; with shared-service owner approval, run the minimal diagnostic under bounded concurrency and inspect non-confidential vLLM health/utilization. Then verify the real criterion schema and score/evidence behavior in all three domains before expert-calibrated benchmarks. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
