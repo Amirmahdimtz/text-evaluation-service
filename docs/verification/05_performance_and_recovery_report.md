@@ -48,3 +48,10 @@ The Simorgh operator completed one newly approved real `CriterionInference` synt
 | After | 18847 MiB | 67% |
 
 **Interpretation:** The same recorded VRAM amount at two points shows no **observed net memory increase** at those instants; it does not bound peak/transient VRAM allocation. The after-sample 67% does not identify whose kernel consumed GPU or which other project was queued. A single `6485 ms` request is **not throughput, p50/p95, resource isolation or other projects' latency/error impact**. Preserve all original performance acceptance cells as `NOT_MEASURED` and Stage11 as `BLOCKED`; request actual operator-authorized competing-project monitoring before asserting non-interference. See [shared vLLM runbook](13_stage11_shared_vllm_reuse.md).
+
+
+## Stage11 measured shared vLLM single-request media timeout — 2026-11-03
+
+One Simorgh operator-run synthetic `media_message_clarity` evaluation on the existing shared local Qwen3-8B-AWQ reported `REQUEST_TIMEOUT` at **45.093 seconds** (`LLM_CIRCUIT_OPEN`, one request attempt, zero retries). During the attempt, Prometheus snapshots every three seconds showed `num_requests_running=1` and `num_requests_waiting=0`, while `kv_cache_usage_perc` rose approximately `0.006→0.011`. This demonstrates extended in-engine processing for an observed request in a low-queue window; it does not prove prefill/decode breakdown, total generated tokens, Thinking mode, GPU utilization during execution or the root cause. Instantaneous idle GPU measurements taken before this run cannot be extrapolated to the run itself.
+
+This is a failed single-request observation, **not** a measured p50/p95 SLO or capacity benchmark. Shared-vLLM aggregate latency for 3 completed historical requests was 8.857 seconds, but these are not isolated to Stage11. Before making any workload/resource decision, use a separately authorized, single synthetic non-thinking diagnostic and then review token generation rate and relevance. No timeout/concurrency or shared server changes were made. Stage11 `BLOCKED`.
