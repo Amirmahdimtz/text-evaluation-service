@@ -134,3 +134,21 @@ Stage11 BLOCKED.
 The Simorgh operator evaluated one synthetic `media_message_clarity` criterion with `stage08-prompt-candidate-0.3`, request-level `thinking_mode=disabled`, 512 max output tokens and a fixed 45s deadline. The provider returned `LLM_CIRCUIT_OPEN` with `failure_kind=REQUEST_TIMEOUT` after 45.034s. No HTTP completion metadata arrived: `finish_reason=UNAVAILABLE`, `json_syntax=UNAVAILABLE`, `reported_usage=null`. The contract **FAILED**; no score, evidence or quality measure was accepted.
 
 During the shared-server observation window, read-only aggregated Prometheus counters changed by `+401` generated tokens and `+44.876778s` of inter-token latencies, but the values cannot be attributed to this request alone. This does not prove a 512-token `length` stop; the actual finish reason is unobserved. Compared with prior `v0.2` tests, no improvement in complete validated output has been demonstrated. The new wording preserves schema/rubric rules in offline tests, but its **effectiveness and Persian semantic quality remain unverified**. Do not claim official quality, breakthrough, acceptable accuracy or a complete model contract. Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
+
+
+## Stage11 compact JSON contract tests vs actual rubric quality — 2026-11-03
+
+The offline compression comparison constructs six synthetic examples and proves
+that JSON whitespace elimination preserves their complete typed
+`CriterionInference` values and exact quote-offset equality. It does NOT
+prove that a single evidence span meets any expert rubric's semantic
+evidence requirements, that model-generated explanation quality is
+unchanged, or that Qwen's token count falls by the same byte ratio.
+
+The isolated Stage11 decoder A/B is prepared and mock-tested: one
+structured JSON-schema arm and one unconstrained arm share all other
+request fields, and both continue to use strict Pydantic/evidence
+validation. An unconstrained output must never bypass the production
+contract, score validator, human review or No-Egress safeguards.
+The real-model test remains `PENDING_SERVER`. No expert accuracy metric
+is measurable from the synthetic samples; Stage11 BLOCKED.
