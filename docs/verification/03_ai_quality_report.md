@@ -113,3 +113,17 @@ Prior operator concurrent metrics while `media` was running: `num_requests_runni
 ## Simorgh real 256-token diagnostic — 2026-11-03
 
 One real synthetic `media_message_clarity` criterion was submitted with opt-in non-thinking mode and output cap 256. The model returned a complete HTTP envelope with `usage.completion_tokens=256` and `finish_reason=length`, but its response content was **invalid JSON**. The existing strict Provider correctly rejected it as `LLM_INCOMPLETE_GENERATION` after 23.427s. This is **not** successful model assessment. The result includes no accepted score/evidence; no expert-labeled accuracy or rubric semantic quality was established. A previous shorter synthetic schema example that passed does not supersede this failure. Keep AI quality `NOT_MEASURABLE`, Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+
+## Stage11 candidate Prompt 0.3: actual quality pending — 2026-11-03
+
+The new version `stage08-prompt-candidate-0.3` requests concise
+Persian comments and preserves every original rubric evidence rule,
+JSON field and abstention. No score or evidence validator changed.
+
+[Offline CI 41662617861](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41662617861)
+passed 41 Engine and 520 regression tests (11 skipped).
+No live model result, reduced completion-token count or expert-validated
+Persian quality claim exists for this version. The previous 256-token
+incomplete JSON and 512-token timeout remain failed observations.
+Stage11 BLOCKED.
