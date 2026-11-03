@@ -332,3 +332,67 @@ The operator pulled through commit `71d9509`, ran `172` focused tests successful
 Read-only shared metrics changed by +401 generated tokens, +635 prompt tokens and +44.876778 seconds across 400 inter-token samples, with no completed response histogram increment. This suggests extended generation/decoding in the monitored window but cannot prove how many tokens the project request itself generated. Relative to prior capped 256-token test (complete HTTP, length stop, invalid JSON, 23.427s), there is **no confirmed improvement** from new prompt wording. Do not continue repeated live tests or change the shared server/timeout without approval and a bounded hypothesis.
 
 The stage remains `BLOCKED` until separately required actual quality, provenance, No-Egress, performance and E2E gates are satisfied; Stage12 `NOT_STARTED`.
+
+
+## Stage11 JSON size and decoder comparison diagnostics — 2026-11-03
+
+The operator requested two distinct tests, bounded to Stage11:
+
+1. **Offline semantic-preserving JSON serialization comparison:**
+   `scripts/verification/stage11_output_budget.py` creates six
+   synthetic `CriterionInference` objects (assessed/abstained for each
+   domain), serializes the identical object with normal versus compact
+   UTF-8 JSON and passes both through the actual strict decoder,
+   including exact quote/offset verification. For the media sample,
+   assessed `427 -> 405` bytes (22 bytes saved) and abstained
+   `247 -> 232` bytes (15 bytes saved). All six passed identical
+   type/contract checks; output sizes are **bytes, NOT model token counts**.
+   These are synthetic structural examples: they do **not** establish
+   expert semantic evidence sufficiency, smaller actual Qwen completions,
+   or meaningful quality/latency improvement.
+2. **Real decoder-overhead experiment prepared, not executed:**
+   `scripts/verification/stage11_structured_decoding_compare.py`
+   plans one ordered pair with the **same model, prompt, case, temperature,
+   thinking mode, and max 256 output tokens**. First arm uses the
+   production `response_format=json_schema`; second omits
+   `response_format` and is **unconstrained**. This is a diagnostic-only
+   Provider subclass; production decoding/validation remains unchanged.
+   Both responses pass through the existing strict decoder, so a JSON
+   syntax-only output, missing fields, invalid quotes or `length`
+   termination is **FAILED**, not accepted. The second arm only executes
+   if the first completed its HTTP response with a valid or
+   schema/incomplete-generation diagnostic; a timeout or other upstream
+   problem fails fast. At most two **sequential** synthetic calls, one
+   in-flight, 45s per call, zero retries; no server or database changes.
+   Metrics remain `SHARED_SERVICE_UNATTRIBUTED`.
+
+**Known experimental limits:** Two ordered requests on a shared GPU do not
+prove a causal decoder penalty, p95, or quality equivalence. The
+unconstrained mode is intentionally not a production candidate; its model
+output may be invalid because the schema is not provided as an API
+constraint. If either arm times out, completion token usage is unavailable
+and the speed comparison is inconclusive. Further replicated,
+counterbalanced tests would require a separately approved workload.
+
+**Actually executed CI, not GPU:**
+[run 41667673237](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41667673237)
+`SUCCESS`: 59 prior Stage11 preflight tests PASS, 143 focused
+Provider/probe/JSON-budget/decoder-comparison tests PASS, both CLI
+dry-runs verified `DRY_RUN_NO_NETWORK`. Production Provider, its
+Schema, and shared vLLM settings were not changed.
+
+Operator offline tests:
+
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_decoding_comparison.py tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py tests/test_stage07_local_llm.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_output_budget
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_structured_decoding_compare
+```
+
+**Only if the shared-GPU owner explicitly authorizes TWO bounded
+sequential synthetic requests**, invoke the final command with
+`--execute-live --shared-gpu-approved` appended. No live command is
+automated or authorized by an offline test success. Keep Stage11
+`BLOCKED`; Stage12 `NOT_STARTED`.
