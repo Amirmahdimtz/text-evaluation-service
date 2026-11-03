@@ -1118,3 +1118,12 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **What is known:** application passed the request-level disabling flag; actual deployed vLLM processing effect was not verified. Previous live metrics showing `running=1`, `waiting=0`, increasing KV cache were measured during the *default* run only. Model quality `G11-P03`, real inference `G11-P02` still blocked.
 - **Next no-load checks:** Prometheus `generation_tokens_total`, `request_generation_tokens`, inter-token/prefill/decode metrics in the pinned vLLM runtime, and approved runtime/template metadata where safe. Do not increase timeout, change shared container config or repeat live GPU calls before a bounded experiment is justified.
 - **Stage11 `BLOCKED`**, Stage12 `NOT_STARTED`; open decisions and 56 mandatory verification IDs remain unchanged.
+
+
+### Stage11 — vLLM decode token timing observation (2026-11-03)
+
+- **Actual operator read-only shared-vLLM counters:** `generation_tokens_total=1930`; `inter_token_latency_seconds_count=1923`; `inter_token_latency_seconds_sum=186.947s`; `request_generation_tokens_count=3`; `request_generation_tokens_sum=174`; `request_decode_time_seconds_count=3`; `request_decode_time_seconds_sum=7.558s`.
+- **Derived, explicitly limited:** average observed inter-token latency ≈0.0972s (reciprocal ≈10.3 tokens/sec). At that rate, generating the configured 512 tokens might require ≈49.8s, longer than the **45s diagnostic timeout**. This supports a plausible token-budget versus deadline bottleneck after two media attempts (default/non-thinking) both timed out; it does **not** establish their actual generated-token count, cause, or a throughput benchmark.
+- Counter and request histogram populations differ. The arithmetic difference 1756 tokens is **not** a proven count of abandoned tokens or GPU requests. The service is shared and the snapshot has no per-request attribution.
+- **Engineering follow-up:** plan one authorized bounded synthetic observation that correlates a **single** request with token counts, finish reason, before/after Prometheus deltas and non-sensitive failure classes; select request/output cap/deadline only after evidence. Do not change production/shared-service settings, do not issue concurrent or repeated inference tests, and do not assume three-domain quality passed.
+- Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; `G11-P02/P03` and the original deferred acceptance set remain open.
