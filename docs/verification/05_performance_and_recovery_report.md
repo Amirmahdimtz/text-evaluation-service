@@ -55,3 +55,20 @@ The Simorgh operator completed one newly approved real `CriterionInference` synt
 One Simorgh operator-run synthetic `media_message_clarity` evaluation on the existing shared local Qwen3-8B-AWQ reported `REQUEST_TIMEOUT` at **45.093 seconds** (`LLM_CIRCUIT_OPEN`, one request attempt, zero retries). During the attempt, Prometheus snapshots every three seconds showed `num_requests_running=1` and `num_requests_waiting=0`, while `kv_cache_usage_perc` rose approximately `0.006→0.011`. This demonstrates extended in-engine processing for an observed request in a low-queue window; it does not prove prefill/decode breakdown, total generated tokens, Thinking mode, GPU utilization during execution or the root cause. Instantaneous idle GPU measurements taken before this run cannot be extrapolated to the run itself.
 
 This is a failed single-request observation, **not** a measured p50/p95 SLO or capacity benchmark. Shared-vLLM aggregate latency for 3 completed historical requests was 8.857 seconds, but these are not isolated to Stage11. Before making any workload/resource decision, use a separately authorized, single synthetic non-thinking diagnostic and then review token generation rate and relevance. No timeout/concurrency or shared server changes were made. Stage11 `BLOCKED`.
+
+
+## Simorgh non-thinking timeout comparison — 2026-11-03
+
+A follow-up opt-in synthetic `media_message_clarity` evaluation with
+`thinking_mode=disabled` and `chat_template_kwargs.enable_thinking=false`
+reported `REQUEST_TIMEOUT` after 45.054s, with the fixed 45s deadline,
+one local evaluator attempt and no retries. The previous default-thinking
+run timed out at 45.093s. Both are **right-censored by the same timeout**,
+so the 0.039s difference is not a valid latency comparison, percentile,
+or proof that the runtime applied the Qwen3 switch. The deployed runtime
+was not modified, and no token-throughput samples were captured during
+this non-thinking attempt. The earlier independently sampled running=1,
+waiting=0, rising KV fraction applied to the default-thinking run, not
+necessarily the non-thinking follow-up. Diagnosing token generation and
+the constrained JSON decoding path remains `PENDING_SERVER`; the shared
+GPU and database must remain untouched. No Stage11 performance gate passed.
