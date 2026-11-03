@@ -140,3 +140,31 @@ The **shared-service, unattributed** before/after Prometheus deltas were `genera
 Prior version 0.2 media test with a **256-token cap** returned `prompt_tokens=558` for its completed response and failed at `length`/invalid JSON in 23.427s; the new **512-token-capped** test has shared-window `prompt_tokens_total +635`. These are not controlled apples-to-apples prompt-token measurements; the larger observed input delta certainly does **not** demonstrate prompt compression. Version 0.3 has **NOT** shown an operational improvement; do not assert that concise wording reduced output cost or latency. Keep unchanged timeout/cap/runtime for now, investigate the observed decoding throughput and bounded output needs offline, and require separate approved low-load experiments and real quality evidence before changing anything shared.
 
 Stage11 `BLOCKED`; Stage12 `NOT_STARTED`. Not a p95, capacity result, or model-accuracy test.
+
+
+## Stage11 offline JSON bytes and pending decoder-speed comparison — 2026-11-03
+
+Six synthetic `CriterionInference` examples were serialized with standard
+and compact `json.dumps(ensure_ascii=False)`. Both representations passed
+the strict typed output decoder with exact quote-offset equality. The media
+assessed case used 427 versus 405 UTF-8 bytes (5.15% shorter); abstention
+247 versus 232 UTF-8 bytes (6.07% shorter). Across all cases the savings
+were 15–22 bytes, **not Qwen token counts**. These samples do not establish
+a minimum *semantic* response budget for a real criterion or the ability to
+complete under 45 seconds. There is no measured speedup.
+
+A Stage11-only bounded two-arm diagnostic now compares exactly the same
+synthetic media requests with `response_format=json_schema` on one arm
+versus absent `response_format` on the other. Its default is zero-network,
+and it requires explicit live/owner-approval flags to run. Only the fixed
+schema constraint differs between wire payloads; this was checked using
+in-process HTTPX transport. Each arm has max 256 output tokens, 45s
+client deadline, one concurrent request and zero retries. Fail fast on
+timeout, with no model text logging and no production Provider changes.
+A single ordered pair on shared GPU cannot establish *causal* Structured
+Decoding overhead, because outputs may have different content/completion
+behavior and background load is uncontrolled.
+
+[GitHub Actions 41667673237](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41667673237)
+SUCCESS: 59 preflight tests and 143 focused offline tests. Real decoder
+speed comparison is `PENDING_SERVER`; capacity and Stage11 remain BLOCKED.
