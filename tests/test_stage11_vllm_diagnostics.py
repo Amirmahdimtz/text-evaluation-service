@@ -59,7 +59,8 @@ def test_response_metadata_only_reports_safe_categories(reason, expected):
 def test_json_syntax_does_not_expose_output_text(content, expected):
     result = diag._response_metadata(_model_reply(content=content))
     assert result["json_syntax"] == expected
-    assert content not in json.dumps(result)
+    if content:
+        assert content not in json.dumps(result)
 
 
 def test_usage_counts_reject_untrusted_types_and_bounds():
