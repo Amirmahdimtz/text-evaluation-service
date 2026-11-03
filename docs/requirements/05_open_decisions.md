@@ -1145,3 +1145,28 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Timing evidence:** before/after shared vLLM counters reported +256 generated tokens and +23.352864s decode time, matching response usage but explicitly `SHARED_SERVICE_UNATTRIBUTED`. Approximate average generated-token rate for this observation is 10.96 token/s. Extrapolating 512 tokens gives ~46.7s decode, which is longer than the fixed 45s diagnostic timeout; the extrapolation is a hypothesis, NOT a measured 512-token result or actual quality benchmark. The 512-token earlier runs remain failures by timeout.
 - **Engineering decision:** No default timeout, output budget, schema, model, shared service or GPU policy change is approved. Investigate how to ensure a complete, smaller schema-valid response **without sacrificing truthful scoring/evidence**, or measure a properly permitted isolated sufficient token/time budget. Keep invalid/incomplete output as failed; do not claim PASS.
 - **Progress:** diagnostic tool `IMPLEMENTED_AND_OFFLINE_VERIFIED`; live measurement `EXECUTED_FAILED_INCOMPLETE`; Stage11 `BLOCKED`; Stage12 `NOT_STARTED`; all mandatory server and SME gates remain pending.
+
+
+### Stage11 — Prompt response concision candidate 0.3 offline PASS (2026-11-03)
+
+- **Approved scope:** reduce unnecessary output verbosity in one versioned
+  `CriterionEvaluationService` Prompt only; preserve schema, exact
+  original quote/offset requirements, rubric anchors, scoring and
+  abstention. No lower evidence requirements or reduced JSON fields.
+- **Implemented:** `PROMPT_VERSION=stage08-prompt-candidate-0.3`.
+  The guidance asks for concise nonrepetitive Persian comments while
+  explicitly requiring every JSON key, all rubric-required evidence,
+  exact offsets and necessary justification. Tests check preservation
+  across speech, media and research; abstention without evidence
+  remains null-score. No provider/schema/runtime/GPU changes.
+- **Actual tests:** Stage08 offline GitHub Actions
+  [41662617861](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41662617861)
+  `SUCCESS`: 41 Engine tests PASS; 520 non-DB regressions PASS;
+  11 skipped. These are synthetic tests, not model quality evidence.
+- **Next gate:** test locally on operator machine, then separately
+  approve one single-domain synthetic GPU trial to measure actual
+  response tokens, finish reason, JSON and quote/offset validity,
+  and time. It is `PENDING_SERVER`. The pre-change failed
+  256-token/512-token measurements remain unchanged.
+- Stage11 `BLOCKED`; Stage12 `NOT_STARTED`; no pending mandatory
+  quality, security or infrastructure gate is marked PASS.
