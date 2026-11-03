@@ -373,3 +373,10 @@ The previously unknown output-budget interaction is now established for this **2
 ## Real prompt v0.3 single-domain timeout evidence — 2026-11-03
 
 **Simorgh operator-run, real internal vLLM:** one synthetic media criterion, `stage08-prompt-candidate-0.3`, Thinking requested disabled, max output 512, 45s deadline, zero retries. Failed at **45.034s** with `LLM_CIRCUIT_OPEN/REQUEST_TIMEOUT`. Response metadata unavailable (`finish_reason=UNAVAILABLE`, `json_syntax=UNAVAILABLE`, `reported_usage=null`); no valid result, score or evidence. Shared Prometheus window: generated token delta `+401`, prompt token delta `+635`, inter-token count `+400`, sum `+44.876778s`, completed-request histogram count `+0`, success counter `+0`; no per-request attribution. This is **FAILED_SERVER**, not a quality benchmark or passing model contract. Earlier focused local tests `172 passed` and CI `41 + 520 passed (11 skipped)` remain separate offline successes. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+
+## Stage11 JSON compression and guided decoding diagnostic offline tests — 2026-11-03
+
+GitHub Actions [run 41667673237](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41667673237) is `SUCCESS`: 59 Stage11 preflight tests passed; 143 Provider/probe/JSON-size/decoder-comparison tests passed. `scripts.verification.stage11_output_budget` ran and produced six strict-decoder-valid synthetic samples; `scripts.verification.stage11_structured_decoding_compare` ran in `DRY_RUN_NO_NETWORK` mode. Tests assert transport JSON payload equivalence except presence/absence of `response_format`, double live-flag guard, sequential two-arm order, fail-fast on timeout, output redaction and no real model use in CI. No live server/GPU A/B test has been run.
+
+For synthetic media examples only, normal/compact JSON UTF-8 bytes were assessed 427/405 and abstained 247/232. This proves byte-level serialization equivalence under the current strict decoder, not expert rubric quality or model-token economy. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; GPU speed hypothesis `PENDING_SERVER`.
