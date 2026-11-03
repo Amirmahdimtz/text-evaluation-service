@@ -313,7 +313,11 @@ class LocalLlmProvider:
             },
             "stream": False,
         }
-        # Thinking mode is configured but no unverified runtime flags are sent.
+        # Opt-in request-level Qwen3/vLLM switch. The runtime_default path
+        # remains wire-compatible with other OpenAI-compatible providers.
+        # Deployers must verify this option against their pinned runtime.
+        if settings.thinking_mode == "disabled":
+            request["chat_template_kwargs"] = {"enable_thinking": False}
         data = await self._send("POST", "/chat/completions", request)
         try:
             if data.get("model") != settings.model_id:
