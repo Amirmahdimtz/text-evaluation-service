@@ -23,6 +23,9 @@ from src.infrastructure.providers.llm.local_llm_provider import (
     LlmProviderError, LocalLlmProvider,
 )
 from src.infrastructure.security.secrets import SecretResolver
+from scripts.verification.stage11_vllm_diagnostics import (
+    DiagnosticLocalLlmProvider, metrics_delta, read_metrics,
+)
 from src.infrastructure.utils.config_reader import ConfigReader
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -177,7 +180,12 @@ async def _run_cases(evaluator: CriterionEvaluationService, *, domain: str | Non
 
 async def _run_live(
     *, domain: str | None = None, disable_thinking: bool = False,
+    diagnostics: bool = False, max_output_tokens: int = 512,
 ) -> dict:
+    if (diagnostics and domain is None
+            or max_output_tokens not in (256, 512)
+            or (max_output_tokens != 512 and not diagnostics)):
+        raise ValueError("STAGE11_DIAGNOSTICS_SCOPE_INVALID")
     _require_safe_environment()
     config = ConfigReader()
     if not config.settings.security.deny_external_egress:
@@ -189,21 +197,41 @@ async def _run_live(
         # A declared placeholder, explicitly NOT a proven model revision.
         "model_revision": "unverified",
         "max_input_characters": 2048, "max_context_tokens": 8192,
-        "max_output_tokens": 512, "timeout_seconds": 45,
+        "max_output_tokens": max_output_tokens, "timeout_seconds": 45,
         "max_concurrency": 1, "max_attempts": 1,
         "retry_backoff_seconds": 0, "circuit_failures": 1,
         "circuit_reset_seconds": 10, "temperature": 0,
         "thinking_mode": "disabled" if disable_thinking else "runtime_default",
     })
     config.settings = config.settings.model_copy(update={"llm": llm_settings})
-    provider = LocalLlmProvider(config, SecretResolver())
+    before = await read_metrics() if diagnostics else None
+    provider = (
+        DiagnosticLocalLlmProvider(config, SecretResolver())
+        if diagnostics else LocalLlmProvider(config, SecretResolver())
+    )
     evaluator = CriterionEvaluationService(provider)
     try:
         report = await _run_cases(evaluator, domain=domain)
-        report["thinking_mode_requested"] = llm_settings.thinking_mode
-        return report
     finally:
-        await evaluator.close_async()
+        try:
+            after = await read_metrics() if diagnostics else None
+        finally:
+            await evaluator.close_async()
+    report["thinking_mode_requested"] = llm_settings.thinking_mode
+    if diagnostics:
+        status, deltas = metrics_delta(before, after)
+        report["diagnostics"] = {
+            "max_output_tokens": max_output_tokens,
+            "response": provider.response_diagnostic or {
+                "finish_reason": "UNAVAILABLE",
+                "json_syntax": "UNAVAILABLE",
+                "reported_usage": None,
+            },
+            "metrics_status": status,
+            "shared_metrics_delta": deltas,
+            "metrics_attribution": "SHARED_SERVICE_UNATTRIBUTED",
+        }
+    return report
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -214,9 +242,17 @@ def main(argv: list[str] | None = None) -> int:
                         help="Use only one selected rubric criterion during diagnosis.")
     parser.add_argument("--disable-thinking", action="store_true",
                         help="Opt-in Qwen3 non-thinking mode for one selected domain.")
+    parser.add_argument("--diagnostics", action="store_true",
+                        help="Collect only sanitized response and bounded shared metrics.")
+    parser.add_argument("--max-output-tokens", type=int, choices=(256, 512),
+                        default=512, help="Opt-in reduced cap only with diagnostics.")
     args = parser.parse_args(argv)
     if args.disable_thinking and args.domain is None:
         parser.error("--disable-thinking requires --domain")
+    if args.diagnostics and args.domain is None:
+        parser.error("--diagnostics requires --domain")
+    if args.max_output_tokens != 512 and not args.diagnostics:
+        parser.error("reduced --max-output-tokens requires --diagnostics")
     if not args.execute_live:
         try:
             choices = tuple(x for x in _load_selected_rubrics()
@@ -227,6 +263,8 @@ def main(argv: list[str] | None = None) -> int:
                 "requests_planned": len(choices),
                 "criteria": [item[0].criterion_code for item in choices],
                 "requires": "--execute-live",
+                "diagnostics_requested": args.diagnostics,
+                "max_output_tokens": args.max_output_tokens,
                 "thinking_mode_requested": (
                     "disabled" if args.disable_thinking else "runtime_default"
                 ),
@@ -238,6 +276,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         results = asyncio.run(_run_live(
             domain=args.domain, disable_thinking=args.disable_thinking,
+            diagnostics=args.diagnostics, max_output_tokens=args.max_output_tokens,
         ))
         print(json.dumps(results, ensure_ascii=False, sort_keys=True))
         return 0 if results["status"] == "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS" else 2
