@@ -211,3 +211,46 @@ def test_metrics_failure_cannot_turn_provider_success_into_false_failure(monkeyp
     assert report["results"][0]["contract"] == "valid"
     assert report["diagnostics"]["metrics_status"] == "UNAVAILABLE"
     assert report["diagnostics"]["shared_metrics_delta"] is None
+
+
+
+@pytest.mark.parametrize("mode", [
+    "success", "redirect", "http_error", "transport_error", "oversized",
+])
+def test_read_metrics_is_bounded_local_and_does_not_follow_redirects(
+    monkeypatch, mode,
+):
+    observed = []
+    original_client = httpx.AsyncClient
+
+    async def handler(request):
+        observed.append(str(request.url))
+        assert str(request.url) == "http://127.0.0.1:8000/metrics"
+        if mode == "redirect":
+            return httpx.Response(
+                302, headers={"location": "https://untrusted.example/private"},
+            )
+        if mode == "http_error":
+            return httpx.Response(503, text="private-error")
+        if mode == "transport_error":
+            raise httpx.ConnectError("private-transport-error")
+        if mode == "oversized":
+            return httpx.Response(200, content=b"x" * (diag._MAX_METRICS_BYTES + 1))
+        return httpx.Response(
+            200,
+            text='vllm:generation_tokens_total{model_name="PRIVATE-OWNER"} 25\n',
+        )
+
+    def fake_client(**kwargs):
+        assert kwargs["trust_env"] is False
+        assert kwargs["follow_redirects"] is False
+        return original_client(transport=httpx.MockTransport(handler), **kwargs)
+
+    monkeypatch.setattr(diag.httpx, "AsyncClient", fake_client)
+    result = asyncio.run(diag.read_metrics())
+    assert observed == ["http://127.0.0.1:8000/metrics"]
+    if mode == "success":
+        assert result == {"vllm:generation_tokens_total": 25.0}
+    else:
+        assert result is None
+    assert "PRIVATE-OWNER" not in json.dumps(result)
