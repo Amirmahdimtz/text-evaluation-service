@@ -101,3 +101,31 @@ Source `a35fd3a`, Simorgh operator, shared `shared-llm`: actual `--execute-live`
 The 45s media duration closely matches configured `timeout_seconds=45`, but upstream first-failure category is **not proven**. A provider with `circuit_failures=1` opens after any first transient HTTP 429/5xx, timeout or transport error; subsequent research call was rejected almost immediately. No retries and at most one request in flight. The previously guided single-criterion schema PASS remains valid but unrelated to autonomous model accuracy.
 
 **Status:** `FAIL_USER_SERVER_REPORTED_UNFORCED_TRI_DOMAIN_CONTRACT`, with one valid abstention and two failed calls. Three-domain real-model quality remains `PENDING_SERVER`. The next script version should safely report an allowlisted upstream failure category and avoid attempting further criteria once circuit is open, without printing any private text or expanding shared-GPU load. Do not claim `PASS` or proceed to Stage12.
+
+## Bounded first-failure diagnostics and fail-fast — 2026-11-03
+
+The prior on-host run was `REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE`.
+The provider already carries a sanitized first-error `failure_kind`.
+The probe now prints it only for `REQUEST_TIMEOUT`,
+`TRANSPORT_ERROR`, `HTTP_429`, `HTTP_500`, `HTTP_502`,
+`HTTP_503` or `HTTP_504`; otherwise `UNAVAILABLE`. No raw
+exception text, prompt or response is printed.
+
+The first `LLM_CIRCUIT_OPEN` stops all further criteria, so output
+includes `requests_planned`, `requests_attempted`,
+`requests_not_attempted` and `stopped_after_circuit_open`. These
+counts are Python criterion evaluations, not confirmed HTTP requests.
+Neither configured timeout nor shared-service concurrency changed.
+
+[GitHub Actions 41641990500](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41641990500):
+59 preflight tests and 28 probe tests passed, including real local
+Provider + CriterionService via HTTPX in-memory mock for HTTP 429/503,
+timeout and transport error. `DRY_RUN_NO_NETWORK` also passed.
+**No revised real GPU inference was performed**.
+
+For a single authorized on-host diagnostic, update the code and use
+the same opt-in `--execute-live` command documented above. If the
+failure kind is `REQUEST_TIMEOUT`, determine why inference was slow
+before increasing timeouts or scheduling new runs. Never stop or
+reconfigure the vLLM shared with another project without explicit
+approval. Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
