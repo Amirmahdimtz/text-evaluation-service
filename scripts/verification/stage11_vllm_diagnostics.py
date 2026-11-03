@@ -45,7 +45,7 @@ def _response_metadata(data: dict) -> dict:
         choice = choices[0]
         if isinstance(choice, dict):
             raw_reason = choice.get("finish_reason")
-            if raw_reason in _FINISH_REASONS:
+            if isinstance(raw_reason, str) and raw_reason in _FINISH_REASONS:
                 finish = raw_reason
             elif raw_reason is not None:
                 finish = "OTHER"
