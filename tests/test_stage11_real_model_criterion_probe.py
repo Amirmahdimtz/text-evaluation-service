@@ -133,7 +133,8 @@ def test_mismatched_quote_is_rejected():
 
 
 def test_main_live_simulation_has_no_real_io(monkeypatch, capsys):
-    async def simulate(*, domain=None, disable_thinking=False):
+    async def simulate(*, domain=None, disable_thinking=False,
+                       diagnostics=False, max_output_tokens=512):
         return {"status": "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS"}
     monkeypatch.setattr(probe, "_run_live", simulate)
     assert probe.main(["--execute-live"]) == 0
@@ -296,7 +297,8 @@ def test_no_thinking_requires_single_domain_to_avoid_multiple_live_calls(capsys)
 def test_no_thinking_opt_in_is_forwarded_without_network(monkeypatch, capsys):
     observed = []
 
-    async def simulate(*, domain=None, disable_thinking=False):
+    async def simulate(*, domain=None, disable_thinking=False,
+                       diagnostics=False, max_output_tokens=512):
         observed.append((domain, disable_thinking))
         return {
             "status": "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS",
@@ -309,3 +311,41 @@ def test_no_thinking_opt_in_is_forwarded_without_network(monkeypatch, capsys):
     ]) == 0
     assert observed == [("media", True)]
     assert "disabled" in capsys.readouterr().out
+
+
+
+def test_diagnostics_dry_run_selects_one_domain_and_no_network(capsys, monkeypatch):
+    async def forbidden():
+        pytest.fail("dry-run must not scrape metrics or send inference")
+    monkeypatch.setattr(probe, "read_metrics", forbidden)
+    report_code = probe.main([
+        "--domain", "media", "--disable-thinking", "--diagnostics",
+        "--max-output-tokens", "256",
+    ])
+    report = json.loads(capsys.readouterr().out)
+    assert report_code == 0
+    assert report["status"] == "DRY_RUN_NO_NETWORK"
+    assert report["requests_planned"] == 1
+    assert report["max_output_tokens"] == 256
+    assert report["diagnostics_requested"] is True
+
+
+@pytest.mark.parametrize("args,expected", [
+    (["--diagnostics"], "--diagnostics requires --domain"),
+    (["--max-output-tokens", "256", "--domain", "media"],
+     "reduced --max-output-tokens requires --diagnostics"),
+    (["--max-output-tokens", "4096", "--diagnostics", "--domain", "media"],
+     "invalid choice"),
+])
+def test_diagnostic_scope_guards_are_fail_closed(capsys, args, expected):
+    with pytest.raises(SystemExit) as err:
+        probe.main(["--execute-live", *args])
+    assert err.value.code == 2
+    assert expected in capsys.readouterr().err
+
+
+def test_direct_live_call_cannot_bypass_single_domain_guard():
+    with pytest.raises(ValueError, match="STAGE11_DIAGNOSTICS_SCOPE_INVALID"):
+        asyncio.run(probe._run_live(diagnostics=True))
+    with pytest.raises(ValueError, match="STAGE11_DIAGNOSTICS_SCOPE_INVALID"):
+        asyncio.run(probe._run_live(domain="media", max_output_tokens=256))

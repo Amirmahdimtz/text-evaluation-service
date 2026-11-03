@@ -14,6 +14,8 @@ on:
       - "tests/test_stage11_isolated_compose_contract.py"
       - "scripts/verification/stage11_real_model_criterion_probe.py"
       - "tests/test_stage11_real_model_criterion_probe.py"
+      - "scripts/verification/stage11_vllm_diagnostics.py"
+      - "tests/test_stage11_vllm_diagnostics.py"
       - "src/infrastructure/providers/llm/local_llm_provider.py"
       - "tests/test_stage07_local_llm.py"
       - ".github/workflows/stage11-preflight.yml"
@@ -44,7 +46,7 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
-          python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py tests/test_stage07_local_llm.py
+          python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py tests/test_stage07_local_llm.py
           python -m scripts.verification.stage11_real_model_criterion_probe
       - name: Offline import/CLI sanity without querying GPU
         env:

@@ -53,7 +53,7 @@ def test_response_metadata_only_reports_safe_categories(reason, expected):
 @pytest.mark.parametrize("content,expected", [
     ('{"criterion_code": "safe"}', "valid"),
     ("{broken-json", "invalid"),
-    ("NaN", "valid"),  # Python's permissive json parser is syntax-only here.
+    ("NaN", "invalid"),  # Nonfinite constants are not valid standard JSON.
     ("", "invalid"),
 ])
 def test_json_syntax_does_not_expose_output_text(content, expected):
