@@ -175,7 +175,9 @@ async def _run_cases(evaluator: CriterionEvaluationService, *, domain: str | Non
     }
 
 
-async def _run_live(*, domain: str | None = None) -> dict:
+async def _run_live(
+    *, domain: str | None = None, disable_thinking: bool = False,
+) -> dict:
     _require_safe_environment()
     config = ConfigReader()
     if not config.settings.security.deny_external_egress:
@@ -191,13 +193,15 @@ async def _run_live(*, domain: str | None = None) -> dict:
         "max_concurrency": 1, "max_attempts": 1,
         "retry_backoff_seconds": 0, "circuit_failures": 1,
         "circuit_reset_seconds": 10, "temperature": 0,
-        "thinking_mode": "runtime_default",
+        "thinking_mode": "disabled" if disable_thinking else "runtime_default",
     })
     config.settings = config.settings.model_copy(update={"llm": llm_settings})
     provider = LocalLlmProvider(config, SecretResolver())
     evaluator = CriterionEvaluationService(provider)
     try:
-        return await _run_cases(evaluator, domain=domain)
+        report = await _run_cases(evaluator, domain=domain)
+        report["thinking_mode_requested"] = llm_settings.thinking_mode
+        return report
     finally:
         await evaluator.close_async()
 
@@ -208,7 +212,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="Make exactly three sequential synthetic requests to the shared local vLLM.")
     parser.add_argument("--domain", choices=("speech", "media", "research"),
                         help="Use only one selected rubric criterion during diagnosis.")
+    parser.add_argument("--disable-thinking", action="store_true",
+                        help="Opt-in Qwen3 non-thinking mode for one selected domain.")
     args = parser.parse_args(argv)
+    if args.disable_thinking and args.domain is None:
+        parser.error("--disable-thinking requires --domain")
     if not args.execute_live:
         try:
             choices = tuple(x for x in _load_selected_rubrics()
@@ -219,13 +227,18 @@ def main(argv: list[str] | None = None) -> int:
                 "requests_planned": len(choices),
                 "criteria": [item[0].criterion_code for item in choices],
                 "requires": "--execute-live",
+                "thinking_mode_requested": (
+                    "disabled" if args.disable_thinking else "runtime_default"
+                ),
             }, sort_keys=True))
             return 0
         except Exception:
             print(json.dumps({"status": "STAGE11_PROBE_PREPARATION_FAILED"}))
             return 2
     try:
-        results = asyncio.run(_run_live(domain=args.domain))
+        results = asyncio.run(_run_live(
+            domain=args.domain, disable_thinking=args.disable_thinking,
+        ))
         print(json.dumps(results, ensure_ascii=False, sort_keys=True))
         return 0 if results["status"] == "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS" else 2
     except Exception:
