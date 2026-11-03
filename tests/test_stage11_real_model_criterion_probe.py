@@ -77,7 +77,7 @@ def test_one_candidate_criterion_per_domain_without_leaking_evidence(capsys):
     assert all("reason" not in item for item in report["results"])
 
 
-def test_legitimate_abstention_is_not_an invented_score():
+def test_legitimate_abstention_is_not_an_invented_score():
     class FakeEvaluator:
         async def evaluate_criterion_async(self, *, criterion, **kwargs):
             return CriterionAssessment(
