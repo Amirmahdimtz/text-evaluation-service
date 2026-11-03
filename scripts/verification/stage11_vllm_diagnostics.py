@@ -153,3 +153,24 @@ def metrics_delta(
             return "COUNTER_RESET_OR_INVALID", None
         deltas[key] = round(max(0.0, delta), 6)
     return "AVAILABLE_SHARED_UNATTRIBUTED", deltas
+
+
+class UnconstrainedDiagnosticLocalLlmProvider(DiagnosticLocalLlmProvider):
+    """Stage11-only comparison: same messages, omit JSON Schema constraint.
+
+    This MUST NOT be registered in DI or substituted for the production
+    LocalLlmProvider. Its response is still checked by the strict decoder.
+    """
+
+    async def _send(
+        self, method: str, path: str, payload: dict | None = None,
+    ) -> dict:
+        if method == "POST" and path == "/chat/completions":
+            if not isinstance(payload, dict) or "response_format" not in payload:
+                raise ValueError("STAGE11_COMPARISON_REQUEST_INVALID")
+            # Do not mutate the production Provider request. All other
+            # settings and both prompt messages remain byte-equivalent.
+            unconstrained = dict(payload)
+            del unconstrained["response_format"]
+            return await super()._send(method, path, unconstrained)
+        return await super()._send(method, path, payload)
