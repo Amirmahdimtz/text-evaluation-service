@@ -12,6 +12,8 @@ on:
       - "tests/test_stage11_isolated_runtime_preflight.py"
       - "compose.stage11-isolated-db.yml"
       - "tests/test_stage11_isolated_compose_contract.py"
+      - "scripts/verification/stage11_real_model_criterion_probe.py"
+      - "tests/test_stage11_real_model_criterion_probe.py"
       - ".github/workflows/stage11-preflight.yml"
   workflow_dispatch:
 
@@ -36,6 +38,12 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python -m pytest -q -p no:cacheprovider tests/test_stage11_readonly_preflight.py tests/test_stage11_container_metadata.py tests/test_stage11_isolated_runtime_preflight.py tests/test_stage11_isolated_compose_contract.py
+      - name: Validate three-domain real-model probe offline guards (no network)
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py
+          python -m scripts.verification.stage11_real_model_criterion_probe
       - name: Offline import/CLI sanity without querying GPU
         env:
           PYTHONDONTWRITEBYTECODE: "1"
