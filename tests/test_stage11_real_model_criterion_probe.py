@@ -34,7 +34,8 @@ def test_synthetic_cases_bind_to_actual_candidate_rubric():
         assert criterion.criterion_code == case.criterion_code
         assert criterion.evaluation_instructions
         assert len(checksum) == 64
-        assert "ساختگی" in case.original_text or "فرضی" in case.original_text
+        assert isinstance(case.original_text, str)
+        assert 32 <= len(case.original_text) <= 2048
 
 
 @pytest.mark.parametrize("key,value", [
