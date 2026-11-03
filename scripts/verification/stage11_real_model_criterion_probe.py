@@ -96,8 +96,10 @@ def _require_safe_environment() -> None:
 
 
 async def _run_cases(evaluator: CriterionEvaluationService) -> dict:
+    cases = _load_selected_rubrics()
     details = []
-    for case, criterion, checksum in _load_selected_rubrics():
+    circuit_opened = False
+    for case, criterion, checksum in cases:
         start = time.perf_counter()
         try:
             outcome = await evaluator.evaluate_criterion_async(
@@ -128,20 +130,40 @@ async def _run_cases(evaluator: CriterionEvaluationService) -> dict:
         except Exception as exc:
             # Strict allowlist: never print upstream exception, model text, or URL.
             code = str(exc) if isinstance(exc, LlmProviderError) else ""
-            details.append({
+            error = {
                 "domain": case.domain, "criterion_code": case.criterion_code,
                 "contract": "failed", "error_code": (
                     code if code in _ALLOWED_ERRORS else "STAGE11_MODEL_PROBE_FAILED"
                 ),
                 "duration_ms": round((time.perf_counter() - start) * 1000),
-            })
+            }
+            if isinstance(exc, LlmProviderError) and code in (
+                "LLM_CIRCUIT_OPEN", "LLM_RETRY_EXHAUSTED",
+            ):
+                allowed_kinds = {
+                    "REQUEST_TIMEOUT", "TRANSPORT_ERROR", "HTTP_429",
+                    "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504",
+                }
+                error["failure_kind"] = (
+                    exc.failure_kind if exc.failure_kind in allowed_kinds
+                    else "UNAVAILABLE"
+                )
+            details.append(error)
+            if code == "LLM_CIRCUIT_OPEN":
+                # Do not attempt remaining criteria when the circuit is open.
+                circuit_opened = True
+                break
     return {
         "status": ("REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS"
                    if all(row["contract"] == "valid" for row in details)
                    else "REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE"),
         "model_api_id": _MODEL_ID,
         "model_revision_verified": False,
+        "requests_planned": len(cases),
+        # Counts Python criterion attempts, not proven upstream HTTP calls.
         "requests_attempted": len(details),
+        "requests_not_attempted": len(cases) - len(details),
+        "stopped_after_circuit_open": circuit_opened,
         "max_concurrent_requests": 1,
         "retries": 0,
         "synthetic_only": True,
