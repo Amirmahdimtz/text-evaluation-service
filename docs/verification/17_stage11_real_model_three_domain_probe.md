@@ -253,3 +253,42 @@ measured by this change.
 
 The new live diagnostic remains `PENDING_SERVER`; Stage11 `BLOCKED`,
 Stage12 `NOT_STARTED`.
+
+
+## Operator live evidence: 256-token completion stopped at length — 2026-11-03
+
+Simorgh operator ran 131 local focused tests (`PASSED`, 1.20s), confirmed
+`DRY_RUN_NO_NETWORK` for `--domain media --disable-thinking --diagnostics
+--max-output-tokens 256`, then submitted **one** synthetic live evaluation
+with the explicit `--execute-live` flag.
+
+The server returned a complete response after **23,427ms** with
+`finish_reason=length`, `json_syntax=invalid`, and **real response usage**
+`prompt_tokens=558`, `completion_tokens=256`, `total_tokens=814`.
+The production Provider rejected it with `LLM_INCOMPLETE_GENERATION`.
+The code did not retry or open a circuit. This is a **FAILED** evaluation;
+no rubric score or evidence can be accepted. The 256-token cap is
+insufficient to complete this structured output under the tested
+model, prompt and runtime settings.
+
+Before/after shared Prometheus counters showed `+256`
+`generation_tokens_total`, `+255` inter-token samples and
+`+23.352864s` accumulated inter-token latency, `+1` completed
+request-generation sample, `+256` output tokens and
+`+23.352864s` request Decode. These values match the HTTP usage
+but are **SHARED_SERVICE_UNATTRIBUTED** and are not formally per-request
+traces. There were no preemptions observed in this window.
+
+Approximate observed output rate is `256/23.352864≈10.96 tokens/s`.
+A linear projection to 512 output tokens gives ~46.7s before overhead,
+longer than the probe's 45s timeout. This extrapolation is NOT a
+measurement of the earlier 512-token runs; their failure kind remains
+`REQUEST_TIMEOUT`, and no per-response token counts are known.
+
+**Operator guidance:** Do not run another unplanned GPU request, increase
+the shared timeout, change container configuration or treat incomplete
+JSON as valid. The next engineering task is a reviewed offline
+investigation of whether response verbosity can be reduced without
+changing rubric semantics, followed by a separately authorized
+capacity/quality diagnostic. Keep Stage11 `BLOCKED`, Stage12
+`NOT_STARTED`.
