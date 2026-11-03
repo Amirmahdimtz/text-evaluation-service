@@ -129,3 +129,32 @@ failure kind is `REQUEST_TIMEOUT`, determine why inference was slow
 before increasing timeouts or scheduling new runs. Never stop or
 reconfigure the vLLM shared with another project without explicit
 approval. Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
+
+### Single-domain low-load follow-up
+
+With a separately authorized short usage window on the **shared** inference
+service, diagnose the previously failing media criterion with **one**
+criterion request only; the script does not start a new model:
+
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m \
+  scripts.verification.stage11_real_model_criterion_probe --domain media
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m \
+  scripts.verification.stage11_real_model_criterion_probe --execute-live --domain media
+```
+
+In the default dry run `requests_planned=1` and no HTTP request is sent.
+In the explicit live run a maximum of **one** rubric evaluation is
+attempted, with one concurrent request, zero retries, one fixed synthetic
+Persian text and 45-second deadline. Output exposes only known fixed
+failure category codes. Do not confuse a successful schema validation
+or a valid abstention with expert-validated model accuracy. There are no
+automatic reruns or changes to shared GPU/PostgreSQL.
+
+[Offline CI run 41642911358](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41642911358):
+**59 existing Stage11 checks passed, 30 probe tests passed** including
+single-domain selection, dry-run, sanitized failures and actual Provider
+MockTransport paths. The live single-domain diagnostic is
+`PENDING_OPERATOR`.
