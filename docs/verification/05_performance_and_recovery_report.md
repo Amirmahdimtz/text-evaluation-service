@@ -115,3 +115,11 @@ representative workload.
 Stage11 model/capacity benchmarks remain `PENDING_SERVER`, Stage11
 `BLOCKED`, Stage12 `NOT_STARTED`. Reference: vLLM v0.10.2
 Production Metrics documentation.
+
+## Stage11 bounded response-and-metrics diagnostics — 2026-11-03
+
+New **opt-in** single-domain diagnostic distinguishes (a) **actual server-reported per-response** `prompt_tokens`/`completion_tokens`/`total_tokens` and `finish_reason` only after the complete HTTP JSON envelope arrives, from (b) **unattributed shared Prometheus deltas** sampled immediately before and after the request. Response JSON syntax (`valid`/`invalid`/`UNAVAILABLE`) is separate from existing schema/rubric validation. On client timeout, finish-reason and per-response token counts are **UNAVAILABLE**, not zero or inferred from the metrics delta. Histogram counters can reset and other tenants can contribute; output states `SHARED_SERVICE_UNATTRIBUTED`.
+
+Default Stage11 probe remains 512 output tokens and 45s timeout, one concurrent request, no retry. Only a single selected synthetic criterion with `--diagnostics --max-output-tokens 256` can opt into a reduced cap, as a potential latency experiment. An incomplete response with `finish_reason=length` remains a **FAILED contract**. Metrics GET is loopback-only, two reads maximum, each ≤3s and ≤2 MiB, no environment proxy or redirects. No shared GPU, database or container settings were changed.
+
+[CI run 41656742019](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41656742019): **59+131 offline tests PASS**, with in-memory Provider/HTTP mocks. Actual low-token live measurements are still `PENDING_SERVER`, and Stage11 capacity/performance acceptance gates remain `BLOCKED`.
