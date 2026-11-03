@@ -292,3 +292,35 @@ investigation of whether response verbosity can be reduced without
 changing rubric semantics, followed by a separately authorized
 capacity/quality diagnostic. Keep Stage11 `BLOCKED`, Stage12
 `NOT_STARTED`.
+
+
+## Stage11 concise prompt candidate 0.3 (2026-11-03)
+
+The operator-approved offline Prompt revision changes only
+`CriterionEvaluationService` instructions. The new version
+`stage08-prompt-candidate-0.3` requests shorter, non-redundant Persian
+reasons and observations while retaining all output JSON keys, rubric
+anchors, exact evidence quotes and offsets, required justification, and
+null-score abstention. No response schema, provider, runtime, output cap,
+deadline or shared server was changed.
+
+GitHub Actions [41662617861](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41662617861):
+41 Engine checks PASS, 520 non-database regressions PASS, 11 skipped.
+No new real-model throughput, quality or contract PASS is claimed.
+
+Operator offline commands:
+
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage08_engine.py tests/test_stage07_local_llm.py tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_model_criterion_probe --domain media --disable-thinking --diagnostics
+```
+
+With separate operator authorization, add `--execute-live` to the
+last command to submit **one** synthetic media evaluation. It retains
+512 max output tokens, 45s timeout and no retries. A valid abstention
+does not demonstrate quality; incomplete JSON, length termination or
+timeout is still FAILED. Historical 256-token truncation and
+512-token timeouts remain evidence, not successful measurements.
+Stage11 BLOCKED; Stage12 NOT_STARTED.
