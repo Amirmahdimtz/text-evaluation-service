@@ -51,8 +51,11 @@ def _response_metadata(data: dict) -> dict:
                 finish = "OTHER"
             message = choice.get("message")
             if isinstance(message, dict) and isinstance(message.get("content"), str):
+                def reject_nonfinite(_value: str) -> None:
+                    raise ValueError("STAGE11_NONFINITE_JSON")
+
                 try:
-                    json.loads(message["content"])
+                    json.loads(message["content"], parse_constant=reject_nonfinite)
                 except (ValueError, RecursionError):
                     syntax = "invalid"
                 else:
