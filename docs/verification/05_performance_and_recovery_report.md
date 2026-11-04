@@ -513,3 +513,36 @@ No retry, token-budget increase, timeout increase,
 model change or new GPU request without fresh
 explicit owner resource approval and per-request
 lifecycle evidence. Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+## 2026-11-04 — phase-metrics evidence boundary for previous 45.072s timeout
+
+The previous operator-observed synthetic `media_message_clarity`
+request exceeded the 45-second Provider timeout and returned
+`LLM_CIRCUIT_OPEN / REQUEST_TIMEOUT`; no complete HTTP response,
+request finish reason or generation usage was observed.
+Global `vllm:inter_token_latency_seconds` counters increased
+by **400** observations and **44.846746 seconds**, which is
+a **shared-service** aggregate average of approximately
+**0.112117s per recorded interval**, **not** a per-request
+decode speed. Shared `generation_tokens_total` rose by 401,
+`prompt_tokens_total` by 635; no counts can be assigned
+to the failed media request. Earlier request-decode
+histogram count and sum delta were zero, which does
+not establish zero actual decoding for a timed-out request.
+Queue, prefill and TTFT totals for that historical
+interval were not captured.
+
+Added a Stage11-only redacted Phase Metrics Inventory
+using one explicit, bounded, read-only local `/metrics`
+GET, or an inert offline default. Based on documented
+vLLM **0.10.2** queue/prefill/decode/inference/E2E/TTFT
+histograms (count/sum), it reports ONLY current
+**shared lifetime** sample counts/sums/means and
+current aggregate running/waiting/swapped gauges.
+It cannot reconstruct the failed request's phases.
+Missing metrics, zero recorded samples and inconsistent
+aggregates are separately labeled, never guessed.
+See `20_stage11_vllm_phase_metrics_inventory.md`.
+No model POST, GPU execution, vLLM restart, settings
+change or private log inspection performed.
+Stage11 BLOCKED; Stage12 NOT_STARTED.

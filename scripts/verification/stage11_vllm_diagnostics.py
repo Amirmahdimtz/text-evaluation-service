@@ -26,6 +26,20 @@ _METRIC_NAMES = frozenset({
     "vllm:request_decode_time_seconds_count",
     "vllm:request_decode_time_seconds_sum",
     "vllm:num_preemptions_total",
+    # vLLM 0.10.2 request-phase histogram sums/counts. Global, not per request.
+    "vllm:request_queue_time_seconds_count",
+    "vllm:request_queue_time_seconds_sum",
+    "vllm:request_prefill_time_seconds_count",
+    "vllm:request_prefill_time_seconds_sum",
+    "vllm:request_inference_time_seconds_count",
+    "vllm:request_inference_time_seconds_sum",
+    "vllm:e2e_request_latency_seconds_count",
+    "vllm:e2e_request_latency_seconds_sum",
+    "vllm:time_to_first_token_seconds_count",
+    "vllm:time_to_first_token_seconds_sum",
+    "vllm:num_requests_running",
+    "vllm:num_requests_waiting",
+    "vllm:num_requests_swapped",
 })
 _FINISH_REASONS = frozenset({"stop", "length", "tool_calls", "content_filter"})
 _TOKEN_FIELDS = ("prompt_tokens", "completion_tokens", "total_tokens")
@@ -115,7 +129,7 @@ def parse_metrics(raw: bytes) -> dict[str, float]:
 
 
 async def read_metrics() -> dict[str, float] | None:
-    """Two read-only localhost GETs per diagnostic run, with hard time/size caps."""
+    """One bounded read-only localhost GET; callers may invoke twice explicitly."""
     try:
         async with asyncio.timeout(3):
             async with httpx.AsyncClient(

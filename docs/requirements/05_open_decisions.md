@@ -1743,3 +1743,33 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   Formal enterprise and product acceptance still
   `PENDING_SERVER`; Stage11 `BLOCKED`,
   Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-04 — global vLLM phase metrics cannot reconstruct prior timeout
+
+- Last real media criterion: 45072ms, `LLM_CIRCUIT_OPEN`,
+  underlying `REQUEST_TIMEOUT`; no complete JSON response
+  or finish reason was observed. Earlier shared metric
+  delta: generation +401 tokens; inter-token intervals
+  +400, cumulative +44.846746s, with non-attributable
+  mean ~0.112117s. Missing queue/prefill/TTFT deltas.
+- Decision: Do **not** infer a request-specific queue,
+  prefill or decode breakdown from shared lifetime
+  counters, or treat zero request-decode completion
+  samples as no decoding. The prior failure's
+  decomposition is `UNAVAILABLE`; if owner-retained
+  per-request telemetry does not exist, it is
+  `UNRECOVERABLE` without a separately approved new
+  instrumented request.
+- Prepared zero-inference Stage11 read-only metric
+  inventory: default offline; explicit one local
+  `/metrics` GET returns only allowlisted cumulative
+  phase sample aggregates and three shared queue
+  gauges. The new snapshot is NOT a historic trace.
+  Reference: `docs/verification/20_stage11_vllm_phase_metrics_inventory.md`.
+- Owner-only next prerequisite: query existing *private*
+  verified per-request queue-enter/scheduled/first-
+  token/last-token/abort timestamps, backend and
+  model provenance, if retained. No raw runtime logs,
+  text, IDs or secrets are to be published. Do not
+  retry old GPU request or adjust vLLM.
+  Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

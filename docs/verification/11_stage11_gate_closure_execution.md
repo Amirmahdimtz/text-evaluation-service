@@ -178,3 +178,17 @@ The authorized single request is spent. Further
 GPU inference or timeout/model changes require
 new owner scope and bounded-stop conditions.
 Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — historical media timeout phase-split evidence gap
+
+The 45.072s request timed out without a full response.
+Earlier shared vLLM counters cannot be converted into
+per-request queue/prefill/decode intervals. An explicit
+read-only global phase histogram inventory has been
+prepared, but it is a fresh snapshot of exporter lifetime
+totals, **not** evidence for the failed historical request.
+An owner-approved private request-specific event timeline
+(or explicit UNRECOVERABLE assessment) is still needed.
+No new GPU or model calls, source content extraction,
+service changes or operational gate closure.
+Stage11 BLOCKED, Stage12 NOT_STARTED.

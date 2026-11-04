@@ -199,3 +199,25 @@ accessed Simorgh. Runbook:
 `docs/verification/19_stage11_owner_approved_single_live_probe.md`.
 Stage11 BLOCKED, Stage12 NOT_STARTED; mandatory gates
 and real model/quality/provenance/No-Egress tests remain open.
+
+## 2026-11-04 — vLLM timeout attribution / read-only phases
+
+The one observed full media criterion timed out at
+45072ms with no complete HTTP payload.
+Its historical shared Prometheus counters do not
+identify that request's queue/prefill/decode latency.
+The official vLLM v0.10.2 exporter documents relevant
+histograms but a **new single exporter snapshot cannot
+recover a request-specific historical timeline**.
+A read-only, redacted Stage11 local phase-metric
+inventory has been prepared to check exporter
+availability and global sample values. This is
+not an inference request or No-Egress/quality evidence.
+
+Critical path: authorized owner access to pre-existing
+per-request timing/abort and effective backend evidence,
+if retained; otherwise mark the old decomposition
+UNRECOVERABLE and obtain a new separately scoped GPU
+test approval *before* any instrumented inference.
+No status changes to product and 56-ID gate.
+Stage11 BLOCKED; Stage12 NOT_STARTED.

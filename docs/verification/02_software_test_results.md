@@ -876,3 +876,22 @@ Status for this specific real-model criterion
 `FAILED_REQUEST_TIMEOUT`; broader Stage11 model
 quality/security/E2E acceptance `PENDING_SERVER`,
 Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — safe global phase-metrics inventory implementation
+
+Added `scripts/verification/stage11_vllm_phase_inventory.py`
+and `tests/test_stage11_vllm_phase_inventory.py`.
+Extended the existing **strict numeric allowlist** in
+`stage11_vllm_diagnostics.py` with documented
+vLLM 0.10.2 phase histogram sums/counts and three
+queue gauges. All Prometheus labels and unrecognized
+metrics continue to be discarded. The new CLI makes
+**zero requests by default**; `--inspect-local-metrics`
+makes only one approved, bounded loopback read-only
+GET with existing 3s/2MiB/no-proxy/no-redirect guards.
+New synthetic tests exercise redaction, strict
+histogram availability, zero/missing/invalid samples,
+no-network default and opt-in/failure handling.
+No GPU inference or historical per-request decomposition
+was executed. CI results to be recorded independently.
+Stage11 BLOCKED, Stage12 NOT_STARTED.
