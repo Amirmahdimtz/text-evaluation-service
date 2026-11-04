@@ -1636,3 +1636,27 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   backend evidence; controlled, approved GPU request
   trial later. Stage11 `BLOCKED`, Stage12
   `NOT_STARTED`; outstanding gates `PENDING_SERVER`.
+
+### Stage11 — 2026-11-04 — prioritize product packaging and real backend proof
+
+- The previous owner-reported `reason`-sensitivity
+  CPU study is OBSERVED only; no evidence binds
+  XGrammar from the isolated process to live vLLM.
+- User requests maximum safe forward progress. The
+  highest value independent work is partial
+  G11-P01/P05: an API-only nonroot candidate
+  image and GitHub CI isolated import smoke,
+  preserving existing fail-closed configuration.
+- NOT approved: a general staging/Production DB
+  connection, Docker publication, real model
+  provisioning, use of corporate credentials,
+  external endpoint, GPU request or server change.
+  Exact owner decisions and immutable image
+  digests/SBOM/security review still missing.
+- The critical-path external dependency remains
+  authorized service-model/Tokenizer/backend
+  provenance and resource budget, followed by
+  whole-path signed application inference and
+  expert-quality/security acceptance. G11-P01
+  remains BLOCKED, G11-P05 PARTIAL_PENDING_CI,
+  Stage11 BLOCKED, Stage12 NOT_STARTED.

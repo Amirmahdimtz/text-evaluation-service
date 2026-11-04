@@ -786,3 +786,21 @@ directory, actual in-process loaded revision, or request-level
 effective decoder evidence was supplied. Formal Stage11
 model/security/latency/quality gates remain `PENDING_SERVER`
 and Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — Stage11 API-only image packaging test scope
+
+Added `Dockerfile.stage11-candidate` and
+`tests/test_stage11_candidate_image_contract.py`.
+The Stage11 preflight workflow now runs static
+fail-closed image-contract tests, builds a real
+Python application image in isolated GitHub CI,
+and checks nonroot/no-network/read-only import
+of the actual FastAPI app and disabled service
+feature flags. These tests do not boot a database,
+Worker, model, shared container or GPU.
+The image build outcome must be recorded from
+the actual CI run, not assumed PASS.
+
+This candidate is **not** a production or
+organization-staging deployment. Stage11
+BLOCKED; Stage12 NOT_STARTED.

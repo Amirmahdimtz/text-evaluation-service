@@ -136,3 +136,33 @@ A bounded unforced three-domain probe has been committed, with [CI `41639035765`
 Simorgh operator executed the live three-domain synthetic probe and observed overall **`REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE`**. The speech criterion legally abstained (valid schema, no score/evidence); the media criterion hit `LLM_CIRCUIT_OPEN` after 45.007s; the research criterion short-circuited in 1ms because the breaker was already open. The upstream failure type was not logged, so it is **not** proven to be a timeout despite close alignment with the 45-second limit. Provider's current one-failure breaker makes a single timeout/429/5xx block later calls; the next engineering task is safe categorical first-failure observability and avoiding redundant calls into an open circuit. No vLLM/DB settings, production data or shared GPU processes were modified by the assistant.
 
 **Release implication:** neither autonomous Persian scoring nor two subsequent criterion evaluations passed. This does not close `G11-P02/P03` or any unmeasured real-model/quality/security gate. Stage11 remains `BLOCKED`, Stage12 `NOT_STARTED`. See [test evidence](02_software_test_results.md) and [probe runbook](17_stage11_real_model_three_domain_probe.md).
+
+## 2026-11-04 — critical-path reprioritization, Stage11 image candidate
+
+The operator's latest synthetic CPU XGrammar study already
+localized expensive mask fills to the fixed `reason` string
+region, but does not establish the effective live backend
+or actual service overhead; repeating isolated CPU traces
+is lower priority than runtime provenance and real
+protected-application integration.
+
+To advance the software-owned G11-P01/P05 work without
+touching the shared server, source now includes an
+**API-only image build candidate** with a nonroot process
+and fail-closed defaults, plus opt-in CI packaging/import
+checks. It is intentionally **NOT** an approved deployment:
+the app's loopback-only, development/test-DB, disabled
+HTTP/Worker/LLM gates are unchanged. A pinned base
+**tag** is not an approved signed immutable digest.
+Full supply chain, private distribution, signed
+API+Worker+real-model E2E and security approvals
+remain unresolved. Status: G11-P01 BLOCKED,
+G11-P05 PARTIAL_PENDING_CI.
+
+Next owner actions in dependency order: authorize bounded
+workload/stop window, privately attest actual loaded
+model/tokenizer/backend, approve one signed full-path
+synthetic GPU model test, then run expert-labeled tri-domain
+quality and capacity/security gates. See
+`docs/deployment/12_stage11_candidate_image.md`.
+No Stage11 mandatory test ID upgraded to PASS.

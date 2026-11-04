@@ -52,3 +52,26 @@ P0 means product implementation or intended functionality may be unproven/unship
 ## Acceptance and revision boundary
 
 This review adds **no** new score or benchmark result and does not run Stage 12. Original 56 Stage11 enterprise IDs remain in the authoritative ledger; their proposed product vs recipient ownership is in [matrix 14](14_stage11_product_handoff_scope_matrix.md), not silently accepted as formal waiver. Product handoff can be discussed independently from recipient production Go-Live, but the service cannot be called fully built/tested while P0 items or real model gates remain unverified.
+
+## 2026-11-04 — targeted non-deployment image packaging (G11-P01/P05)
+
+A Stage11-only **API image candidate** and CI smoke were added.
+`Dockerfile.stage11-candidate` uses an explicitly versioned
+Python 3.12 base, pinned application requirements,
+allowlisted `src/` copy, nonroot UID/GID 10001 and
+unchanged fail-closed API startup. CI will build the
+container and import actual FastAPI code in a
+`--network none --read-only --cap-drop ALL` container.
+No Worker, PostgreSQL, vLLM or GPU service is launched.
+See `docs/deployment/12_stage11_candidate_image.md`.
+
+This is **partial G11-P05 engineering verification** only:
+no immutable approved base digest, signed image, SBOM,
+privately provisioned secrets, approved non-development
+PostgreSQL, multi-process topology or actual staging
+deployment. G11-P01 remains OPEN/P0 and G11-P05
+PARTIAL_PENDING_CI. The prior isolated synthetic API →
+Worker E2E is already evidenced, so the next high-value
+external prerequisite is authoritative served model/
+tokenizer/backend attestation followed by separately
+approved full-path GPU E2E. Stage11 BLOCKED.

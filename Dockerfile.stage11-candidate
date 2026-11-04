@@ -1,0 +1,28 @@
+# Stage11 engineering candidate only. Not approved for production deployment.
+# Registry digest, vulnerability/SBOM and organizational ownership require acceptance.
+FROM python:3.12.12-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/opt/text-evaluation-service
+
+WORKDIR /opt/text-evaluation-service
+
+# Explicitly allowlist the application and requirements only.
+# Never COPY . (which could include local private settings/secrets).
+COPY requirements.txt ./requirements.txt
+RUN python -m pip install --no-cache-dir --disable-pip-version-check \
+        --only-binary=:all: -r requirements.txt \
+    && python -m pip check \
+    && useradd --uid 10001 --user-group --no-create-home \
+        --shell /usr/sbin/nologin appuser
+
+COPY src/ ./src/
+
+USER 10001:10001
+
+# The application's existing settings bind to loopback only and disable
+# authenticated evaluation/inference/Worker by default. No ports are published.
+# An approved external runtime configuration/DB/network design is mandatory
+# before any real deployment. Do not relax application fail-closed guards here.
+ENTRYPOINT ["python", "-m", "src.host.app"]

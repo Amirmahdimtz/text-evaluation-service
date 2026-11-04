@@ -27,6 +27,8 @@ on:
       - "tests/test_stage11_xgrammar_tokenizer_profile.py"
       - "scripts/verification/stage11_serving_artifact_match.py"
       - "tests/test_stage11_serving_artifact_match.py"
+      - "Dockerfile.stage11-candidate"
+      - "tests/test_stage11_candidate_image_contract.py"
       - "src/infrastructure/providers/llm/local_llm_provider.py"
       - "tests/test_stage07_local_llm.py"
       - ".github/workflows/stage11-preflight.yml"
@@ -57,7 +59,7 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
-          python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py tests/test_stage11_decoding_comparison.py tests/test_stage11_guided_backend_inspect.py tests/test_stage11_xgrammar_cpu_profile.py tests/test_stage11_xgrammar_tokenizer_profile.py tests/test_stage11_serving_artifact_match.py tests/test_stage07_local_llm.py
+          python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py tests/test_stage11_decoding_comparison.py tests/test_stage11_guided_backend_inspect.py tests/test_stage11_xgrammar_cpu_profile.py tests/test_stage11_xgrammar_tokenizer_profile.py tests/test_stage11_serving_artifact_match.py tests/test_stage11_candidate_image_contract.py tests/test_stage07_local_llm.py
           python -m scripts.verification.stage11_real_model_criterion_probe
           python -m scripts.verification.stage11_output_budget
           python -m scripts.verification.stage11_structured_decoding_compare
@@ -73,3 +75,30 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python scripts/verification/stage11_container_metadata.py --container synthetic-vllm > /dev/null
+
+  stage11-candidate-image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Build API-only engineering candidate (not deployment)
+        run: |
+          docker build --file Dockerfile.stage11-candidate --tag tes-stage11-api-candidate:ci .
+      - name: Assert nonroot image startup is fail-closed without network
+        run: |
+          test "$(docker image inspect tes-stage11-api-candidate:ci --format '{{.Config.User}}')" = "10001:10001"
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 64 --memory 512m \
+            --entrypoint python tes-stage11-api-candidate:ci -c '
+          from src.host.app import app
+          from src.infrastructure.utils.config_reader import ConfigReader
+          config = ConfigReader()
+          assert config.settings.server.host == "127.0.0.1"
+          assert config.settings.http_security.enabled is False
+          assert config.settings.llm.enabled is False
+          assert config.settings.worker.enabled is False
+          assert app.openapi_url is None
+          print("IMAGE_IMPORT_FAIL_CLOSED_PASS")
+          '
