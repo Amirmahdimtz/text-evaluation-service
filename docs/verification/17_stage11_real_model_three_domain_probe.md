@@ -1071,3 +1071,89 @@ tokens or model files beyond approval.
 **Status:** new paired/structure experiment and any
 live backend attribution `PENDING_SERVER`; Stage11
 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — Simorgh two independent CPU matcher traces and backend preflight
+
+**Operator-supplied results after pulling main through cddce58:**
+`tests/test_stage11_xgrammar_tokenizer_profile.py` returned
+**26 passed in 1.30s**. The approved CPU-only synthetic probe
+returned `CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED` with
+**two successive fresh matchers over the same compiled grammar
+and fixed synthetic JSON**. The separately authorized
+metadata-only guided backend inspector also ran successfully.
+
+| Metric | Trace 1 | Trace 2 |
+|---|---:|---:|
+| CPU bitmask fill, 24 steps total | 1159.124ms | 1146.884ms |
+| First mask fill | 0.072ms | 0.011ms |
+| Subsequent mask-fill median | 0.010ms | 0.009ms |
+| Slow positions >10ms | [15,16,17,18,19] | [15,16,17,18,19] |
+| Slow positions >100ms | [15,16,17,18,19] | [15,16,17,18,19] |
+| Structural offset alignment | ALIGNED | ALIGNED |
+
+Both fast-tokenizer offset maps yielded the **same coarse
+synthetic JSON labels**: steps 15-18 map to `VALUE`,
+`field_ordinal=3`; step 19 is `CROSS_REGION`
+with null ordinal. These labels describe the next fixed
+synthetic JSON token region, **not** the internal XGrammar
+automaton state. No token strings, token IDs, raw offsets,
+user/model text or tokenizer filesystem path was emitted.
+
+The third fixture field is **`reason`**, because the script
+serializes the schema with `sort_keys=True` and iterates
+the alphabetically ordered `properties` map when building
+the fixed JSON sample (see
+`scripts/verification/stage11_xgrammar_tokenizer_profile.py`,
+`build_runtime_script`). Thus, the repeated high-cost
+CPU fills lie within/around the synthetic **string value
+of `reason`**. This makes string-value handling
+a focused diagnostic hypothesis, NOT a demonstrated
+underlying XGrammar bug or production root cause.
+
+Additional CPU observations for this run:
+tokenizer load **449.674ms**; TokenizerInfo
+**785.676ms**; compiler init **0.024ms**;
+cold compile **227.487ms**; warm compile
+**0.027ms**; first-trace subsequent max
+**246.297ms**, nearest-rank P95 **229.249ms**;
+first-trace token accepts **0.112ms**;
+second-trace accepts **0.097ms**.
+Container package metadata vLLM **0.10.2**,
+XGrammar **0.1.23**, vocabulary **151936**,
+unchanged application schema SHA-256
+`da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`.
+
+**Guided backend metadata:** read-only inspection returned
+`launch_metadata_status=LAUNCH_FLAG_ABSENT`,
+`declared_backend=NOT_DECLARED_DOCUMENTED_DEFAULT_AUTO`,
+`disable_any_whitespace_flag=NOT_DECLARED_DOCUMENTED_DEFAULT_FALSE`,
+and `effective_request_backend=UNVERIFIED`.
+Static schema inspection listed no keywords in its *specific*
+vLLM-0.10.2 unsupported-keyword list; actual compiler validation
+was `NOT_RUN` by that separate tool. Neither output
+proves the in-process serving backend, model revision,
+tokenizer fingerprint, or grammar-cache state.
+
+**Scope of evidence:** the two consistent independent CPU
+traces strengthen the observation that occasional mask-fill
+cost is associated with a particular synthetic string
+region; they do not measure live vLLM inference,
+GPU logits mask application, service-level latency,
+per-token grammar state, or causal relation to the
+historical structured 29.118s / unconstrained 2.327s
+ordered pair (both incomplete and invalid).
+CPU diagnostic `OBSERVED`; formal production-quality,
+No-Egress and performance acceptance remain
+`PENDING_SERVER`. Stage11 `BLOCKED`,
+Stage12 `NOT_STARTED`.
+
+**Next authorized verification:** service owner should privately
+attest actual loaded model/tokenizer revision and chosen
+guided decoder for one request. A bounded CPU-only
+fixed-synthetic study varying the *type/location* of
+string-value regions could then test the string-state
+hypothesis, but it requires a separately approved
+experiment and must preserve strict output validation,
+redaction, no-egress requirements and shared-resource limits.
+No inference, operational changes or GPU tests were
+performed by the assistant in processing this report.

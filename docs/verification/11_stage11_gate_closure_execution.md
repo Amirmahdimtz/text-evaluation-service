@@ -112,3 +112,24 @@ shared-container run remains PENDING_SERVER.
 No model/server/GPU changes, no formal model
 quality or E2E gate closed. Stage11 BLOCKED;
 Stage12 NOT_STARTED.
+
+## 2026-11-04 — two CPU matcher trace results and launch metadata
+
+Simorgh operator reports **26 focused tests PASS
+in 1.30s**. The fixed-synthetic CPU-only
+profiler used two fresh XGrammar matchers with
+24 steps each; both showed positions
+15-19 strictly >100ms. Safe tokenizer
+offset labels mapped 15-18 to third
+synthetic field VALUE (`reason` in sorted
+schema order), 19 CROSS_REGION. The
+read-only guided backend launch inspection
+found no explicit backend flag, default
+AUTO and effective backend UNVERIFIED.
+
+These constitute limited diagnostics, not
+the required model-backed security, quality,
+inference or service-performance acceptance.
+Do not close or alter original Stage11
+enterprise gate statuses. Stage11 BLOCKED,
+Stage12 NOT_STARTED.

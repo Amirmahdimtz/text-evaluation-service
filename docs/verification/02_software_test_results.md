@@ -690,3 +690,36 @@ tests passed. Default CLI reported zero network, Docker,
 GPU and model-inference calls. Actual Simorgh two-trace
 results and structural label mapping are still
 `PENDING_SERVER`; Stage11 `BLOCKED`.
+
+## 2026-11-04 — Simorgh two CPU matchers and backend metadata
+
+After pulling main through cddce58,
+`tests/test_stage11_xgrammar_tokenizer_profile.py`
+returned **26 passed in 1.30s** on Simorgh.
+The opt-in CPU-only child returned
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`,
+two matcher traces, 24 steps each, totals
+**1159.124ms** and **1146.884ms**.
+Both strict >10ms and >100ms step lists
+were [15,16,17,18,19] for both traces.
+Offset classification was ALIGNED:
+steps 15-18 VALUE of third synthetic
+JSON field (`reason` in sorted schema order),
+step 19 CROSS_REGION.
+
+Read-only `stage11_guided_backend_inspect`
+returned READ_ONLY_BACKEND_PREFLIGHT;
+no explicit guided backend launch flag,
+documented default AUTO, effective request
+backend UNVERIFIED, and compiler validation
+NOT_RUN in the static inspection.
+
+**Evidence classification:** on-server focused
+tests PASS; fixed synthetic CPU profiling
+OBSERVED; metadata preflight OBSERVED;
+actual live vLLM backend, tokenizer matching,
+real model inference, production latency,
+three-domain acceptance and GPU logits
+mask application PENDING_SERVER. These outputs
+did not constitute No-Egress attestation.
+Stage11 BLOCKED; Stage12 NOT_STARTED.

@@ -408,3 +408,34 @@ owner approval**; no such new result is observed yet.
 The old live vLLM comparison remains non-causal and
 invalid. Real server backend/model identity and
 GPU performance remain PENDING_SERVER; Stage11 BLOCKED.
+
+## 2026-11-04 — reproduced synthetic CPU string-region mask spikes
+
+Simorgh operator: 26 focused tests PASS in 1.30s
+after pulling cddce58. The opt-in CPU-only child
+produced two fresh matcher traces with identical
+slow mask positions [15,16,17,18,19] for >10ms
+and >100ms; 24-step totals **1159.124ms**
+and **1146.884ms** respectively. First fill
+**0.072ms** and **0.011ms**; later median
+**0.010ms** and **0.009ms**. Validated
+tokenizer offsets mapped steps 15-18 into
+the **third synthetic JSON field's VALUE**
+and step 19 to CROSS_REGION. Because sample
+keys are constructed in alphabetically sorted
+schema order, ordinal 3 corresponds to
+`reason`, a synthetic string value.
+
+Warm compile **0.027ms**, cold compile
+**227.487ms** in the same independent process.
+This is reproducible **synthetic CPU mask cost**
+associated with that string location, not
+a measured live request or proven internal
+grammar bottleneck. Metadata-only launch
+inspection found no explicit guided-backend
+flag and reported default AUTO, effective
+backend UNVERIFIED. No GPU mask timing, live
+backend selection or service SLO was observed.
+Historical 29.118s vs 2.327s requests remain
+non-causal, incomplete and invalid.
+Stage11 BLOCKED; Stage12 NOT_STARTED.

@@ -1527,3 +1527,38 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   attribution are PENDING_SERVER.
 - Production code and serving process unchanged; no release
   gate satisfied. Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — repeated synthetic string-region mask spikes
+
+- Operator pulled cddce58, **26 focused tests
+  passed in 1.30s** on Simorgh. Two fresh
+  matchers with one compiled grammar and
+  fixed synthetic token sequence yielded
+  >10ms and >100ms positions **[15,16,17,18,19]**
+  in both traces. Totals **1159.124ms**
+  and **1146.884ms** for 24 fills each.
+- Both tokenizer structural maps were ALIGNED.
+  Steps 15-18 labeled VALUE, third JSON field;
+  step 19 CROSS_REGION. Script sorts properties
+  alphabetically, so ordinal 3 is synthetic
+  `reason` string. This does **not**
+  identify XGrammar's internal state or a
+  confirmed root cause.
+- Read-only Docker launch-flag inspection:
+  guided decoder NOT_DECLARED, documented
+  default AUTO, effective request decoder
+  UNVERIFIED. No actual model/tokenizer
+  provenance check has yet matched the
+  loaded service to the cached candidate.
+- Decision: prioritize an approved, bounded
+  synthetic string-value sensitivity check
+  and owner attestation of actual serving
+  backend/model identity *before* proposing
+  any optimization. Avoid weakening strict
+  JSON/schema validation or changing
+  production serving settings on CPU-only
+  observations.
+- CPU diagnostic OBSERVED, backend metadata
+  OBSERVED, genuine model/quality/performance/
+  security gates PENDING_SERVER. Stage11
+  BLOCKED; Stage12 NOT_STARTED.
