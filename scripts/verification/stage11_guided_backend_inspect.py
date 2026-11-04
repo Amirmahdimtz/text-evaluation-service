@@ -197,7 +197,7 @@ def main(argv: list[str] | None = None) -> int:
         "schema": schema_report(),
         "container": (
             inspect_container_launch(args.container, sudo=args.sudo_docker)
-            if args.container else {
+            if args.container is not None else {
                 "launch_metadata_status": "NOT_REQUESTED",
                 "declared_backend": "UNVERIFIED",
                 "effective_request_backend": "UNVERIFIED",
