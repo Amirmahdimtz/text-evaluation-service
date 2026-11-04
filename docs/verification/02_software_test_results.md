@@ -516,3 +516,19 @@ import-failure statuses. The exact repository CI outcome must be
 inspected after push. Real installed-transformers/xgrammar imports
 on Simorgh remain PENDING_SERVER; existing Stage11 acceptance
 gates are unchanged.
+
+### Confirmed GitHub CI after Stage11 network-shim fix — 2026-11-04
+
+[GitHub Actions run 41812760106](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41812760106)
+completed **SUCCESS** on commit 10a63f9e597bfcb6925e55ad2a72d5d0ce4dc25f:
+**59 Stage11 safety tests PASS** and **187 focused diagnostic/provider tests PASS**.
+The focused suite includes the new socket-subclass compatibility regression,
+distinct sanitized import-error statuses and simulated outbound-connect
+denial. The default CLI still reported no model/tokenizer loading,
+network/Docker calls or inference.
+
+This is CI evidence for a synthetic/offline defect fix, NOT proof of
+successful real XGrammar/Transformers imports in Simorgh. The
+operator's prior REQUIRED_RUNTIME_IMPORT_UNAVAILABLE remains a real
+failed diagnostic. Retest on server is PENDING_SERVER. No original
+Stage11 acceptance gate was closed.

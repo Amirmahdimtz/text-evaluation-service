@@ -1336,3 +1336,18 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - On-server re-execution of the corrected tool requires the same
   operational approval; it is still PENDING_SERVER. Stage11
   BLOCKED, Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — confirmed CI for import-shim correction
+
+- Commit 10a63f9e fixed the Stage11-only diagnostic's socket import
+  compatibility and added regression tests without changing the
+  production service or inference configuration.
+- [CI 41812760106](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41812760106)
+  completed SUCCESS: **59** synthetic Stage11 safety tests and
+  **187** focused diagnostic/provider tests passed.
+- These CI tests use synthetic library stubs. The new code has not
+  been tested against the real Simorgh installed Transformers or
+  the active vLLM tokenizer; real tokenizer-aware compilation
+  remains PENDING_SERVER and cannot be called PASSED.
+- The previous operator status REQUIRED_RUNTIME_IMPORT_UNAVAILABLE
+  remains recorded. Stage11 BLOCKED; Stage12 NOT_STARTED.
