@@ -380,3 +380,17 @@ The previously unknown output-budget interaction is now established for this **2
 GitHub Actions [run 41667673237](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41667673237) is `SUCCESS`: 59 Stage11 preflight tests passed; 143 Provider/probe/JSON-size/decoder-comparison tests passed. `scripts.verification.stage11_output_budget` ran and produced six strict-decoder-valid synthetic samples; `scripts.verification.stage11_structured_decoding_compare` ran in `DRY_RUN_NO_NETWORK` mode. Tests assert transport JSON payload equivalence except presence/absence of `response_format`, double live-flag guard, sequential two-arm order, fail-fast on timeout, output redaction and no real model use in CI. No live server/GPU A/B test has been run.
 
 For synthetic media examples only, normal/compact JSON UTF-8 bytes were assessed 427/405 and abstained 247/232. This proves byte-level serialization equivalence under the current strict decoder, not expert rubric quality or model-token economy. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; GPU speed hypothesis `PENDING_SERVER`.
+
+## 2026-11-04 — shared GPU one-pair decoder experiment observed
+
+Operator-reported on-host opt-in `stage11_structured_decoding_compare`
+made two ordered real GPU requests after a successful no-network dry
+run. Output status `TWO_ARM_TIMING_OBSERVED_NOT_CAUSAL`:
+`json_schema` 29.118s vs unconstrained 2.327s, both 635 prompt /
+256 generated tokens and both `finish_reason=length`, JSON invalid,
+contract `FAILED` with `LLM_INCOMPLETE_GENERATION`. The observed
+ratio is approximately 12.51x, with no statistical/casual proof.
+Offline CI [41667673237](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41667673237)
+59 preflight / 143 focused PASS remains a separate test population.
+No new tests run in this documentation update. Stage11
+`BLOCKED`, Stage12 `NOT_STARTED`.

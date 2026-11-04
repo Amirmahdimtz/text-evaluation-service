@@ -1188,3 +1188,29 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Structured decoding experiment prepared:** Stage11-only redacted comparator sends one `media_message_clarity` candidate under identical request data except `response_format` (`json_schema` versus omitted/unconstrained), thinking disabled, max 256 completion tokens, <=45s per request, sequential, no retry. Second arm aborts if first hits a timeout/circuit/transport failure. Even the unconstrained arm must pass production Pydantic and quote/offset validation to be an accepted contract, never a Production choice.
 - **Actual CI:** [41667673237](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41667673237) `SUCCESS`, 59 preflight and 143 focused tests PASS; JSON-budget code executed offline and both CLIs returned no-network default output. **No model/GPU comparative speed measurement** was executed; a single ordered pair would be diagnostic, not a causal benchmark.
 - **Decision:** do not modify the production Provider, model, schema, vLLM configuration, default token cap or timeout based on a 5–6% JSON-byte difference. Full model quality remains NOT_MEASURABLE; the guided-decoding slowdown hypothesis is `UNTESTED_REAL_RUNTIME`. Live A/B needs explicit permission from shared-GPU owner for **two** sequential synthetic requests. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-04 — shared GPU one-pair decoder experiment observed
+
+- **Actual operator test:** on Simorgh the user explicitly opted in to
+  two sequential synthetic GPU requests. The first used strict
+  `response_format=json_schema`, the second omitted response_format;
+  other request inputs/params were held fixed in the diagnostic code.
+  Reported input/output were **635/256 tokens** per arm, with
+  `json_schema` **29,118ms** vs unconstrained **2,327ms**
+  (~12.51x observed elapsed-time ratio).
+- **Correctness:** both responses ended by `finish_reason=length`,
+  `json_syntax=invalid`; both strict contracts failed with
+  `LLM_INCOMPLETE_GENERATION`. Neither produced a trusted score or
+  evidence; unconstrained mode is not approved for production.
+- **Inference limit:** this is a fixed-order single pair on a shared
+  inference runtime. Different generated content, warm-up, caching and
+  tenant load are not controlled; the relative timing strongly
+  supports the guided-schema-path slowdown hypothesis but does not
+  establish its root cause or prove a causal decoder overhead.
+  Comparator states `structured_decoding_overhead_proven=false`.
+- **Decision:** no rollback/relaxation of strict output validation,
+  no alteration of the shared runtime, output cap, timeout, secrets
+  or production configuration. Perform an offline review of pinned
+  runtime's guided decoding configuration and actual schema. Any
+  further GPU experiment needs separate owner approval. Stage11
+  `BLOCKED`; Stage12 `NOT_STARTED`; quality/latency gates remain open.

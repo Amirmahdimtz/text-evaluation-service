@@ -168,3 +168,25 @@ behavior and background load is uncontrolled.
 [GitHub Actions 41667673237](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41667673237)
 SUCCESS: 59 preflight tests and 143 focused offline tests. Real decoder
 speed comparison is `PENDING_SERVER`; capacity and Stage11 remain BLOCKED.
+
+## 2026-11-04 — shared GPU one-pair decoder experiment observed
+
+Simorgh one ordered pair, both with max 256 completion tokens,
+`prompt_tokens=635`, `completion_tokens=256`, disabled Thinking
+requested, no retries. The `json_schema` request took **29.118s**;
+the unconstrained request took **2.327s**, about **12.51x** lower
+elapsed time for the unconstrained arm. These are full request
+durations, NOT isolated guided decoder CPU costs or steady-state GPU
+tokens/sec. Both responses reached `finish_reason=length`, had
+`json_syntax=invalid` and were rejected as
+`LLM_INCOMPLETE_GENERATION`.
+
+This result elevates structured decoding overhead from an untested
+hypothesis to **strongly supported but unproven** for this deployed
+setup. Fixed-order shared GPU, one attempt per arm and potentially
+different model output text prevent causal attribution. Do not
+extrapolate to production capacity, user-visible quality or
+performance SLO. No baseline-valid JSON completion was observed
+from either arm. Existing schema/validation cannot be removed.
+Further live experimentation requires a separately justified
+and approved controlled setup. Stage11 `BLOCKED`.

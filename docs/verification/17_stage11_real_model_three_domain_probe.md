@@ -396,3 +396,50 @@ sequential synthetic requests**, invoke the final command with
 `--execute-live --shared-gpu-approved` appended. No live command is
 automated or authorized by an offline test success. Keep Stage11
 `BLOCKED`; Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — shared GPU one-pair decoder experiment observed
+
+The Simorgh operator pulled main through commit `235f088`, confirmed
+the default `stage11_structured_decoding_compare` command returned
+`DRY_RUN_NO_NETWORK`, then explicitly ran the bounded comparison with
+`--execute-live --shared-gpu-approved`. It made **two sequential,
+synthetic-only** `media_message_clarity` requests, with concurrency 1,
+max output 256 tokens each, disabled Thinking requested, 45s deadline,
+no retries, and matching input/model/parameter values except the
+presence of `response_format=json_schema`.
+
+| Observed response | `json_schema` | `unconstrained` |
+|---|---:|---:|
+| request duration | 29,118ms | 2,327ms |
+| prompt tokens (reported) | 635 | 635 |
+| completion tokens (reported) | 256 | 256 |
+| `finish_reason` | `length` | `length` |
+| JSON syntax | invalid | invalid |
+| strict contract | FAILED: `LLM_INCOMPLETE_GENERATION` | FAILED: `LLM_INCOMPLETE_GENERATION` |
+
+Elapsed-time difference was 26,791ms; ratio `29118/2327≈12.51`
+for these two observed requests. Both stopped on the identical
+256-token output cap without a complete JSON response, so neither is
+a successful rubric assessment or evidence-backed score. The
+unconstrained arm did **not** solve correctness.
+
+The timing difference is **strong diagnostic evidence** that the
+structured JSON-schema path may be a substantial source of latency
+on the deployed pinned runtime/model combination. It does **not**
+isolate the parser/backend cost causally: the generated token sequences
+can differ; the first request could have been affected by warm-up,
+shared tenants, caches or changing load; one fixed-order pair has no
+replicates or counterbalancing. The comparator itself explicitly
+reported `TWO_ARM_TIMING_OBSERVED_NOT_CAUSAL`,
+`structured_decoding_overhead_proven=false`, and
+`quality_benchmark=false`.
+
+No further live requests, GPU/service setting changes, Schema or
+Provider modifications are authorized by this observation. Next
+engineering step: **offline** inspect the exact vLLM 0.10.2 guided
+decoding backend, the effective schema characteristics and their
+possible costs; design an approved, controlled performance and
+validity experiment only after resource-owner sign-off. Do not
+deploy unconstrained inference in production; always retain typed
+Schema and evidence validation. Stage11 `BLOCKED`; Stage12
+`NOT_STARTED`.

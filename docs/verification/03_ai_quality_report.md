@@ -152,3 +152,16 @@ validation. An unconstrained output must never bypass the production
 contract, score validator, human review or No-Egress safeguards.
 The real-model test remains `PENDING_SERVER`. No expert accuracy metric
 is measurable from the synthetic samples; Stage11 BLOCKED.
+
+## 2026-11-04 — shared GPU one-pair decoder experiment observed
+
+The real model completed two HTTP envelopes for an operator-authorized
+synthetic media criterion comparison. Structured `json_schema`:
+29,118ms, 635 input + 256 output tokens, `finish_reason=length`,
+invalid JSON, failed strict contract. Unconstrained mode: 2,327ms,
+identical reported token counts, `finish_reason=length`, invalid
+JSON, failed strict contract. No criterion score/evidence is accepted
+from either response. The much faster unconstrained arm is NOT a
+valid output mode for this application and does not establish
+semantic quality or expert agreement. Model quality remains
+`NOT_MEASURABLE`; Stage11 `BLOCKED`.
