@@ -445,3 +445,21 @@ Both default no-network diagnostic CLIs ran. This independently validates
 the **actual repository tests and generated script**, not xgrammar 0.1.23
 on Simorgh or any GPU inference. The on-host CPU conversion runtime
 measurement remains PENDING_SERVER; per-token masking remains NOT_RUN.
+
+## 2026-11-04 — on-host XGrammar converter execution evidence
+
+Operator pulled main through b4ed305 and reported two consecutive
+runs of `tests/test_stage11_xgrammar_cpu_profile.py`: each
+**12 passed in 0.34s**. The offline schema preflight reported
+one pattern+length overlap and schema SHA-256
+`da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`.
+The optional, separately invoked CPU-only conversion probe then
+succeeded inside the shared vLLM container:
+`CPU_GRAMMAR_CONVERSION_OBSERVED`, 1.724ms / 1.535ms,
+vLLM 0.10.2, XGrammar 0.1.23 and zero model inference requests.
+
+**Only** the conversion timing experiment has real on-server evidence
+of PASS. Tokenizer-aware compilation, grammar bitmask application,
+real-model structured quality, true backend attribution and Stage11
+acceptance gates are not passed. No real model call, load test,
+runtime or source code changes occurred in this observation.

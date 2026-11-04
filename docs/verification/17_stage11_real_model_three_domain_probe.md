@@ -569,3 +569,38 @@ GitHub Actions run 41805920106, commit 98a35d0, SUCCESS: 59 synthetic
 Stage11 safety checks and 174 focused provider/probe/inspection/CPU-profile
 tests passed. This confirms the real repository's offline CI integration;
 the two-pass conversion timing has **not** been run inside Simorgh.
+
+## 2026-11-04 — Simorgh CPU schema conversion timing observed
+
+**Operator-provided real runtime output**, after successful fast-forward
+pull through main commit b4ed305: focused XGrammar CPU-profile tests ran
+twice on Simorgh (**12 passed in 0.34s** each). The default offline CLI
+reported schema SHA-256
+`da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`,
+one combined pattern+length schema constraint, no network or inference.
+
+With separately invoked container exec, the emitted CPU-only probe ran
+exactly two calls to `xgrammar.Grammar.from_json_schema`:
+- `conversion_ms_first=1.724`
+- `conversion_ms_second=1.535`
+- `status=CPU_GRAMMAR_CONVERSION_OBSERVED`
+- runtime `vllm=0.10.2`, `xgrammar=0.1.23`, schema hash matched
+- `model_inference_requests=0`, `per_token_masking_measured=false`,
+  `tokenizer_aware_compilation_measured=false`,
+  `request_latency_measured=false`.
+
+This completes the **narrow CPU schema-to-grammar conversion timing
+diagnostic**, previously PENDING_SERVER; it does NOT close any original
+full-model acceptance test. Measured conversion (~1.6ms for these two
+runs) is too short to explain an earlier ~29.118s full structured
+request **as schema conversion alone**. The actual serving path could
+also perform tokenizer-aware compilation, cache work, token masking or
+other work; no attribution to any of these is yet established. The
+earlier fixed-order structured/unconstrained A/B remains non-causal,
+both outputs incomplete. The XGrammar combined pattern/length warning
+appeared twice; post-response Pydantic/source validation stays intact.
+
+**Next:** obtain owner approval and an isolated, bounded measurement
+plan for actual vLLM request-phase breakdown and effective backend,
+not another speculative shared-GPU request. No runtime/model/Schema/
+Provider/GPU mutation was performed. Stage11 BLOCKED; Stage12 NOT_STARTED.

@@ -1259,3 +1259,25 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - On main commit 98a35d089c5948ef571848facb28efb947454b98, GitHub Actions run 41805920106 completed SUCCESS: 59 synthetic safety tests and 174 focused no-network diagnostic/Provider tests passed; default diagnostic CLI emitted zero inference and no Docker actions.
 - Proven in CI: code imports, schemas, redaction, generated Python syntax, synthetic success/failure handling and no-network default. Not proven: actual CPU conversion timing on Simorgh, tokenizer-aware XGrammar compilation/cache, token masking, real rubric contract or performance improvement.
 - Real container CPU timing remains PENDING_SERVER and requires separate owner authorization for shared-container exec. No change in Stage11 BLOCKED or Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — actual Simorgh CPU grammar conversion timings
+
+- Operator ran the Stage11 offline focused tests twice after pulling
+  b4ed305: **12 passed in 0.34s** in each run. Offline schema SHA-256
+  `da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`.
+- The optional CPU-only probe succeeded inside shared container
+  `ai-inference-vllm-1`: XGrammar `Grammar.from_json_schema`
+  duration first **1.724ms**, second **1.535ms**; runtime
+  vLLM 0.10.2 / XGrammar 0.1.23; no model inference. The same
+  pattern+length warning appeared during both conversions.
+- Narrow diagnosis: the measured schema-to-grammar conversion alone
+  does **not** explain the prior 29.118s structured full-request time.
+  These observations do not prove the effective live backend,
+  tokenizer-aware compilation/cache duration, per-token mask overhead,
+  a causal A/B slowdown, a model quality pass or an optimized SLO.
+- The narrow converter timing item is OBSERVED/PASS, not PENDING_SERVER.
+  Downstream runtime performance and formal acceptance items remain
+  PENDING_SERVER. Do not change Provider, schema, model, backend,
+  shared GPU, timeout or token cap based on this observation.
+- **Stage11 BLOCKED; Stage12 NOT_STARTED**. No original mandatory
+  acceptance ID is marked PASS solely from this diagnostic.

@@ -230,3 +230,23 @@ explicitly authorized operator run. This does not measure the tokenizer-aware
 compiler/cache or per-token bitmask application, so the prior 12.51x timing
 difference remains non-causal and unlocalized. CPU conversion timing
 PENDING_SERVER; Runtime/Production settings unchanged; Stage11 BLOCKED.
+
+## 2026-11-04 — measured on-server XGrammar schema conversion
+
+Operator executed the new two-pass CPU-only probe in the existing
+`ai-inference-vllm-1` container (verified vLLM 0.10.2,
+XGrammar 0.1.23, unchanged CriterionInference schema hash
+`da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`).
+`Grammar.from_json_schema` took **1.724ms** on call one and
+**1.535ms** on call two. No inference calls; no token-aware compiler,
+bitmask decoding or request latency measured. This narrow conversion
+cost cannot by itself explain the prior **29.118s** structured request;
+it neither proves token masking is responsible nor establishes that
+the actual vLLM request used XGrammar. The two historical capped
+requests did not produce complete valid JSON.
+
+Operator also reported two identical focused offline runs, each
+**12 passed in 0.34s**, after pulling b4ed305. No new full
+performance benchmark, load test or model evaluation was done.
+Backend attribution and decoder cost remain PENDING_SERVER; Stage11
+BLOCKED, Stage12 NOT_STARTED.
