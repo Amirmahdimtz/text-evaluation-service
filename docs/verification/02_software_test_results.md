@@ -581,3 +581,27 @@ passed. Default tokenizer profiler reported
 `OFFLINE_TOKENIZER_PROFILE_PLAN`, zero Docker/network/inference
 actions. These are synthetic/software tests; new real Simorgh
 first-versus-rest CPU measurements remain `PENDING_SERVER`.
+
+## 2026-11-04 — operator first-vs-rest CPU mask timing evidence
+
+On Simorgh after pulling f352f4d, the operator ran
+`tests/test_stage11_xgrammar_tokenizer_profile.py`:
+**17 passed in 1.08s**. Default offline CLI returned
+`OFFLINE_TOKENIZER_PROFILE_PLAN`, zero model inference/network/
+Docker calls. Separately, with an existing in-container tokenizer,
+the new bounded CPU-only probe returned
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`, vLLM 0.10.2,
+XGrammar 0.1.23, schema hash
+`da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`.
+Mask timings: 24 fills, 1149.502ms total, first
+0.094ms, subsequent 23 total 1149.408ms, rest mean
+49.974ms, median 0.014ms, P95 225.768ms, max 247.760ms;
+cold compile 239.614ms, warm 0.030ms.
+
+The narrow, synthetic CPU regression and profiling activities
+are OBSERVED. This is *not* a live LLM/API/GPU inference or a
+passing model quality/performance gate. Serving backend/real
+request latency/GPU masking and formal acceptance remain
+PENDING_SERVER. No new automated tests or code changes were made
+by the assistant when recording these operator results.
+Stage11 BLOCKED; Stage12 NOT_STARTED.

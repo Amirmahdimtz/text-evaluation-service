@@ -1405,3 +1405,29 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   real E2E attribution `PENDING_SERVER`. Stage11
   `BLOCKED`, Stage12 `NOT_STARTED`; original acceptance
   gates remain unchanged.
+
+### Stage11 — 2026-11-04 — actual first-mask versus remaining CPU costs
+
+- Operator pulled main through f352f4d and reported
+  **17 focused diagnostic tests passed in 1.08s** on Simorgh.
+- With a separate CPU-only tokenizer child in the existing
+  vLLM container, observed XGrammar 0.1.23 and vLLM 0.10.2,
+  unchanged criterion schema SHA-256
+  `da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`;
+  `CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`.
+  Mask first step **0.094ms**, rest 23 steps **1149.408ms**
+  total (mean **49.974ms**, median **0.014ms**, nearest-rank
+  P95 **225.768ms**, max **247.760ms**); 24 fills
+  **1149.502ms** total. Cold compile **239.614ms**, warm
+  compile **0.030ms**.
+- **Decision:** disfavor a *first-mask-only* latency explanation
+  for this synthetic trace. Later mask-fill timings are strongly
+  skewed; exact slow positions, causes and live request
+  relevance remain UNVERIFIED. The synthetic 23-step
+  nearest-rank P95 is NOT a production SLO statistic.
+- **No new approval or unverified PASS:** a real live vLLM
+  backend choice, in-process caches, GPU logits mask time,
+  3-domain quality and controlled latency attribution remain
+  PENDING_SERVER. Do not alter schema, model, timeout, token
+  cap, GPU or shared inference service on this evidence.
+  Stage11 BLOCKED; Stage12 NOT_STARTED.

@@ -860,3 +860,63 @@ acceptance ID. Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
 SUCCESS on commit `7f53610`, with 59 Stage11 offline safety and
 191 focused synthetic diagnostic/Provider tests passing. No
 on-server first/rest mask cost or GPU inference was measured.
+
+## 2026-11-04 — Simorgh real first-versus-rest CPU mask observations
+
+**Operator-reported execution after pulling main through f352f4d:**
+`tests/test_stage11_xgrammar_tokenizer_profile.py` had **17 passed
+in 1.08s**. The default command returned
+`OFFLINE_TOKENIZER_PROFILE_PLAN`, confirming no inference/network/
+Docker operations in its default path.
+
+The operator then independently ran the bounded, one-shot CPU-only
+XGrammar tokenizer probe using an existing local tokenizer candidate
+inside the shared container. The redacted result was
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`:
+- vLLM 0.10.2, XGrammar 0.1.23; vocab 151936;
+- unchanged code-defined CriterionInference schema fingerprint:
+  `da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`;
+- tokenizer load **458.834ms**, TokenizerInfo **802.633ms**;
+- isolated cold compilation **239.614ms**, warm **0.030ms**;
+- **24** CPU synthetic fill_next_token_bitmask operations total
+  **1149.502ms**, first **0.094ms**, first share **0.01%**;
+- subsequent **23** fill operations total **1149.408ms**,
+  mean **49.974ms**, median **0.014ms**, nearest-rank P95
+  **225.768ms**, maximum **247.760ms**;
+- CPU accept_token total **0.124ms**;
+- independent compiler thread limit 1, cache limit 32MiB,
+  model_inference_requests=0, network_requests=0;
+- effective_live_backend_verified=false,
+  shared_service_cache_measured=false,
+  gpu_token_mask_application_measured=false,
+  real_request_latency_measured=false.
+
+**Supported interpretation:** in this specific synthetic CPU-only
+trace the first mask fill was almost free. Large spikes occurred
+*later*; mean much greater than median indicates a right-skewed
+distribution. The output does not report per-position timings or
+token/grammar state, so it cannot isolate the exact transitions,
+identify how many slow steps were present, or distinguish
+grammar-state complexity, delayed native initialization, scheduling
+or other possible causes. The nearest-rank P95 over just 23 steps
+is a descriptive order statistic, **not a request latency P95**.
+Do not extrapolate these times to 256 generated model tokens.
+
+The older single structured-vs-unconstrained 29.118s vs 2.327s
+pair used *different model-produced token sequences* with
+uncontrolled shared load and both incomplete/invalid contracts.
+The new CPU-only trace does not prove that live vLLM selected
+XGrammar or that GPU logits masking is the bottleneck. The local
+Qwen3-8B-AWQ tokenizer candidate has not been cryptographically
+matched to the in-process serving model.
+
+**Next, subject to new shared-runtime owner permission:**
+a bounded no-inference, fixed-synthetic-output diagnostic could
+report only slow-step indices or aggregate counts, never token
+content, raw model text or paths; independently verify selected
+serving backend/model, then plan a controlled real request-phase
+measurement. No further container test, GPU inference, server
+modification or production Schema/Provider edit was performed
+by the assistant from this evidence. Narrow CPU first/rest test
+OBSERVED; real serving performance and acceptance gates
+PENDING_SERVER. Stage11 BLOCKED; Stage12 NOT_STARTED.

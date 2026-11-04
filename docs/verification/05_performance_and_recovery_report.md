@@ -318,3 +318,31 @@ and cannot establish the real serving backend/cache, per-token GPU
 mask application, model throughput or performance SLO. Real
 production E2E latency attribution is `PENDING_SERVER`;
 Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — on-server first mask versus subsequent CPU mask fills
+
+The operator ran the focused diagnostic on Simorgh after pulling
+f352f4d: **17 passed in 1.08s**. The separate CPU-only child
+with an existing local tokenizer returned
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`. The reported
+mask-fill distribution over **24 fixed synthetic JSON tokens**:
+first **0.094ms (0.01%)**, remaining **23** total
+**1149.408ms**, rest mean **49.974ms**, median **0.014ms**,
+nearest-rank P95 **225.768ms**, maximum **247.760ms**,
+all 24 total **1149.502ms**.
+The tokenizer-loaded child also observed
+cold compile **239.614ms**, warm compile **0.030ms**,
+TokenizerInfo **802.633ms**, tokenizer load **458.834ms**,
+and accept_token total **0.124ms**.
+
+The actual first step was not the slowest. This demonstrates
+intermittent large CPU mask-fill times somewhere among the later
+synthetic token steps, not steady cost for every token. No precise
+slow token index, grammar state, source cause, on-service per-request
+backend selection, real model inference or GPU logit-mask cost
+was measured. A P95 calculated over just 23 independent child
+observations is **not** a production latency P95; the real
+29.118s vs 2.327s historical pair remains non-causal with two
+invalid responses. Do not infer target SLO or multiply the mean
+to predict a full response. Formal capacity/quality gates
+PENDING_SERVER; Stage11 BLOCKED; Stage12 NOT_STARTED.
