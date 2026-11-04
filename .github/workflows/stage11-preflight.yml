@@ -25,6 +25,8 @@ on:
       - "tests/test_stage11_xgrammar_cpu_profile.py"
       - "scripts/verification/stage11_xgrammar_tokenizer_profile.py"
       - "tests/test_stage11_xgrammar_tokenizer_profile.py"
+      - "scripts/verification/stage11_serving_artifact_match.py"
+      - "tests/test_stage11_serving_artifact_match.py"
       - "src/infrastructure/providers/llm/local_llm_provider.py"
       - "tests/test_stage07_local_llm.py"
       - ".github/workflows/stage11-preflight.yml"
@@ -55,13 +57,14 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
-          python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py tests/test_stage11_decoding_comparison.py tests/test_stage11_guided_backend_inspect.py tests/test_stage11_xgrammar_cpu_profile.py tests/test_stage11_xgrammar_tokenizer_profile.py tests/test_stage07_local_llm.py
+          python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py tests/test_stage11_decoding_comparison.py tests/test_stage11_guided_backend_inspect.py tests/test_stage11_xgrammar_cpu_profile.py tests/test_stage11_xgrammar_tokenizer_profile.py tests/test_stage11_serving_artifact_match.py tests/test_stage07_local_llm.py
           python -m scripts.verification.stage11_real_model_criterion_probe
           python -m scripts.verification.stage11_output_budget
           python -m scripts.verification.stage11_structured_decoding_compare
           python -m scripts.verification.stage11_guided_backend_inspect
           python -m scripts.verification.stage11_xgrammar_cpu_profile
           python -m scripts.verification.stage11_xgrammar_tokenizer_profile
+          python -m scripts.verification.stage11_serving_artifact_match
       - name: Offline import/CLI sanity without querying GPU
         env:
           PYTHONDONTWRITEBYTECODE: "1"

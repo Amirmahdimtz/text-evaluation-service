@@ -133,3 +133,14 @@ inference or service-performance acceptance.
 Do not close or alter original Stage11
 enterprise gate statuses. Stage11 BLOCKED,
 Stage12 NOT_STARTED.
+
+## 2026-11-04 — provenance and reason sensitivity preparation
+
+Stage11-only reason-variant synthetic CPU diagnostics
+and owner-provided local artifact file matching are
+prepared as gated, non-service-changing verification
+tools; see `18_stage11_serving_artifact_attestation.md`.
+No on-server execution of these new checks has occurred.
+The last on-host 26 diagnostic tests and backend
+AUTO metadata do not close any model/GPU/security/quality
+gate. Stage11 BLOCKED, Stage12 NOT_STARTED.

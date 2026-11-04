@@ -50,6 +50,8 @@ SCHEMA_SHA256 = __SCHEMA_SHA256__
 SYNTHETIC_OUTPUT_JSON = __SYNTHETIC_OUTPUT_JSON__
 MAX_STEPS = 24
 MAX_TRACES = 2
+REASON_SENSITIVITY = __REASON_SENSITIVITY__
+REASON_VARIANTS_JSON = __REASON_VARIANTS_JSON__
 MAX_CPU_SECONDS = 25
 MAX_WALL_SECONDS = 45
 
@@ -188,6 +190,65 @@ def _structural_step_labels(tokenizer, text, ids, slow_steps):
         return "ALIGNED", labels
     except Exception:
         return "UNVERIFIED", []
+
+
+def _reason_value_statistics(tokenizer, text, ids, fill_ms):
+    """Only aggregate CPU mask fill cost for whole-token reason value regions."""
+    status, labels = _structural_step_labels(
+        tokenizer, text, ids, list(range(1, len(fill_ms) + 1)))
+    if status != "ALIGNED":
+        return "UNVERIFIED", None, None
+    reason_ordinal = list(json.loads(text)).index("reason") + 1
+    steps = [
+        item["step"] for item in labels
+        if item["json_region"] == "VALUE"
+        and item["field_ordinal"] == reason_ordinal
+    ]
+    return (
+        "ALIGNED", len(steps),
+        round(sum(fill_ms[step - 1] for step in steps), 3),
+    )
+
+
+def _reason_variants(tokenizer, xgr, compiled, vocab_size):
+    """Opt-in 2 fixed synthetic variants, <=24 tokens and one matcher each."""
+    if not REASON_SENSITIVITY:
+        return []
+    variants = json.loads(REASON_VARIANTS_JSON)
+    if len(variants) != 2:
+        raise ValueError("STAGE11_INVALID_FIXED_VARIANTS")
+    results = []
+    for label, sample_text in variants:
+        ids = tokenizer.encode(sample_text, add_special_tokens=False)
+        if not isinstance(ids, list) or len(ids) < 2 or not all(
+                type(token) is int and 0 <= token < vocab_size for token in ids):
+            raise ValueError("STAGE11_INVALID_VARIANT_TOKENS")
+        matcher = xgr.GrammarMatcher(compiled)
+        mask = xgr.allocate_token_bitmask(1, vocab_size)
+        fill_ms = []
+        for token in ids[:MAX_STEPS]:
+            start = time.perf_counter()
+            matcher.fill_next_token_bitmask(mask, 0)
+            fill_ms.append(_elapsed_ms(start))
+            if not matcher.accept_token(token):
+                raise ValueError("STAGE11_INVALID_VARIANT_GRAMMAR")
+        alignment, count, total = _reason_value_statistics(
+            tokenizer, sample_text, ids, fill_ms)
+        hot100 = _slow_mask_step_indices(fill_ms, 100.0)
+        hot_status, hot_labels = _structural_step_labels(
+            tokenizer, sample_text, ids, hot100)
+        results.append({
+            "fixture": label,
+            "mask_fill_steps": len(fill_ms),
+            "mask_fill_total_ms": round(sum(fill_ms), 3),
+            "mask_fill_steps_gt_100ms": hot100,
+            "reason_value_alignment": alignment,
+            "reason_value_steps": count,
+            "reason_value_mask_fill_total_ms": total,
+            "slow_step_structural_alignment": hot_status,
+            "slow_step_regions": hot_labels,
+        })
+    return results
 
 
 def _mask_fill_distribution(fill_ms):
@@ -354,6 +415,15 @@ def main():
             tokenizer, SYNTHETIC_OUTPUT_JSON, ids, hot100)
         repeat_alignment, repeat_regions = _structural_step_labels(
             tokenizer, SYNTHETIC_OUTPUT_JSON, ids, repeat_hot100)
+        baseline_reason_alignment, baseline_reason_steps, baseline_reason_ms = (
+            _reason_value_statistics(tokenizer, SYNTHETIC_OUTPUT_JSON, ids, fill_ms)
+        )
+        repeat_reason_alignment, repeat_reason_steps, repeat_reason_ms = (
+            _reason_value_statistics(
+                tokenizer, SYNTHETIC_OUTPUT_JSON, ids, repeat_fill_ms)
+        )
+        sensitivity_rows = _reason_variants(
+            tokenizer, xgr, compiled, vocab_size)
     except TimeoutError:
         return _report("RESOURCE_BUDGET_EXCEEDED", exit_code=4,
                        versions=versions)
@@ -390,6 +460,14 @@ def main():
         cpu_synthetic_mask_repeat2_accept_total_ms=(
             round(sum(repeat_accept_ms), 3)
         ),
+        cpu_synthetic_reason_sensitivity_enabled=REASON_SENSITIVITY,
+        cpu_synthetic_reason_sensitivity_rows=sensitivity_rows,
+        cpu_synthetic_baseline_reason_value_alignment=baseline_reason_alignment,
+        cpu_synthetic_baseline_reason_value_steps=baseline_reason_steps,
+        cpu_synthetic_baseline_reason_value_mask_fill_total_ms=baseline_reason_ms,
+        cpu_synthetic_repeat2_reason_value_alignment=repeat_reason_alignment,
+        cpu_synthetic_repeat2_reason_value_steps=repeat_reason_steps,
+        cpu_synthetic_repeat2_reason_value_mask_fill_total_ms=repeat_reason_ms,
         **distribution,
         cpu_synthetic_token_accept_total_ms=round(sum(accept_ms), 3),
         tokenizer_aware_compilation_measured=True,
@@ -429,18 +507,35 @@ def offline_report() -> dict[str, Any]:
     }
 
 
-def build_runtime_script() -> str:
-    """Return static operator-reviewed code, not shell commands or actions."""
-    sample_properties = json.loads(_SCHEMA_STRING)["properties"]
-    sample = json.dumps(
-        {key: _SYNTHETIC_OUTPUT[key] for key in sample_properties},
+def _fixed_synthetic_json(sample: dict[str, Any]) -> str:
+    """Validate and serialize fixtures in exactly the pinned schema key order."""
+    CriterionInference.model_validate(sample)
+    properties = json.loads(_SCHEMA_STRING)["properties"]
+    return json.dumps(
+        {name: sample[name] for name in properties},
         ensure_ascii=True, separators=(",", ":"),
     )
+
+
+def build_runtime_script(*, reason_sensitivity: bool = False) -> str:
+    """Emit reviewed CPU-only code; does not execute network, Docker or a model."""
+    sample = _fixed_synthetic_json(_SYNTHETIC_OUTPUT)
+    variants = [
+        ("REASON_SHORT", _fixed_synthetic_json({
+            **_SYNTHETIC_OUTPUT, "reason": "x",
+        })),
+        ("REASON_SAME_LENGTH", _fixed_synthetic_json({
+            **_SYNTHETIC_OUTPUT,
+            "reason": "x" * len(_SYNTHETIC_OUTPUT["reason"]),
+        })),
+    ] if reason_sensitivity else []
     return (
         _RUNTIME_TEMPLATE
         .replace("__SCHEMA_JSON__", repr(_SCHEMA_STRING))
         .replace("__SCHEMA_SHA256__", repr(_SCHEMA_SHA256))
         .replace("__SYNTHETIC_OUTPUT_JSON__", repr(sample))
+        .replace("__REASON_SENSITIVITY__", repr(reason_sensitivity))
+        .replace("__REASON_VARIANTS_JSON__", repr(json.dumps(variants)))
     )
 
 
@@ -448,9 +543,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--emit-runtime-script", action="store_true",
                         help="Emit opt-in CPU-only child script, no execution.")
+    parser.add_argument("--reason-sensitivity", action="store_true",
+                        help="Opt-in two extra fixed synthetic reason-value traces.")
     args = parser.parse_args(argv)
+    if args.reason_sensitivity and not args.emit_runtime_script:
+        parser.error("--reason-sensitivity requires --emit-runtime-script")
     if args.emit_runtime_script:
-        print(build_runtime_script(), end="")
+        print(build_runtime_script(reason_sensitivity=args.reason_sensitivity), end="")
     else:
         print(json.dumps(offline_report(), sort_keys=True))
     return 0

@@ -1562,3 +1562,28 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   OBSERVED, genuine model/quality/performance/
   security gates PENDING_SERVER. Stage11
   BLOCKED; Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — owner artifact matching and CPU reason variants
+
+- Current evidence: two CPU synthetic baseline matchers
+  consistently slowed at [15,16,17,18,19]; steps
+  15-18 map to value region of synthetic `reason`.
+  Guided backend launch flag is absent, documented
+  default AUTO, effective request backend UNVERIFIED.
+- Opt-in reason sensitivity: 2 more fixed synthetic,
+  Pydantic-validated reason fixtures, one short and
+  one equal-length different value, each fresh
+  24-step matcher, on the same compiled grammar;
+  four traces <=96 steps overall. Strict CPU/
+  resource limits remain, no model inference/GPU.
+- Opt-in owner artifact helper compares only
+  allowlisted config/tokenizer file bytes in two
+  independently owner-approved local directories.
+  It never discloses paths, file contents/hashes
+  or reads weights. Match is not proof of live
+  model selection, backend, revision or No-Egress.
+- Independent serving owner evidence of artifact
+  identity and effective request backend remains
+  REQUIRED. All fresh server checks need separate
+  operational approval. No Stage11 acceptance
+  gate closed; Stage11 BLOCKED, Stage12 NOT_STARTED.

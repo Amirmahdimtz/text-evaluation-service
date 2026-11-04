@@ -1157,3 +1157,43 @@ experiment and must preserve strict output validation,
 redaction, no-egress requirements and shared-resource limits.
 No inference, operational changes or GPU tests were
 performed by the assistant in processing this report.
+
+## 2026-11-04 — prepared Stage11 reason-sensitivity and owner artifact checks
+
+**Historical Simorgh observation, not a new measurement:** both
+24-step fixed synthetic XGrammar CPU matchers showed >100ms
+mask fills at steps 15-19. Offset labels put steps 15-18 in
+the VALUE of the third sorted fixture field, `reason`.
+The effective live guided decoder and served model/tokenizer
+still remain UNVERIFIED after launch metadata showed default AUTO.
+
+Prepared two **additional** fixed synthetic valid `reason`
+fixtures behind the explicit
+`--emit-runtime-script --reason-sensitivity` option on the
+existing Stage11 CPU tokenizer profiler: short reason and
+different text of equal character length. This preserves the
+real Pydantic schema, compiles the same grammar once, keeps
+two historical baseline matchers, and uses two additional
+fresh matchers (four <=24-step traces, <=96 mask fills).
+It returns timing/position aggregates, fully offset-aligned
+reason-value totals when available, and no token values or
+model data. The CPU=25s, wall=45s, compiler thread=1 and
+cache=32MiB limits remain. New actual CPU measurements
+need a distinct shared-container owner approval.
+
+Added a **separate opt-in read-only** local config/tokenizer
+byte comparison helper
+`scripts/verification/stage11_serving_artifact_match.py`.
+Two absolute directories must be privately owner-approved,
+with the served path independently established from trusted
+deployment evidence. Result only reports allowlisted file
+equality booleans and counts; no paths, hashes, contents,
+weight files or model inference. Matching files by
+themselves are **NOT** evidence that live vLLM selected them.
+
+See `docs/verification/18_stage11_serving_artifact_attestation.md`
+for both procedures and limits. Neither experiment has been
+run on Simorgh yet. Real served model provenance, request-
+effective guided backend, GPU mask cost and structured
+response validity PENDING_SERVER. Stage11 BLOCKED,
+Stage12 NOT_STARTED.

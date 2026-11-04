@@ -723,3 +723,26 @@ three-domain acceptance and GPU logits
 mask application PENDING_SERVER. These outputs
 did not constitute No-Egress attestation.
 Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — Stage11 reason variants and artifact equality test additions
+
+Prepared `stage11_xgrammar_tokenizer_profile.py` with a
+separately gated reason sensitivity option (2 extra
+fixed synthetic matchers), schema validation, aggregate
+redacted timings, fail-closed region statistics and
+no token/log contents. Added synthetic regression tests
+for CLI consent, fixed valid fixtures, bounded run and
+default no-extra-work behavior.
+
+Added `stage11_serving_artifact_match.py` with an
+offline-only default, opt-in bounded local comparison
+of owner-provided config/tokenizer paths, redacted
+file equality reports, same-directory rejection and
+positive/negative no-leakage tests. Wired tests into
+the existing Stage11-preflight workflow.
+
+Prior Simorgh **26 tests PASS** and earlier CI **200
+focused tests PASS** are from the previous revision.
+New CI evidence must be observed; no server/GPUs were
+used by the assistant. Model/Backend identity and
+reason-variant results PENDING_SERVER.

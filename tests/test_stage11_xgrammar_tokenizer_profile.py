@@ -44,6 +44,9 @@ def test_generated_script_is_static_pinned_and_no_network_or_gpu(capsys):
     assert "accept_token" in source
     assert "MAX_STEPS = 24" in source
     assert "MAX_TRACES = 2" in source
+    assert "REASON_SENSITIVITY = False" in source
+    assert "MAX_CPU_SECONDS = 25" in source
+    assert "MAX_WALL_SECONDS = 45" in source
     assert "return_offsets_mapping=True" in source
     assert "_structural_step_labels(" in source
     assert "_slow_mask_step_indices(fill_ms, 10.0)" in source
@@ -64,7 +67,7 @@ def _run_generated(tmp_path, *, configured=True, xgrammar_broken=False,
                    mask_rejects=False, tokenizer_network=False,
                    mismatch_version=False, missing_config=False,
                    subclass_import=False, transformers_import_error=False,
-                   xgrammar_import_error=False):
+                   xgrammar_import_error=False, reason_sensitivity=False):
     """Execute synthetic modules; no real tokenizer, GPU or network."""
     for name, version in [("vllm", "0.10.2"),
                           ("xgrammar", "0.1.22" if mismatch_version else "0.1.23")]:
@@ -133,7 +136,8 @@ def _run_generated(tmp_path, *, configured=True, xgrammar_broken=False,
     else:
         env.pop("STAGE11_LOCAL_TOKENIZER_DIR", None)
     return subprocess.run(
-        [sys.executable, "-B", "-c", profile.build_runtime_script()],
+        [sys.executable, "-B", "-c", profile.build_runtime_script(
+            reason_sensitivity=reason_sensitivity)],
         env=env, cwd=tmp_path, capture_output=True, text=True, timeout=12,
         check=False,
     )
@@ -423,3 +427,79 @@ def test_two_synthetic_traces_are_bounded_and_redacted(tmp_path):
     assert "sample_code" not in result.stdout
     assert "Synthetic diagnostic only." not in result.stdout
     assert "local-tokenizer" not in result.stdout
+
+
+def test_reason_sensitivity_requires_emitting_script(capsys):
+    with pytest.raises(SystemExit) as error:
+        profile.main(["--reason-sensitivity"])
+    assert error.value.code == 2
+    assert "requires --emit-runtime-script" in capsys.readouterr().err
+
+
+def test_reason_sensitivity_generated_script_is_fixed_and_cpu_only(capsys):
+    assert profile.main([
+        "--emit-runtime-script", "--reason-sensitivity",
+    ]) == 0
+    emitted = capsys.readouterr().out
+    ast.parse(emitted)
+    assert emitted == profile.build_runtime_script(reason_sensitivity=True)
+    assert "REASON_SENSITIVITY = True" in emitted
+    assert "MAX_STEPS = 24" in emitted
+    assert "MAX_TRACES = 2" in emitted
+    assert "MAX_CPU_SECONDS = 25" in emitted
+    assert "CUDA_VISIBLE_DEVICES" in emitted
+    assert "HF_HUB_OFFLINE" in emitted
+    assert "socket.socket = _NetworkDeniedSocket" in emitted
+    assert "model.generate" not in emitted
+    assert "docker exec" not in emitted
+
+
+def test_fixed_reason_variants_preserve_validated_contract():
+    original = profile._fixed_synthetic_json(profile._SYNTHETIC_OUTPUT)
+    parsed = json.loads(original)
+    assert list(parsed) == sorted(parsed)
+    assert parsed["reason"] == "Synthetic diagnostic only."
+    with pytest.raises(Exception):
+        profile._fixed_synthetic_json({
+            **profile._SYNTHETIC_OUTPUT, "reason": "",
+        })
+
+
+def test_reason_sensitivity_runs_exactly_two_bounded_redacted_variants(tmp_path):
+    result = _run_generated(tmp_path, token_count=300, reason_sensitivity=True)
+    assert result.returncode == 0, result.stdout
+    report = json.loads(result.stdout)
+    assert report["status"] == "CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED"
+    assert report["cpu_synthetic_reason_sensitivity_enabled"] is True
+    assert report["cpu_synthetic_mask_repeat_count"] == 2
+    rows = report["cpu_synthetic_reason_sensitivity_rows"]
+    assert [row["fixture"] for row in rows] == [
+        "REASON_SHORT", "REASON_SAME_LENGTH",
+    ]
+    assert all(row["mask_fill_steps"] == 24 for row in rows)
+    assert all(row["mask_fill_total_ms"] >= 0 for row in rows)
+    assert all(
+        row["reason_value_alignment"] in ("ALIGNED", "UNVERIFIED")
+        and row["slow_step_structural_alignment"] in ("ALIGNED", "UNVERIFIED")
+        for row in rows
+    )
+    assert all(
+        1 <= step <= 24
+        for row in rows for step in row["mask_fill_steps_gt_100ms"]
+    )
+    assert report["cpu_synthetic_baseline_reason_value_alignment"] == "ALIGNED"
+    assert report["cpu_synthetic_repeat2_reason_value_alignment"] == "ALIGNED"
+    assert report["model_inference_requests"] == 0
+    assert report["gpu_model_execution"] is False
+    assert report["network_requests"] == 0
+    for forbidden in ("sample_code", "Synthetic diagnostic only.",
+                      "local-tokenizer", "REASON_SAME_LENGTH_TEXT"):
+        assert forbidden not in result.stdout
+
+
+def test_default_runtime_does_not_execute_sensitivity_variants(tmp_path):
+    result = _run_generated(tmp_path, token_count=300)
+    assert result.returncode == 0, result.stdout
+    report = json.loads(result.stdout)
+    assert report["cpu_synthetic_reason_sensitivity_enabled"] is False
+    assert report["cpu_synthetic_reason_sensitivity_rows"] == []

@@ -439,3 +439,19 @@ backend selection or service SLO was observed.
 Historical 29.118s vs 2.327s requests remain
 non-causal, incomplete and invalid.
 Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — bounded reason sensitivity plan, no new latency data
+
+Added an explicitly opt-in Stage11 fixed-synthetic CPU
+experiment: two baseline and two reason-variant matcher
+traces, maximum 96 mask fills, one compiled grammar and
+existing CPU/wall/thread/cache limits. The variants
+compare short and equal-length-different synthetic
+`reason` values. The output contains only aggregate
+times, slow-step indices and bounded JSON structural
+categories with validated offsets. Tokenization may
+change, so any association is exploratory, not causal.
+No new Simorgh measurements were performed. The 1159.124ms
+and 1146.884ms last-observed baseline times are unchanged.
+Effective backend/provenance, real GPU performance and
+production SLO remain PENDING_SERVER. Stage11 BLOCKED.
