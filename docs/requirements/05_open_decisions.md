@@ -1446,3 +1446,15 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   gates remain PENDING_SERVER. New positions PENDING_SERVER
   until a separately authorized owner run. Stage11 BLOCKED;
   Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — confirmed CI for slow-step locator
+
+- Commit `ca8ba2f`: safe fixed-threshold, 1-based synthetic
+  slow mask step indices, without raw tokens/IDs/paths.
+- [CI run 41817026931](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41817026931)
+  SUCCESS: 59 offline Stage11 safety tests and 194 focused
+  Provider/diagnostic tests PASS. This is software evidence.
+- New Simorgh slow-step indices and grammar-state attribution
+  still PENDING_SERVER; backend, GPU performance and
+  release acceptance remain unverified. Stage11 BLOCKED;
+  Stage12 NOT_STARTED.

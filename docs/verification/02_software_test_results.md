@@ -618,3 +618,19 @@ tests PASS pertained to an older version. New CI results
 and new real on-host indices must be recorded separately.
 No model inference, server change or GPU test occurred
 in preparing this code. Stage11 BLOCKED.
+
+### CI evidence for slow-step locator — 2026-11-04
+
+[GitHub Actions run 41817026931](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41817026931)
+completed **SUCCESS** on commit ca8ba2f37ed9e0afcd7adbf6656c48cd0abf25d8.
+The actual CI logs show **59** Stage11 offline safety tests
+PASS and **194** focused synthetic/Provider/diagnostic tests
+PASS. The default CPU profile command still returned
+`OFFLINE_TOKENIZER_PROFILE_PLAN`, with zero Docker,
+network or inference operations.
+
+This validates the slow-step-index classification code
+and its synthetic regression tests, not any real
+on-host positions. One shared-container operator-run
+CPU-only profiler with owner approval remains
+PENDING_SERVER. No Stage11 acceptance gate was closed.
