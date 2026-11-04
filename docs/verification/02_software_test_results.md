@@ -939,3 +939,25 @@ model identity `UNVERIFIED`, all remaining
 real-model/security/quality/E2E acceptance
 `PENDING_SERVER`. Stage11 `BLOCKED`,
 Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — bounded historical Docker log search: result only
+
+Operator-provided read-only Docker metadata:
+running container log driver `json-file`, log path
+configured, start 2026-11-03T10:47:30.533226937Z;
+container `max-size`/`max-file` blank.
+A date-wide presence check returned
+`historical_logs_present=YES`. A subsequent
+bounded last-1200-lines search for
+2026-11-04 13:00–13:30 UTC reported
+`BOUNDED_SCAN_COMPLETED`, all searched
+request/queue/prefill/decode/TTFT/abort markers
+`NO`, and `periodic_engine_stats=YES`.
+These are operator-reported categorical findings,
+not independently executed assistant server tests.
+The scan does not establish complete coverage or
+prove the absence of request-specific traces.
+No new inference, GPU, Docker settings or
+service modifications occurred.
+Historical 45.072s request phases `UNAVAILABLE`;
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

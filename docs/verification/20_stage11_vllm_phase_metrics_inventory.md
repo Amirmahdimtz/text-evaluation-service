@@ -237,3 +237,46 @@ If such history was not retained, mark the old
 per-request profiling needs a **new** explicitly
 approved controlled GPU window. Stage11 `BLOCKED`;
 Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — historical Docker logging configuration and bounded pattern scan
+
+Operator-only, metadata-first Docker inspection on Simorgh reported:
+`log_driver=json-file`, `log_path_configured=yes`,
+container `started_at=2026-11-03T10:47:30.533226937Z`.
+Per-container `max-size` and `max-file` options were
+blank; this is **not independent proof** of full retention
+or absence of daemon defaults, external rotation or deletion.
+
+A separate bounded `docker logs` check for
+2026-11-04T00:00:00Z–2026-11-05T00:00:00Z returned
+`historical_logs_present=YES`. This attests to at least
+some logs in that period, **not** the failed request's
+own log record.
+
+An operator-approved pattern-only scan of the **last
+1200 log lines** within 2026-11-04 13:00–13:30 UTC
+returned `BOUNDED_SCAN_COMPLETED` with:
+`request_marker=NO`, `queue_timing=NO`,
+`prefill_timing=NO`, `decode_timing=NO`,
+`first_token_timing=NO`,
+`abort_or_disconnect=NO`,
+`periodic_engine_stats=YES`.
+This establishes that the searched patterns did not
+match the portion scanned, while at least one known
+periodic engine-statistics phrase did. It does **not**
+exclude different log formats, other records outside
+the last-1200-line slice, or a separate private
+request-tracing backend. Neither arbitrary log
+lines nor private request content were supplied
+to the assistant.
+
+**Decision:** do not extract or publish raw Docker
+logs, infer request identity/timing from periodic
+engine statistics, or upgrade the failed request's
+queue/prefill/decode decomposition to either PASS
+or `UNRECOVERABLE` without verifying actual
+retention and trace availability. Historical
+per-request timings remain `UNAVAILABLE`; owner-only
+trace existence `UNVERIFIED`. No GPU
+request, service change or log configuration change.
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

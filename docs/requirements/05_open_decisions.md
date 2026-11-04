@@ -1828,3 +1828,30 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   attribution `UNVERIFIED`, Stage11
   `BLOCKED`, Stage12 `NOT_STARTED`;
   original mandatory gates unchanged.
+
+### Stage11 — 2026-11-04 — Docker logs exist, per-request phase traces not yet found
+
+- Simorgh operator reported `json-file` with a
+  configured log path, blank per-container
+  `max-size/max-file`, and container startup
+  2026-11-03T10:47:30.533226937Z.
+  A date-wide historical log presence check
+  returned YES for November 4, 2026.
+- A **bounded last-1200-line** scan of
+  13:00–13:30 UTC was completed; known request
+  markers, queue/prefill/decode/TTFT and
+  abort/disconnect patterns were all NO,
+  but periodic engine stats were YES.
+- Decision: treat this as negative evidence
+  **only for the searched patterns and slice**.
+  It is not a verified historical request trace,
+  not an exhaustive full-interval log audit
+  and not proof of definitive non-retention.
+  The 45.072s request phase breakdown remains
+  `UNAVAILABLE`. Require owner-approved
+  private request-correlated telemetry, or
+  conclude `UNRECOVERABLE` only after
+  retention/existing tracing are evaluated.
+- No request to GPU, raw logs published or
+  Stage11 acceptance gate closed. Stage11
+  `BLOCKED`, Stage12 `NOT_STARTED`.
