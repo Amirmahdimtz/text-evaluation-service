@@ -1515,3 +1515,15 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - New CI and Simorgh results PENDING until executed.
   Formal Stage11 gates PENDING_SERVER, Stage11 BLOCKED,
   Stage12 NOT_STARTED. No production changes.
+
+### Stage11 — 2026-11-04 — paired CPU diagnostic CI verified
+
+- [Actions 41820284997](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41820284997)
+  SUCCESS on `d1532fc`: **59** Stage11 offline safety
+  and **200** focused diagnostic/Provider tests passed.
+- New repeat-matcher and synthetic JSON structural mapping
+  passed with *stubs*, not the real on-host XGrammar model.
+  Actual two-trace Simorgh results and real backend
+  attribution are PENDING_SERVER.
+- Production code and serving process unchanged; no release
+  gate satisfied. Stage11 BLOCKED; Stage12 NOT_STARTED.

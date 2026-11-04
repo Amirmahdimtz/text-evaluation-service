@@ -680,3 +680,13 @@ software test addition; prior Simorgh 20 PASS and CI
 New CI and new Simorgh measurements must be recorded
 separately; no GPU model inference was done here.
 Stage11 BLOCKED.
+
+### Verified CI for paired synthetic CPU matcher profiling — 2026-11-04
+
+[Actions 41820284997](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41820284997)
+finished SUCCESS on `d1532fc`: **59** Stage11 offline
+safety tests and **200** focused diagnostic/Provider
+tests passed. Default CLI reported zero network, Docker,
+GPU and model-inference calls. Actual Simorgh two-trace
+results and structural label mapping are still
+`PENDING_SERVER`; Stage11 `BLOCKED`.
