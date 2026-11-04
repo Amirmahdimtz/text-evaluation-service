@@ -910,3 +910,32 @@ or live model GPU inference. The real on-host
 phase inventory remains `PENDING_OPERATOR`;
 historical request phase attribution `UNAVAILABLE`;
 Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — Simorgh Stage11 phase-metrics GET observed
+
+Operator pulled `main` through `cf3f89c`,
+ran `test_stage11_vllm_phase_inventory.py`
+and `test_stage11_vllm_diagnostics.py`:
+**38 PASSED in 0.31s**.
+One explicitly requested read-only local
+`GET /metrics` returned
+`READ_ONLY_SHARED_PHASE_INVENTORY`,
+`network_requests=1`, `model_inference_requests=0`,
+`gpu_model_execution=false`.
+Shared service phase histogram counts: 6 for
+queue/prefill/decode/inference/end-to-end and 12
+for time-to-first-token. End-to-end sum
+**63.618374s**, decode sum **62.235655s**.
+Current gauges: `running=0`, `waiting=0`,
+`swapped=null`. Metadata/label redaction
+reported enabled; no raw metric labels or
+model IDs were emitted by the tool.
+
+**Evidence status:** 38 software tests `PASS`,
+read-only aggregate exporter inventory `OBSERVED`,
+historical 45.072s failed media request phase
+split `UNAVAILABLE`, request-level backend and
+model identity `UNVERIFIED`, all remaining
+real-model/security/quality/E2E acceptance
+`PENDING_SERVER`. Stage11 `BLOCKED`,
+Stage12 `NOT_STARTED`.

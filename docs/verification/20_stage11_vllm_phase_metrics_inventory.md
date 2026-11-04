@@ -171,3 +171,69 @@ checks also succeeded. The CI did **not** connect
 to Simorgh or generate an inference request; the
 opt-in metrics GET and any owner-only request
 telemetry inspection remain `PENDING_OPERATOR`.
+
+## 2026-11-04 — actual Simorgh live exporter snapshot (operator observed)
+
+After pulling `main` through `cf3f89c`, the operator ran
+`tests/test_stage11_vllm_phase_inventory.py` and
+`tests/test_stage11_vllm_diagnostics.py`: **38 passed in 0.31s**.
+The separately approved read-only
+`stage11_vllm_phase_inventory --inspect-local-metrics`
+returned `READ_ONLY_SHARED_PHASE_INVENTORY`, with
+**one loopback GET**, zero model inference requests
+and zero GPU model execution.
+
+These are **shared lifetime histogram aggregates**,
+not observations attributable to the earlier media
+criterion request:
+
+| Phase metric | Count | Sum (seconds) | Shared mean (seconds) |
+|---|---:|---:|---:|
+| queue | 6 | 0.056605 | 0.009434 |
+| prefill | 6 | 0.741958 | 0.123660 |
+| decode | 6 | 62.235655 | 10.372609 |
+| inference | 6 | 62.977613 | 10.496269 |
+| end-to-end | 6 | 63.618374 | 10.603062 |
+| time to first token | **12** | 1.762285 | 0.146857 |
+
+**Observation:** across the six reported decode and end-to-end
+histogram samples, decode sum / end-to-end sum is approximately
+**97.8%**. This supports prioritizing decode profiling for the
+*reported shared-service sample population*, but does **not**
+show that the previously failed **45.072-second** media request
+spent 97.8% of its own time decoding. Histogram buckets/labels
+were deliberately discarded; counts may reflect different
+recording semantics/populations. In particular, **TTFT count
+12 differs from the other counts of 6**, so one must not
+combine the histograms into a fabricated single-request
+timeline, or assume 6 requests completed successfully.
+
+The current service snapshot reported `running=0`,
+`waiting=0`, `swapped=null`. This is a point-in-time
+observation **after** the prior timeout, not evidence
+that the queue was empty during that request.
+`swapped=null` means no usable metric sample was
+recorded, not that there were zero swapped requests.
+
+**What was NOT learned:** the request-level queue time,
+prefill time, decode time, TTFT, number of generated tokens,
+whether the engine continued after client cancellation,
+effective guided decoding backend, served model/tokenizer
+identity, or the direct cause of the timeout remain
+`UNVERIFIED/UNAVAILABLE`. The 45-second one-request
+GPU authorization was already consumed. No new model
+POST, service configuration change, reset, external
+network call or GPU experiment occurred.
+
+**Next action, private owner-only:** check whether
+**already retained** request-correlated metadata contains
+queue-enter/scheduled, prefill-complete/first-token,
+completion-or-abort and client disconnect timestamps.
+Use only redacted and authorized status/phase durations
+from an existing trusted request ID (do not publish
+that ID, raw logs, model text or private paths).
+If such history was not retained, mark the old
+45-second phase split `UNRECOVERABLE`; subsequent
+per-request profiling needs a **new** explicitly
+approved controlled GPU window. Stage11 `BLOCKED`;
+Stage12 `NOT_STARTED`.

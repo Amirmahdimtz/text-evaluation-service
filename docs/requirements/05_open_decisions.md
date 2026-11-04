@@ -1792,3 +1792,39 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   security clearance or Stage11 product gate
   was completed. Stage11 `BLOCKED`,
   Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-04 — Simorgh global queue/prefill/decode metrics observed
+
+- Operator pulled `cf3f89c`: **38** Stage11
+  phase-inventory/diagnostic tests PASS in
+  **0.31s**. Approved one-GET read-only
+  `/metrics` inventory returned
+  `READ_ONLY_SHARED_PHASE_INVENTORY` with
+  zero inference/GPU model calls.
+- Lifetime **shared-service** histogram samples:
+  queue count=6 sum=0.056605s mean=0.009434s;
+  prefill count=6 sum=0.741958s mean=0.123660s;
+  decode count=6 sum=62.235655s mean=10.372609s;
+  inference count=6 sum=62.977613s mean=10.496269s;
+  E2E count=6 sum=63.618374s mean=10.603062s.
+  Decode/E2E cumulative share approximately
+  **97.8% for these shared aggregates**, not
+  for the failed media request. TTFT has count
+  **12**, sum 1.762285s, mean 0.146857s;
+  do not combine populations into one request.
+- Point-in-time shared queue gauges at sampling:
+  `running=0`, `waiting=0`; swapped `null`
+  (unavailable), **not** proof of queue status
+  during the historical timeout.
+- Decision: prioritize verification of already-retained
+  **per-request**, permissioned, redacted request
+  lifecycle timings and effective guided decoder;
+  current aggregate histograms cannot identify
+  the 45.072s media request's queue/prefill/decode
+  time. If no retained correlated trace exists,
+  report `UNRECOVERABLE`; do not infer phase
+  values or retry GPU inference under spent consent.
+- Narrow global metrics `OBSERVED`, request
+  attribution `UNVERIFIED`, Stage11
+  `BLOCKED`, Stage12 `NOT_STARTED`;
+  original mandatory gates unchanged.

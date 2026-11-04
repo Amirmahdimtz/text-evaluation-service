@@ -192,3 +192,21 @@ An owner-approved private request-specific event timeline
 No new GPU or model calls, source content extraction,
 service changes or operational gate closure.
 Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+## 2026-11-04 — current shared phase metrics on Simorgh
+
+With 38 targeted software tests PASS, a single
+read-only local exporter snapshot was observed.
+Shared lifetime histogram sums for six samples:
+queue **0.056605s**, prefill **0.741958s**,
+decode **62.235655s**, inference **62.977613s**,
+E2E **63.618374s**. TTFT had 12 samples;
+point-in-time gauges running=0/waiting=0,
+swapped metric unavailable. No inference calls.
+Decode accounts for about 97.8% of E2E
+**aggregated sums**; this does not attribute
+the historical failed 45.072s media request.
+Per-request timing/effective backend
+`UNVERIFIED` pending owner-retained evidence,
+else historical decomposition `UNRECOVERABLE`.
+Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.

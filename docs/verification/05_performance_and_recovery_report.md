@@ -546,3 +546,34 @@ See `20_stage11_vllm_phase_metrics_inventory.md`.
 No model POST, GPU execution, vLLM restart, settings
 change or private log inspection performed.
 Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — observed Simorgh shared vLLM phase histograms
+
+Operator reported **38** focused software tests PASS in
+**0.31s** and one read-only local `/metrics` snapshot,
+`READ_ONLY_SHARED_PHASE_INVENTORY`. No new inference.
+For each of six **shared lifetime** samples:
+queue 0.056605s total / 0.009434s mean;
+prefill 0.741958s / 0.123660s;
+decode 62.235655s / 10.372609s;
+inference 62.977613s / 10.496269s;
+end-to-end 63.618374s / 10.603062s.
+Decode was approximately **97.8%** of the
+shared sample aggregate E2E total. This is a
+population-level bottleneck hypothesis, **not**
+the prior failed media request's decode share.
+TTFT had **12** samples (1.762285s cumulative),
+versus six for the other metrics; do not join
+histogram means into a single request.
+
+At sampling time `running=0`, `waiting=0`;
+`swapped=null` (unavailable, not zero). This
+does not establish the queue state at the
+earlier 45.072s timeout. Historical phase
+breakdown remains `UNAVAILABLE`. Private,
+owner-approved per-request retained lifecycle
+evidence is required for attribution;
+if absent the historical decomposition is
+`UNRECOVERABLE`. No change to vLLM, schema,
+timeouts, model, or existing GPU permissions.
+Stage11 BLOCKED; Stage12 NOT_STARTED.

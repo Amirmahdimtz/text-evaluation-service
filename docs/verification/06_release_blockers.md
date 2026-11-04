@@ -221,3 +221,28 @@ UNRECOVERABLE and obtain a new separately scoped GPU
 test approval *before* any instrumented inference.
 No status changes to product and 56-ID gate.
 Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — phase metric exporter observed, attribution remains blocked
+
+On Simorgh, the opt-in **one read-only**
+local phase inventory returned shared
+queue/prefill/decode/inference/E2E histogram
+summaries and current queue gauges without
+inference. All main histogram counts were
+6; TTFT count was **12**. For the six
+reported shared-service samples, decode
+sum **62.235655s** of E2E **63.618374s**
+(~97.8%). No historical request-specific
+timeline can be extracted from this
+later exporter snapshot. The queue gauge
+was 0 only at sampling time; this is not
+proof about previous queuing. The media
+request's **45072ms timeout** remains
+unexplained at phase level. The remaining
+blocker is authorized historical per-request
+timing/cancellation evidence and effective
+backend/model provenance from the service
+owner, or marking unavailable historical
+evidence UNRECOVERABLE. GPU test consent
+already consumed; no new GPU request.
+Stage11 BLOCKED, Stage12 NOT_STARTED.
