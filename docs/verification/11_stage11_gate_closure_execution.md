@@ -99,3 +99,16 @@ quality/latency/security gate or real serving GPU
 acceptance was closed. No code or operational runtime
 changes were needed. Stage11 `BLOCKED`,
 Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — Stage11 CPU structural-location and second matcher preparation
+
+The existing CPU-only diagnostic is extended to a
+maximum two fixed synthetic JSON token traces, 24
+steps per trace, and redacted coarse structural
+labels only when tokenizer offsets validate exactly.
+New tests and CI are distinct from old on-host
+results. A new one-shot owner-approved CPU-only
+shared-container run remains PENDING_SERVER.
+No model/server/GPU changes, no formal model
+quality or E2E gate closed. Stage11 BLOCKED;
+Stage12 NOT_STARTED.

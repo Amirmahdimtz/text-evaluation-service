@@ -49,6 +49,7 @@ SCHEMA_JSON = __SCHEMA_JSON__
 SCHEMA_SHA256 = __SCHEMA_SHA256__
 SYNTHETIC_OUTPUT_JSON = __SYNTHETIC_OUTPUT_JSON__
 MAX_STEPS = 24
+MAX_TRACES = 2
 MAX_CPU_SECONDS = 25
 MAX_WALL_SECONDS = 45
 
@@ -118,6 +119,75 @@ def _slow_mask_step_indices(fill_ms, threshold_ms):
         index for index, elapsed_ms in enumerate(fill_ms, start=1)
         if elapsed_ms > threshold_ms
     ]
+
+
+def _json_structure(text):
+    """Categorize characters in the fixed synthetic JSON, without emitting text."""
+    try:
+        obj = json.loads(text)
+        if not isinstance(obj, dict) or not obj or not text.startswith("{"):
+            return None
+        regions = [("SYNTAX", None)] * len(text)
+        decoder = json.JSONDecoder()
+        cursor = 1
+        for ordinal, (name, expected_value) in enumerate(obj.items(), 1):
+            if ordinal > 1:
+                if text[cursor] != ",":
+                    return None
+                cursor += 1
+            key, end = decoder.raw_decode(text, cursor)
+            if type(key) is not str or key != name:
+                return None
+            regions[cursor:end] = [("KEY", ordinal)] * (end - cursor)
+            cursor = end
+            if text[cursor] != ":":
+                return None
+            cursor += 1
+            actual, end = decoder.raw_decode(text, cursor)
+            if actual != expected_value:
+                return None
+            regions[cursor:end] = [("VALUE", ordinal)] * (end - cursor)
+            cursor = end
+        return regions if text[cursor:] == "}" else None
+    except (ValueError, IndexError, TypeError):
+        return None
+
+
+def _structural_step_labels(tokenizer, text, ids, slow_steps):
+    """Return only step, JSON region and ordinal; fail closed on bad offsets."""
+    try:
+        regions = _json_structure(text)
+        if regions is None:
+            return "UNVERIFIED", []
+        encoded = tokenizer(
+            text, add_special_tokens=False, return_offsets_mapping=True)
+        offsets = encoded["offset_mapping"]
+        if encoded["input_ids"] != ids or len(offsets) != len(ids):
+            return "UNVERIFIED", []
+        for span in offsets:
+            if not isinstance(span, (tuple, list)) or len(span) != 2:
+                return "UNVERIFIED", []
+            start, end = span
+            if (type(start) is not int or type(end) is not int
+                    or not 0 <= start < end <= len(text)):
+                return "UNVERIFIED", []
+        labels = []
+        for step in slow_steps:
+            if type(step) is not int or not 1 <= step <= min(MAX_STEPS, len(ids)):
+                return "UNVERIFIED", []
+            start, end = offsets[step - 1]
+            categories = set(regions[start:end])
+            category, ordinal = (
+                next(iter(categories)) if len(categories) == 1
+                else ("CROSS_REGION", None)
+            )
+            labels.append({
+                "step": step, "json_region": category,
+                "field_ordinal": ordinal,
+            })
+        return "ALIGNED", labels
+    except Exception:
+        return "UNVERIFIED", []
 
 
 def _mask_fill_distribution(fill_ms):
@@ -243,30 +313,47 @@ def main():
                        versions=versions)
 
     try:
-        matcher = xgr.GrammarMatcher(compiled)
-        bitmask = xgr.allocate_token_bitmask(1, vocab_size)
-        # No prompt or model output. Token IDs come from one fixed synthetic JSON.
+        # No prompt or model output; the same static synthetic JSON is used twice.
         ids = tokenizer.encode(SYNTHETIC_OUTPUT_JSON, add_special_tokens=False)
         if not isinstance(ids, list) or not ids or not all(
                 type(token) is int and 0 <= token < vocab_size for token in ids):
             return _report("SYNTHETIC_TOKENIZATION_UNVERIFIED", exit_code=2,
                            versions=versions)
-        fill_ms = []
-        accept_ms = []
-        for token in ids[:MAX_STEPS]:
-            start = time.perf_counter()
-            matcher.fill_next_token_bitmask(bitmask, 0)
-            fill_ms.append(_elapsed_ms(start))
-            start = time.perf_counter()
-            accepted = matcher.accept_token(token)
-            accept_ms.append(_elapsed_ms(start))
-            if not accepted:
-                return _report("SYNTHETIC_GRAMMAR_TOKEN_REJECTED", exit_code=2,
-                               versions=versions)
-        distribution = _mask_fill_distribution(fill_ms)
-        if distribution is None:
+        if len(ids) < 2:
             return _report("SYNTHETIC_MASK_STEPS_INSUFFICIENT", exit_code=2,
                            versions=versions)
+        traces = []
+        for _ in range(MAX_TRACES):
+            # Reuse compiled grammar; independently initialize each matcher.
+            matcher = xgr.GrammarMatcher(compiled)
+            bitmask = xgr.allocate_token_bitmask(1, vocab_size)
+            fill_times, accept_times = [], []
+            for token in ids[:MAX_STEPS]:
+                start = time.perf_counter()
+                matcher.fill_next_token_bitmask(bitmask, 0)
+                fill_times.append(_elapsed_ms(start))
+                start = time.perf_counter()
+                accepted = matcher.accept_token(token)
+                accept_times.append(_elapsed_ms(start))
+                if not accepted:
+                    return _report("SYNTHETIC_GRAMMAR_TOKEN_REJECTED",
+                                   exit_code=2, versions=versions)
+            traces.append((fill_times, accept_times))
+        fill_ms, accept_ms = traces[0]
+        repeat_fill_ms, repeat_accept_ms = traces[1]
+        distribution = _mask_fill_distribution(fill_ms)
+        repeat_distribution = _mask_fill_distribution(repeat_fill_ms)
+        if distribution is None or repeat_distribution is None:
+            return _report("SYNTHETIC_MASK_STEPS_INSUFFICIENT",
+                           exit_code=2, versions=versions)
+        hot10 = _slow_mask_step_indices(fill_ms, 10.0)
+        hot100 = _slow_mask_step_indices(fill_ms, 100.0)
+        repeat_hot10 = _slow_mask_step_indices(repeat_fill_ms, 10.0)
+        repeat_hot100 = _slow_mask_step_indices(repeat_fill_ms, 100.0)
+        alignment, regions = _structural_step_labels(
+            tokenizer, SYNTHETIC_OUTPUT_JSON, ids, hot100)
+        repeat_alignment, repeat_regions = _structural_step_labels(
+            tokenizer, SYNTHETIC_OUTPUT_JSON, ids, repeat_hot100)
     except TimeoutError:
         return _report("RESOURCE_BUDGET_EXCEEDED", exit_code=4,
                        versions=versions)
@@ -285,11 +372,23 @@ def main():
         cpu_synthetic_mask_fill_steps=len(fill_ms),
         cpu_synthetic_mask_fill_total_ms=round(sum(fill_ms), 3),
         cpu_synthetic_mask_fill_max_ms=round(max(fill_ms), 3),
-        cpu_synthetic_mask_fill_steps_gt_10ms=(
-            _slow_mask_step_indices(fill_ms, 10.0)
+        cpu_synthetic_mask_fill_steps_gt_10ms=hot10,
+        cpu_synthetic_mask_fill_steps_gt_100ms=hot100,
+        cpu_synthetic_mask_structural_alignment=alignment,
+        cpu_synthetic_mask_slow_step_regions=regions,
+        cpu_synthetic_mask_repeat_count=MAX_TRACES,
+        cpu_synthetic_mask_repeat2_steps=len(repeat_fill_ms),
+        cpu_synthetic_mask_repeat2_total_ms=round(sum(repeat_fill_ms), 3),
+        cpu_synthetic_mask_repeat2_first_ms=repeat_fill_ms[0],
+        cpu_synthetic_mask_repeat2_rest_median_ms=(
+            repeat_distribution["cpu_synthetic_mask_fill_rest_median_ms"]
         ),
-        cpu_synthetic_mask_fill_steps_gt_100ms=(
-            _slow_mask_step_indices(fill_ms, 100.0)
+        cpu_synthetic_mask_repeat2_steps_gt_10ms=repeat_hot10,
+        cpu_synthetic_mask_repeat2_steps_gt_100ms=repeat_hot100,
+        cpu_synthetic_mask_repeat2_structural_alignment=repeat_alignment,
+        cpu_synthetic_mask_repeat2_slow_step_regions=repeat_regions,
+        cpu_synthetic_mask_repeat2_accept_total_ms=(
+            round(sum(repeat_accept_ms), 3)
         ),
         **distribution,
         cpu_synthetic_token_accept_total_ms=round(sum(accept_ms), 3),

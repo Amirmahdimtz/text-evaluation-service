@@ -1488,3 +1488,30 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   Synthetic localization `OBSERVED`, model-backed gates
   `PENDING_SERVER`, Stage11 `BLOCKED`,
   Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-04 — safe diagnosis of repeated mask spikes
+
+- Last real Simorgh observation: fixed synthetic
+  CPU slow positions [15,16,17,18,19], each >100ms,
+  24 steps total 1150.577ms; causes/grammar states unknown.
+- Decision: reuse the current Stage11-only fixed synthetic
+  profiler with at most TWO sequential fresh matcher traces
+  (24 tokens each), a single compiled grammar and one
+  local tokenizer. Preserve CPU and wall timeout limits,
+  the one-thread 32MiB compiler and no-network/no-GPU rules.
+  A new shared-container owner authorization is needed
+  for the expanded CPU-only workload.
+- Add safe only KEY/VALUE/SYNTAX/CROSS_REGION labels and
+  field ordinal for >100ms steps, using exactly matching
+  fast-tokenizer offsets and the synthetic fixture.
+  Unverified offsets fail closed (UNVERIFIED, no labels).
+  Never emit token IDs, token strings or grammar state.
+- Interpretation: structural region of the next
+  synthetic token is NOT a proven internal decoder
+  state; two runs are NOT a serving performance
+  benchmark. Existing guided backend metadata-only
+  inspector may prepare owner attestation, but auto
+  flags do not verify the active request backend.
+- New CI and Simorgh results PENDING until executed.
+  Formal Stage11 gates PENDING_SERVER, Stage11 BLOCKED,
+  Stage12 NOT_STARTED. No production changes.

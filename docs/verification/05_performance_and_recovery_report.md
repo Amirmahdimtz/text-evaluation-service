@@ -388,3 +388,23 @@ open. Previous 29.118s / 2.327s paired requests remain
 noncausal and incomplete. No production changes or new
 automated performance gates have been satisfied. Stage11
 `BLOCKED`; Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — paired bounded synthetic mask CPU diagnostic preparation
+
+Before this change the last real Simorgh CPU probe
+identified [15,16,17,18,19] as strictly >100ms,
+first fill 0.087ms, 24 fills total 1150.577ms.
+The enhanced probe will reuse one compiled grammar
+and local tokenizer for **two fresh matchers**, at most
+24 synthetic token fills each, reporting both sets of
+slow positions and redacted coarse JSON region labels
+based on validated fast-tokenizer offsets. A missing/
+mismatched map produces UNVERIFIED, not guessed labels.
+No model inference, user text, GPU masking, private
+path, token ID or decoded token is emitted.
+
+This additional CPU work **requires explicit shared-service
+owner approval**; no such new result is observed yet.
+The old live vLLM comparison remains non-causal and
+invalid. Real server backend/model identity and
+GPU performance remain PENDING_SERVER; Stage11 BLOCKED.

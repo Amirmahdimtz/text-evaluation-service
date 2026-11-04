@@ -43,6 +43,9 @@ def test_generated_script_is_static_pinned_and_no_network_or_gpu(capsys):
     assert "fill_next_token_bitmask" in source
     assert "accept_token" in source
     assert "MAX_STEPS = 24" in source
+    assert "MAX_TRACES = 2" in source
+    assert "return_offsets_mapping=True" in source
+    assert "_structural_step_labels(" in source
     assert "_slow_mask_step_indices(fill_ms, 10.0)" in source
     assert "_slow_mask_step_indices(fill_ms, 100.0)" in source
     assert "cpu_synthetic_mask_fill_first_ms" in source
@@ -101,7 +104,7 @@ def _run_generated(tmp_path, *, configured=True, xgrammar_broken=False,
     elif tokenizer_leaks:
         tokenizer_lines = "raise RuntimeError('SENSITIVE_TOKENIZER_PATH')"
     else:
-        tokenizer_lines = "return type('Tok', (), {'encode': lambda self, s, add_special_tokens: [1] * %d})()" % token_count
+        tokenizer_lines = "return type('Tok', (), {'encode': lambda self, s, add_special_tokens: [1] * %d, '__call__': lambda self, s, add_special_tokens, return_offsets_mapping: {'input_ids': [1] * %d, 'offset_mapping': [(min(i, len(s)-1), min(i+1, len(s))) for i in range(%d)]}})()" % (token_count, token_count, token_count)
     (tmp_path / "transformers.py").write_text(
         ("raise RuntimeError('SENSITIVE_TRANSFORMERS_IMPORT')\n"
          if transformers_import_error else "") +
@@ -154,6 +157,11 @@ def test_synthetic_tokenizer_compiler_and_mask_success(tmp_path):
     assert report["tokenizer_aware_compilation_measured"] is True
     assert report["cpu_synthetic_mask_fill_steps"] == 24
     assert report["cpu_synthetic_mask_fill_rest_steps"] == 23
+    assert report["cpu_synthetic_mask_repeat_count"] == 2
+    assert report["cpu_synthetic_mask_repeat2_steps"] == 24
+    assert report["cpu_synthetic_mask_repeat2_total_ms"] >= 0
+    assert report["cpu_synthetic_mask_structural_alignment"] == "ALIGNED"
+    assert report["cpu_synthetic_mask_repeat2_structural_alignment"] == "ALIGNED"
     gt10 = report["cpu_synthetic_mask_fill_steps_gt_10ms"]
     gt100 = report["cpu_synthetic_mask_fill_steps_gt_100ms"]
     assert gt10 == sorted(set(gt10))
@@ -329,4 +337,89 @@ def test_generated_success_report_exposes_no_synthetic_tokens(tmp_path):
     assert "synthetic_output" not in result.stdout.lower()
     assert "sample_code" not in result.stdout
     assert "synthetic diagnostic only" not in result.stdout.lower()
+    assert "local-tokenizer" not in result.stdout
+
+
+def _generated_pure_function(name, dependencies=()):
+    """Extract pure functions from the exact emitted runtime script."""
+    ast_tree = ast.parse(profile.build_runtime_script())
+    selected = [node for node in ast_tree.body
+                if isinstance(node, ast.FunctionDef)
+                and node.name in (name, *dependencies)]
+    namespace = {"json": json, "MAX_STEPS": 24}
+    exec(compile(ast.Module(body=selected, type_ignores=[]),
+                 "<safe-synthetic-helper>", "exec"), namespace)
+    return namespace[name]
+
+
+def test_json_region_mapping_only_returns_structure_and_field_ordinals():
+    regions = _generated_pure_function("_json_structure")(
+        '{"a":"v","b":[]}')
+    assert regions is not None
+    assert regions[0] == ("SYNTAX", None)
+    assert regions[1:4] == [("KEY", 1)] * 3
+    assert regions[5:8] == [("VALUE", 1)] * 3
+    assert regions[9:12] == [("KEY", 2)] * 3
+    assert regions[13:15] == [("VALUE", 2)] * 2
+    assert _generated_pure_function("_json_structure")(
+        '{"a":"v"}trailing') is None
+
+
+def test_structural_alignment_with_fixed_synthetic_offsets():
+    classify = _generated_pure_function(
+        "_structural_step_labels", ("_json_structure",))
+    text = '{"a":"v","b":[]}'
+    class Stub:
+        def __call__(self, *_args, **_kwargs):
+            return {
+                "input_ids": [1, 2, 3, 4],
+                "offset_mapping": [(1, 4), (5, 8), (8, 12), (13, 15)],
+            }
+    status, labels = classify(Stub(), text, [1, 2, 3, 4], [1, 2, 3, 4])
+    assert status == "ALIGNED"
+    assert labels == [
+        {"step": 1, "json_region": "KEY", "field_ordinal": 1},
+        {"step": 2, "json_region": "VALUE", "field_ordinal": 1},
+        {"step": 3, "json_region": "CROSS_REGION", "field_ordinal": None},
+        {"step": 4, "json_region": "VALUE", "field_ordinal": 2},
+    ]
+
+
+@pytest.mark.parametrize("offsets,token_ids", [
+    ([(-1, 99)], [1]),
+    ([(0, 0)], [1]),
+    ([(1, 4)], [2]),
+])
+def test_structural_alignment_invalid_offsets_are_unverified(offsets, token_ids):
+    classify = _generated_pure_function(
+        "_structural_step_labels", ("_json_structure",))
+    class Stub:
+        def __call__(self, *_args, **_kwargs):
+            return {"input_ids": token_ids, "offset_mapping": offsets}
+    assert classify(Stub(), '{"a":"v"}', [1], [1]) == ("UNVERIFIED", [])
+
+
+def test_two_synthetic_traces_are_bounded_and_redacted(tmp_path):
+    result = _run_generated(tmp_path, token_count=300)
+    assert result.returncode == 0, result.stdout
+    data = json.loads(result.stdout)
+    assert data["cpu_synthetic_mask_repeat_count"] == 2
+    assert data["cpu_synthetic_mask_repeat2_steps"] == 24
+    for key in (
+        "cpu_synthetic_mask_fill_steps_gt_100ms",
+        "cpu_synthetic_mask_repeat2_steps_gt_100ms",
+    ):
+        assert all(type(i) is int and 1 <= i <= 24 for i in data[key])
+    for key in (
+        "cpu_synthetic_mask_slow_step_regions",
+        "cpu_synthetic_mask_repeat2_slow_step_regions",
+    ):
+        assert all(
+            set(item) == {"step", "json_region", "field_ordinal"}
+            and item["json_region"] in
+            {"SYNTAX", "KEY", "VALUE", "CROSS_REGION"}
+            for item in data[key]
+        )
+    assert "sample_code" not in result.stdout
+    assert "Synthetic diagnostic only." not in result.stdout
     assert "local-tokenizer" not in result.stdout

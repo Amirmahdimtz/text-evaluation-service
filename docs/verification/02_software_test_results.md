@@ -663,3 +663,20 @@ quality and E2E performance have **not** been tested
 by this diagnostic; they stay `PENDING_SERVER`.
 Stage11 remains `BLOCKED`. No code changes are part
 of recording this evidence.
+
+## 2026-11-04 — Stage11 bounded paired matcher and structural labels
+
+Prepared the existing CPU-only diagnostic to run a
+second fresh independent XGrammar GrammarMatcher on
+the same compiled grammar and synthetic JSON, reusing
+the 24-step cap per trace. Reports repeat2 CPU timings
+and >10ms/>100ms indices and only coarse validated JSON
+structure labels for >100ms steps. Tests exercise
+JSON structure parser, boundary-crossing labels, fail-
+closed invalid/mismatched tokenizer offset mappings,
+trace bounds and redacted output. This is a *new*
+software test addition; prior Simorgh 20 PASS and CI
+194 focused PASS are from the previous revision.
+New CI and new Simorgh measurements must be recorded
+separately; no GPU model inference was done here.
+Stage11 BLOCKED.

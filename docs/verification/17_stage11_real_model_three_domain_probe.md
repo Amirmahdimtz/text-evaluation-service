@@ -1001,3 +1001,73 @@ without controlled live evidence.
 `OBSERVED`; all model-backed security/performance/quality
 acceptance gates remain `PENDING_SERVER`, Stage11 `BLOCKED`,
 Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — bounded paired CPU matcher trace and synthetic JSON structure
+
+The most recent **actual** Simorgh operator result on main
+a11d520 was 20 focused tests PASS in 1.16s, and
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED` with five
+contiguous fixed-synthetic CPU mask-fill positions [15,16,17,18,19]
+strictly >100ms (24 first-trace steps total 1150.577ms).
+That observation did not identify their JSON structural
+region or whether the same positions would be slow again.
+
+The Stage11-only opt-in diagnostic has now been extended,
+*without modifying the production Provider/Schema or the
+running vLLM engine*, to perform at most **two sequential
+24-step fixed synthetic matcher traces**. It reuses the
+same already-compiled grammar and local tokenizer, but
+constructs a fresh GrammarMatcher/token bitmask for
+each trace. There are at most **48 synthetic CPU fill and
+accept calls total**, zero inference calls, no GPU model
+execution, no model download, and no user data. The
+previous first-trace metrics and indices remain present.
+New redacted fields describe repeat2 total/first/median,
+slow step positions at >10ms and >100ms, and a bounded
+two-trace count.
+
+To help interpret the five slow steps without releasing
+token IDs, token content or strings, the diagnostic requests
+a fast-tokenizer `offset_mapping` for the *same fixed
+synthetic JSON string*, verifies input IDs match the
+existing encoding, and classifies characters using only
+SYNTAX, KEY, VALUE or CROSS_REGION plus one-based **field
+ordinal**. It reports these labels **only for slow (>100ms)
+steps** in each trace. On unavailable, out-of-range or
+mismatched offsets it emits `UNVERIFIED` with no labels,
+while preserving the measured CPU timings. No string,
+token ID, raw offset pair, private path or grammar
+matcher state is exposed. These labels refer to the
+*next fixed synthetic token* at the matcher position,
+NOT the actual internal XGrammar state or source of
+slowdown.
+
+The second sequential trace can distinguish a one-off
+process/compiler warm-up hypothesis from repeated spikes
+in the same *independent* matcher, but it cannot prove
+in-process vLLM serving behavior, backend choice, GPU
+masking overhead or causality of the old one-pair
+29.118s vs 2.327s invalid outputs. The two traces do
+not constitute a production latency P95 or model quality
+benchmark. The runtime remains pinned to the observed
+vLLM 0.10.2 / XGrammar 0.1.23; thread and grammar
+cache budgets remain 1 thread and 32MiB, with the
+existing bounded CPU and wall-time limits. **The new
+two-trace experiment has NOT been executed on Simorgh;
+it requires specific owner approval for the expanded
+CPU-only 48-step workload.**
+
+Existing separate preparation for checking launch
+metadata: `scripts/verification/stage11_guided_backend_inspect.py`
+is a dry-run by default. Its opt-in `--container`
+only examines redacted Docker launch argument flags
+under separate Docker-inspect permission. It **cannot**
+prove the effective live per-request backend when
+`auto` is used. Actual serving/tokenizer provenance
+must be separately attested by the runtime owner; do
+not inspect environment, process arguments, logs,
+tokens or model files beyond approval.
+
+**Status:** new paired/structure experiment and any
+live backend attribution `PENDING_SERVER`; Stage11
+`BLOCKED`, Stage12 `NOT_STARTED`.
