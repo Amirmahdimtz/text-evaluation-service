@@ -37,7 +37,8 @@ def test_generated_script_is_static_pinned_and_no_network_or_gpu(capsys):
     assert "HF_HUB_OFFLINE" in source and "local_files_only=True" in source
     assert "trust_remote_code=False" in source
     assert "CUDA_VISIBLE_DEVICES" in source
-    assert "socket.socket = _deny_network" in source
+    assert "socket.socket = _NetworkDeniedSocket" in source
+    assert "socket.getaddrinfo = _deny_network" in source
     assert "GrammarCompiler(" in source
     assert "fill_next_token_bitmask" in source
     assert "accept_token" in source
@@ -54,7 +55,9 @@ def test_generated_script_is_static_pinned_and_no_network_or_gpu(capsys):
 def _run_generated(tmp_path, *, configured=True, xgrammar_broken=False,
                    tokenizer_leaks=False, token_count=30,
                    mask_rejects=False, tokenizer_network=False,
-                   mismatch_version=False, missing_config=False):
+                   mismatch_version=False, missing_config=False,
+                   subclass_import=False, transformers_import_error=False,
+                   xgrammar_import_error=False):
     """Execute synthetic modules; no real tokenizer, GPU or network."""
     for name, version in [("vllm", "0.10.2"),
                           ("xgrammar", "0.1.22" if mismatch_version else "0.1.23")]:
@@ -67,6 +70,8 @@ def _run_generated(tmp_path, *, configured=True, xgrammar_broken=False,
     else:
         compile_lines = "return object()"
     (tmp_path / "xgrammar.py").write_text(
+        ("raise RuntimeError('SENSITIVE_XGRAMMAR_IMPORT')\n"
+         if xgrammar_import_error else "") +
         "class TokenizerInfo:\n"
         "    @staticmethod\n"
         "    def from_huggingface(tokenizer, vocab_size):\n"
@@ -88,12 +93,16 @@ def _run_generated(tmp_path, *, configured=True, xgrammar_broken=False,
         encoding="utf-8",
     )
     if tokenizer_network:
-        tokenizer_lines = "__import__('socket').socket()"
+        tokenizer_lines = "__import__('socket').socket().connect(('127.0.0.1', 9))"
     elif tokenizer_leaks:
         tokenizer_lines = "raise RuntimeError('SENSITIVE_TOKENIZER_PATH')"
     else:
         tokenizer_lines = "return type('Tok', (), {'encode': lambda self, s, add_special_tokens: [1] * %d})()" % token_count
     (tmp_path / "transformers.py").write_text(
+        ("raise RuntimeError('SENSITIVE_TRANSFORMERS_IMPORT')\n"
+         if transformers_import_error else "") +
+        ("import socket\nclass _ImportSubclass(socket.socket):\n    pass\n"
+         if subclass_import else "") +
         "class AutoConfig:\n"
         "    @staticmethod\n"
         "    def from_pretrained(path, *, local_files_only, trust_remote_code):\n"
@@ -191,3 +200,27 @@ def test_synthetic_bad_token_is_rejected(tmp_path):
     result = _run_generated(tmp_path, mask_rejects=True)
     assert result.returncode == 2
     assert json.loads(result.stdout)["status"] == "SYNTHETIC_GRAMMAR_TOKEN_REJECTED"
+
+
+def test_transformers_import_can_subclass_socket_without_network(tmp_path):
+    """Regression: the original socket.socket function shim broke ssl imports."""
+    result = _run_generated(tmp_path, subclass_import=True)
+    assert result.returncode == 0, result.stdout
+    report = json.loads(result.stdout)
+    assert report["status"] == "CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED"
+    assert report["network_requests"] == 0
+
+
+@pytest.mark.parametrize("failure_type,expected", [
+    ("xgrammar", "XGRAMMAR_IMPORT_FAILED"),
+    ("transformers", "TRANSFORMERS_IMPORT_FAILED"),
+])
+def test_import_failures_have_distinct_sanitized_status(tmp_path, failure_type, expected):
+    result = _run_generated(
+        tmp_path,
+        xgrammar_import_error=failure_type == "xgrammar",
+        transformers_import_error=failure_type == "transformers",
+    )
+    assert result.returncode == 3
+    assert json.loads(result.stdout)["status"] == expected
+    assert "SENSITIVE_" not in result.stdout + result.stderr

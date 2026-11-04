@@ -692,3 +692,47 @@ completed SUCCESS at commit 365ef1a5: 59 Stage11 offline
 safety checks PASS, 184 focused offline tests PASS. The actual
 tokenizer-aware diagnostic inside Simorgh and GPU token-mask
 application remain PENDING_SERVER; neither was executed by CI.
+
+## 2026-11-04 — operator CPU tokenizer probe import failure; no GPU activity
+
+The Simorgh operator pulled main through f561895 and ran
+tests/test_stage11_xgrammar_tokenizer_profile.py: **10 passed in 0.73s**
+on that host. Offline CLI returned OFFLINE_TOKENIZER_PROFILE_PLAN
+with zero Docker calls, inference requests, tokenizer loads and
+network. A separate owner-invoked CPU-only probe used one local
+tokenizer-cache candidate for Qwen3-8B-AWQ and reported
+REQUIRED_RUNTIME_IMPORT_UNAVAILABLE; package metadata still read
+vLLM 0.10.2 and XGrammar 0.1.23. No actual tokenizer-aware grammar
+compilation or CPU token masking was performed; this is not a model
+compatibility failure, nor proof the candidate tokenizer matches
+the serving model.
+
+A defect was identified in the **diagnostic script**, not the
+production provider: it had overwritten socket.socket with a Python
+function to block networking *before* importing XGrammar/Transformers.
+Independent clean-Python reproduction showed that replacing this
+class with a function can break stdlib ssl module initialization.
+Because the on-server diagnostic concealed all import exceptions
+under one fixed status, this is a plausible explanation, **not a
+proven unique root cause** for the operator's import failure.
+
+The Stage11-only probe now preserves socket.socket as a subclassable
+class and denies connect/connect_ex/send/sendto/sendmsg/sendall,
+create_connection and getaddrinfo without weakening the offline,
+local_files_only, trust_remote_code=False guards. XGrammar and
+Transformers failures have distinct redacted statuses:
+XGRAMMAR_IMPORT_FAILED and TRANSFORMERS_IMPORT_FAILED. A synthetic
+regression test explicitly imports a module subclassing socket.socket;
+separate negative tests cover sanitized import failures and blocked
+attempted outbound connect. Model/serving/container settings, model
+files, passwords, secrets and inference traffic were not changed.
+
+**Operator, after the same independent shared-container owner
+permission and confirmation that the cached tokenizer is approved:**
+pull the new main; run
+`PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_xgrammar_tokenizer_profile.py`
+and the default no-network CLI. Only then rerun the same previously
+approved bounded synthetic tokenizer CPU diagnostic using a private
+in-container tokenizer directory. Do not post paths or model files.
+Actual tokenizer-aware compiler timings and GPU token-mask cost
+remain PENDING_SERVER, Stage11 BLOCKED, Stage12 NOT_STARTED.

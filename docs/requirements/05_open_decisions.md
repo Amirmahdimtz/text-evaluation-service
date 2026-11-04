@@ -1312,3 +1312,27 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - GitHub Actions [41809757700](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41809757700) succeeded on commit 365ef1a5: **59** offline Stage11 safety tests and **184** focused Provider/probe/diagnostic tests passed; new default CLI confirmed no network, no container access, no tokenizer load and no GPU inference.
 - Prior local isolated tests: **10 PASS**. The generated runtime probe has been verified only against stubs, not the installed Simorgh tokenizer; real CPU compiler/cache/mask durations remain **PENDING_SERVER** until separate shared-owner approval and operator execution.
 - No existing enterprise acceptance item has been converted to PASSED by these tests. Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — tokenizer CPU diagnostic import-shim correction
+
+- Operator pulled f561895, ran 10 focused offline tests PASS
+  (0.73s), then executed the bounded CPU-only child against an
+  existing Qwen3-8B-AWQ tokenizer-cache candidate. Its redacted
+  status was REQUIRED_RUNTIME_IMPORT_UNAVAILABLE; this does
+  **not** establish absence of the tokenizer or either Python
+  library. Tokenizer-aware timings were not measured.
+- Diagnostic source inspection revealed socket.socket had been
+  replaced by a function *before* XGrammar/Transformers imports.
+  Clean-Python simulation shows this substitution can break imports
+  which subclass socket.socket (including ssl). This is a
+  plausible proximate cause but is not independently proven to
+  be the sole server exception (the old probe hid import details).
+- The Stage11 diagnostic preserves a subclassable socket type
+  while denying outbound connect/send operations and DNS lookup.
+  Distinct sanitized error codes now identify whether XGrammar
+  or Transformers import failed. Synthetic regression tests and
+  no-egress tests were added. The production provider/runtime,
+  GPU settings, Schema and strict output decoder are unchanged.
+- On-server re-execution of the corrected tool requires the same
+  operational approval; it is still PENDING_SERVER. Stage11
+  BLOCKED, Stage12 NOT_STARTED.

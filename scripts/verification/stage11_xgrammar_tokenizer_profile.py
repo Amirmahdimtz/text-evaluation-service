@@ -74,6 +74,32 @@ def _deny_network(*_args, **_kwargs):
     raise RuntimeError("STAGE11_NETWORK_DENIED")
 
 
+class _NetworkDeniedSocket(socket.socket):
+    """Remain subclassable for ssl and transformers while denying egress.
+
+    A plain function in socket.socket breaks modules which inherit from
+    that class at import time. Network operations are still prohibited.
+    """
+
+    def connect(self, *_args, **_kwargs):
+        _deny_network()
+
+    def connect_ex(self, *_args, **_kwargs):
+        _deny_network()
+
+    def sendto(self, *_args, **_kwargs):
+        _deny_network()
+
+    def sendmsg(self, *_args, **_kwargs):
+        _deny_network()
+
+    def send(self, *_args, **_kwargs):
+        _deny_network()
+
+    def sendall(self, *_args, **_kwargs):
+        _deny_network()
+
+
 def _stop(_signal, _frame):
     raise TimeoutError("STAGE11_RESOURCE_LIMIT")
 
@@ -101,8 +127,9 @@ def main():
     os.environ["HF_DATASETS_OFFLINE"] = "1"
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
-    socket.socket = _deny_network
+    socket.socket = _NetworkDeniedSocket
     socket.create_connection = _deny_network
+    socket.getaddrinfo = _deny_network
     warnings.simplefilter("ignore")
 
     tokenizer_dir = os.environ.get("STAGE11_LOCAL_TOKENIZER_DIR", "")
@@ -123,9 +150,13 @@ def main():
 
     try:
         import xgrammar as xgr
+    except Exception:
+        return _report("XGRAMMAR_IMPORT_FAILED", exit_code=3,
+                       versions=versions)
+    try:
         from transformers import AutoConfig, AutoTokenizer
     except Exception:
-        return _report("REQUIRED_RUNTIME_IMPORT_UNAVAILABLE", exit_code=3,
+        return _report("TRANSFORMERS_IMPORT_FAILED", exit_code=3,
                        versions=versions)
 
     try:

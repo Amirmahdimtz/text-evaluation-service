@@ -498,3 +498,21 @@ tokenizer_aware_compilation_measured=false, with zero Docker,
 GPU or model inference actions. Local isolated earlier 10 PASS
 is a separate validation. The actual Simorgh local tokenizer
 compiler and CPU mask times remain PENDING_SERVER.
+
+## 2026-11-04 — Stage11 tokenizer CPU probe import-shim regression
+
+Operator reported **10 passed in 0.73s** on Simorgh for the
+pre-fix focused synthetic tests, followed by the real
+`REQUIRED_RUNTIME_IMPORT_UNAVAILABLE` status from the separately
+invoked CPU-only child process. No on-server compilation or mask
+benchmark ran. Original tooling combined two import errors and
+replaced the class `socket.socket` with a function, potentially
+breaking library imports.
+
+New targeted tests enforce keeping the network-denying socket
+class subclassable and preserving its outbound connection deny;
+they also exercise distinct sanitized XGrammar and Transformers
+import-failure statuses. The exact repository CI outcome must be
+inspected after push. Real installed-transformers/xgrammar imports
+on Simorgh remain PENDING_SERVER; existing Stage11 acceptance
+gates are unchanged.
