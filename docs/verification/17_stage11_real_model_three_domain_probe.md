@@ -507,3 +507,59 @@ which part of 29.118s was grammar compilation versus decode are still
 `UNVERIFIED`. Do not change the shared server, restart vLLM or send
 new GPU requests to answer this. Stage11 `BLOCKED`, Stage12
 `NOT_STARTED`.
+
+## 2026-11-04 — operator confirms actual XGrammar conversion
+
+The Simorgh operator reported a read-only probe of container ai-inference-vllm-1.
+The verified executable was /usr/bin/python3, with vllm=0.10.2 and
+xgrammar=0.1.23. The actual unchanged CriterionInference JSON Schema was
+accepted by xgrammar.Grammar.from_json_schema. The converter emitted a warning
+that a string combining pattern with minLength/maxLength/format may ignore the
+length/format constraints; the actual criterion_code field combines a pattern
+with minLength=2 and maxLength=100. Independent strict Pydantic validation,
+expected criterion-code comparison and source quote/offset checks remain intact.
+
+This confirms only schema-to-grammar acceptance, NOT selected request backend,
+tokenizer-aware GrammarCompiler compilation/cache, per-token bitmask overhead,
+model-request latency or expert quality. Earlier structured 29.118s and
+unconstrained 2.327s results were an uncontrolled one-pair observation with
+two incomplete outputs, so neither was a successful evaluation.
+
+### CPU-only conversion timing diagnostic (no inference)
+
+The new scripts/verification/stage11_xgrammar_cpu_profile.py reports a
+code-generated schema SHA-256 and flags combined pattern/length constructs
+offline. With --emit-runtime-script it emits a self-contained Python program,
+embedding only the code-defined JSON Schema, that calls
+xgrammar.Grammar.from_json_schema **twice** and reports only bounded timings,
+version strings, schema SHA-256 and sanitized status values. It does not import
+a tokenizer, load weights, request inference, use the network, start or alter
+a service, or write files. It may still consume CPU/RAM in a shared container.
+
+First run the offline checks on Simorgh:
+
+~~~bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_xgrammar_cpu_profile.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_xgrammar_cpu_profile
+~~~
+
+**Only after separate shared-container owner permission** to run a short
+CPU-only Docker exec, perform this one stdin-only diagnostic:
+
+~~~bash
+cd /srv/projects/text-evaluation-service
+set -o pipefail
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m \
+  scripts.verification.stage11_xgrammar_cpu_profile --emit-runtime-script \
+  | docker exec -i -e PYTHONDONTWRITEBYTECODE=1 \
+      ai-inference-vllm-1 /usr/bin/python3 -
+~~~
+
+CPU_GRAMMAR_CONVERSION_OBSERVED measures only the schema conversion,
+NOT GrammarCompiler.compile_json_schema with the model tokenizer, cache hits,
+masking or decode time. Even very fast conversion would not rule out other
+guided-decoding bottlenecks. Runtime measurement PENDING_SERVER; no production
+Schema, Provider, model, backend, token cap, timeout or GPU settings changed.
+Stage11 BLOCKED; Stage12 NOT_STARTED.

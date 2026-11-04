@@ -417,3 +417,18 @@ This is `PASSED_OFFLINE_STATIC`. The actual deployed backend,
 XGrammar compiler results, runtime interpretation of `auto` and GPU
 inference were **not** verified. Stage11 `BLOCKED`, Stage12
 `NOT_STARTED`.
+
+## 2026-11-04 — CPU-only XGrammar diagnostic local validation
+
+New script: scripts/verification/stage11_xgrammar_cpu_profile.py
+New tests: tests/test_stage11_xgrammar_cpu_profile.py
+
+A local isolated Python/Pydantic test harness reconstructed the checked
+CriterionInference field declarations and ran:
+python -m pytest -q -p no:cacheprovider tests/test_stage11_xgrammar_cpu_profile.py
+Result: **12 passed (2.63 seconds)**. This is a harness run, **not**
+a full current repository test run. Cases cover nested schema conflict
+detection, schema hashing, safe defaults, generated script AST,
+synthetic XGrammar stub success/failure and sanitized errors. The
+real vLLM/XGrammar runtime conversion latency remains PENDING_SERVER.
+Repository CI must be reported separately, with no implied runtime PASS.

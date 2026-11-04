@@ -214,3 +214,19 @@ Offline [CI 41796324266](https://github.com/Amirmahdimtz/text-evaluation-service
 inspection is prepared for the approved operator; no GPU, runtime,
 timeout, model or production configuration changes.
 Stage11 performance gate `BLOCKED`.
+
+## 2026-11-04 — actual Grammar conversion accepted, not yet timed
+
+The operator confirmed /usr/bin/python3, vllm=0.10.2 and xgrammar=0.1.23
+inside the existing shared inference container. Grammar.from_json_schema
+accepted the unchanged application CriterionInference schema. A real warning
+indicated a combined string pattern and min/max length or format constraint
+cannot all be enforced by the grammar. The application retains post-response
+Pydantic and evidence validation.
+
+The CPU-only two-pass conversion profiling tool
+scripts/verification/stage11_xgrammar_cpu_profile.py is ready for an
+explicitly authorized operator run. This does not measure the tokenizer-aware
+compiler/cache or per-token bitmask application, so the prior 12.51x timing
+difference remains non-causal and unlocalized. CPU conversion timing
+PENDING_SERVER; Runtime/Production settings unchanged; Stage11 BLOCKED.

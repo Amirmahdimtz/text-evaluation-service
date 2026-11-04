@@ -1244,3 +1244,12 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Change decision:** no runtime reconfiguration, server restart,
   production Provider/Schema change, additional inference or GPU
   performance claim. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-04 XGrammar runtime evidence and focused CPU diagnostic
+
+- Operator read-only evidence: the shared container's Python executable is /usr/bin/python3; package metadata showed vllm=0.10.2 and xgrammar=0.1.23. Its xgrammar.Grammar.from_json_schema accepted the actual application-generated schema.
+- Conversion warning: when a string has pattern plus minLength/maxLength/format, XGrammar may ignore some constraints. The actual criterion_code schema has the combination; the production decoder retains strict Pydantic validation, criterion equality and exact source quote/offset verification.
+- New Stage11 tool: stage11_xgrammar_cpu_profile.py. Default is an offline schema hash/overlap report. Explicit --emit-runtime-script generates a stdin-only CPU program for two conversion calls in the existing container, conditional on separate shared-owner permission. It does not load a model or inference endpoint.
+- Local isolated engineering tests: 12 passed using a reconstructed equivalent Pydantic model schema; full-repository CI needs independent verification. Actual CPU conversion duration, tokenizer-aware compilation/cache and per-token masking are PENDING_SERVER.
+- Engineering decision: do not infer that the observed 29.118s vs 2.327s pair was caused by schema conversion; both responses were incomplete and invalid. No modification to the production Schema, Provider, model, GPU, backend, timeout or token limit.
+- Stage11 BLOCKED; Stage12 NOT_STARTED. No original Stage11 acceptance ID was converted from PENDING_SERVER to PASS.
