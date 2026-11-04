@@ -794,3 +794,64 @@ or submit an unapproved GPU request. This CPU subprocess probe is
 OBSERVED/PASS only as a **narrow diagnostic**, not any formal
 quality/performance acceptance gate. Stage11 BLOCKED, Stage12
 NOT_STARTED.
+
+## 2026-11-04 — first mask vs subsequent fills: bounded Stage11 follow-up
+
+**Scope:** Only the previously approved Stage11 diagnostic script
+`scripts/verification/stage11_xgrammar_tokenizer_profile.py` and its
+existing focused tests have been enhanced. The actual Simorgh evidence
+before this change was 13 focused tests passing and the existing
+owner-invoked synthetic CPU profile: 24 mask fill steps totalling
+1,181.770ms (maximum step 256.853ms), cold compile 231.697ms, warm
+compile 0.028ms, XGrammar 0.1.23, vLLM 0.10.2. Those numbers **cannot**
+tell whether the expensive mask step was first or later, and are not
+a real vLLM/GPU request benchmark.
+
+The tool now reports:
+- `cpu_synthetic_mask_fill_first_ms`: first synthetic mask-fill time;
+- `cpu_synthetic_mask_fill_first_share_percent`: share of total fill
+  duration (null when total rounded observations are zero);
+- `cpu_synthetic_mask_fill_rest_steps` and
+  `cpu_synthetic_mask_fill_rest_total_ms`;
+- `cpu_synthetic_mask_fill_rest_mean_ms`, `...rest_median_ms`,
+  `...rest_max_ms`, `...rest_p95_nearest_rank_ms`.
+
+P95 uses the nearest-rank definition over *at most 23* subsequent
+synthetic observations; it is descriptive, **not** a production P95
+or statistically representative performance SLO. Existing total/max
+and token-accept metrics stay unchanged. If fewer than two synthetic
+mask steps are available, the child fails closed with
+`SYNTHETIC_MASK_STEPS_INSUFFICIENT` instead of reporting a
+misleading first-vs-rest comparison. No per-token content or
+token IDs are printed.
+
+Synthetic, offline tests add deterministic first-vs-rest summaries,
+zero-duration handling, insufficient-step rejection and integration
+assertions over the existing XGrammar/Transformers stubs.
+The existing safeguards remain: a fixed synthetic JSON abstention
+and the actual code-generated Schema, no model inference, no remote
+download, offline tokenizer flags, redacted error categories, 24-step
+maximum, one compile thread, limited cache, CPU/wall signal budgets.
+No Production Provider/Schema, vLLM service, GPU allocation, Secrets,
+model files or docker settings changed.
+
+**Offline operator checks:**
+
+~~~bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_xgrammar_tokenizer_profile.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_xgrammar_tokenizer_profile
+~~~
+
+Only with *fresh shared-container owner authorization* and private
+confirmation of the already-existing **matching** tokenizer path,
+the same previous CPU-only opt-in probe may be rerun by the operator.
+Do not run GPU inference, download model artifacts or reveal the
+private model filesystem path. The serving backend, in-process
+compiler/cache, real GPU token masking and attribution of the old
+29.118s / 2.327s gap remain `PENDING_SERVER`.
+
+**Gate:** Offline diagnostic enhancement is a narrowly scoped
+preparation, not closure of any Stage11 model/performance/security
+acceptance ID. Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.

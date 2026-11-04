@@ -108,6 +108,35 @@ def _elapsed_ms(start):
     return round((time.perf_counter() - start) * 1000.0, 3)
 
 
+def _mask_fill_distribution(fill_ms):
+    """Compare first-use cost with subsequent synthetic mask fills.
+
+    Values are rounded observations, not latency estimates for live
+    inference. P95 uses nearest-rank and at most 23 later samples.
+    """
+    if len(fill_ms) < 2:
+        return None
+    rest = fill_ms[1:]
+    ordered = sorted(rest)
+    n = len(rest)
+    median = (ordered[(n - 1) // 2] + ordered[n // 2]) / 2
+    total = sum(fill_ms)
+    return {
+        "cpu_synthetic_mask_fill_first_ms": fill_ms[0],
+        "cpu_synthetic_mask_fill_first_share_percent": (
+            round(100 * fill_ms[0] / total, 2) if total else None
+        ),
+        "cpu_synthetic_mask_fill_rest_steps": n,
+        "cpu_synthetic_mask_fill_rest_total_ms": round(sum(rest), 3),
+        "cpu_synthetic_mask_fill_rest_mean_ms": round(sum(rest) / n, 3),
+        "cpu_synthetic_mask_fill_rest_median_ms": round(median, 3),
+        "cpu_synthetic_mask_fill_rest_p95_nearest_rank_ms": (
+            ordered[(95 * n + 99) // 100 - 1]
+        ),
+        "cpu_synthetic_mask_fill_rest_max_ms": ordered[-1],
+    }
+
+
 def main():
     # This is an ephemeral child process, not the running vLLM engine.
     # Suppress libraries' warnings and exceptions to protect local paths.
@@ -222,8 +251,9 @@ def main():
             if not accepted:
                 return _report("SYNTHETIC_GRAMMAR_TOKEN_REJECTED", exit_code=2,
                                versions=versions)
-        if not fill_ms:
-            return _report("SYNTHETIC_MASK_UNAVAILABLE", exit_code=2,
+        distribution = _mask_fill_distribution(fill_ms)
+        if distribution is None:
+            return _report("SYNTHETIC_MASK_STEPS_INSUFFICIENT", exit_code=2,
                            versions=versions)
     except TimeoutError:
         return _report("RESOURCE_BUDGET_EXCEEDED", exit_code=4,
@@ -243,6 +273,7 @@ def main():
         cpu_synthetic_mask_fill_steps=len(fill_ms),
         cpu_synthetic_mask_fill_total_ms=round(sum(fill_ms), 3),
         cpu_synthetic_mask_fill_max_ms=round(max(fill_ms), 3),
+        **distribution,
         cpu_synthetic_token_accept_total_ms=round(sum(accept_ms), 3),
         tokenizer_aware_compilation_measured=True,
         cpu_synthetic_mask_fill_measured=True,

@@ -299,3 +299,22 @@ production configuration, model, Schema or Provider changed.
 On-host CPU microbenchmark: OBSERVED. Formal performance/quality
 acceptance and actual request root-cause attribution:
 PENDING_SERVER. Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+## 2026-11-04 — synthetic CPU mask: first-step vs subsequent-step diagnostic
+
+The earlier on-server synthetic CPU-only experiment reported
+24 mask fills / **1,181.770ms** total, maximum **256.853ms**
+for one step. This did **not** identify which step was slow.
+The Stage11 tokenizer diagnostic now separately exposes the
+**first** fill and a summary of later fills (count, sum, average,
+median, max and nearest-rank P95). Single-step runs reject the
+comparison; zero-total runs do not emit a misleading percentage.
+
+No new live timing is claimed in this change. The original
+vLLM 0.10.2, XGrammar 0.1.23, 151936-vocab synthetic tokenizer
+result remains the only real on-host observation. A follow-up
+CPU-only subprocess probe requires separate shared-owner approval,
+and cannot establish the real serving backend/cache, per-token GPU
+mask application, model throughput or performance SLO. Real
+production E2E latency attribution is `PENDING_SERVER`;
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

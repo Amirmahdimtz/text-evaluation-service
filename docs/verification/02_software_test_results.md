@@ -554,3 +554,20 @@ defined. It did not execute GPU inference, real serving
 request, GPU logits masking or full application/model
 contract. None of the product/enterprise acceptance tests
 are marked PASS by this result. Stage11 BLOCKED.
+
+## 2026-11-04 — offline first-versus-rest mask timing regression scope
+
+Enhanced the existing Stage11
+`stage11_xgrammar_tokenizer_profile.py` and focused test file.
+Four additional tests assert a deterministic first-versus-rest
+distribution, refusal to compare fewer than two synthetic steps,
+zero-total safeguards and synthetic 24-step report consistency.
+The existing offline Docker/network/secret guards are preserved.
+Only the existing generated CPU-only child timing output changes.
+
+**These new tests must be reported from an actual local/CI run**;
+the preceding Simorgh 13 PASS at b3f4278 was **before** this
+change and does not validate the new fields. No new on-server
+measurements were executed by the assistant. The real first/rest
+times remain `PENDING_SERVER`; formal Stage11 acceptance and
+GPU timing remain unverified. Stage11 `BLOCKED`.

@@ -43,6 +43,8 @@ def test_generated_script_is_static_pinned_and_no_network_or_gpu(capsys):
     assert "fill_next_token_bitmask" in source
     assert "accept_token" in source
     assert "MAX_STEPS = 24" in source
+    assert "cpu_synthetic_mask_fill_first_ms" in source
+    assert "cpu_synthetic_mask_fill_rest_p95_nearest_rank_ms" in source
     assert "max_threads=1" in source
     assert "resource.RLIMIT_CPU" in source
     assert "os.path.isfile(os.path.join(tokenizer_dir, \"config.json\"))" in source
@@ -149,6 +151,20 @@ def test_synthetic_tokenizer_compiler_and_mask_success(tmp_path):
     assert report["versions"] == {"vllm": "0.10.2", "xgrammar": "0.1.23"}
     assert report["tokenizer_aware_compilation_measured"] is True
     assert report["cpu_synthetic_mask_fill_steps"] == 24
+    assert report["cpu_synthetic_mask_fill_rest_steps"] == 23
+    assert report["cpu_synthetic_mask_fill_first_ms"] >= 0
+    assert report["cpu_synthetic_mask_fill_rest_mean_ms"] >= 0
+    assert report["cpu_synthetic_mask_fill_rest_median_ms"] >= 0
+    assert report["cpu_synthetic_mask_fill_rest_p95_nearest_rank_ms"] >= 0
+    assert report["cpu_synthetic_mask_fill_rest_max_ms"] >= 0
+    assert report["cpu_synthetic_mask_fill_total_ms"] == pytest.approx(
+        report["cpu_synthetic_mask_fill_first_ms"]
+        + report["cpu_synthetic_mask_fill_rest_total_ms"], abs=0.002,
+    )
+    assert (report["cpu_synthetic_mask_fill_rest_median_ms"]
+            <= report["cpu_synthetic_mask_fill_rest_max_ms"])
+    assert (report["cpu_synthetic_mask_fill_rest_p95_nearest_rank_ms"]
+            <= report["cpu_synthetic_mask_fill_rest_max_ms"])
     assert report["gpu_token_mask_application_measured"] is False
     assert report["real_request_latency_measured"] is False
     assert report["effective_live_backend_verified"] is False
@@ -224,3 +240,55 @@ def test_import_failures_have_distinct_sanitized_status(tmp_path, failure_type, 
     assert result.returncode == 3
     assert json.loads(result.stdout)["status"] == expected
     assert "SENSITIVE_" not in result.stdout + result.stderr
+
+
+def _distribution_from_generated_runtime():
+    """Isolate the pure generated helper for deterministic data tests."""
+    parsed = ast.parse(profile.build_runtime_script())
+    function = next(
+        node for node in parsed.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "_mask_fill_distribution"
+    )
+    namespace = {}
+    exec(compile(ast.Module(body=[function], type_ignores=[]),
+                 "<synthetic-distribution>", "exec"), namespace)
+    return namespace["_mask_fill_distribution"]
+
+
+def test_mask_fill_distribution_first_vs_rest_with_fixed_values():
+    summary = _distribution_from_generated_runtime()(
+        [12.0, 1.0, 3.0, 2.0, 4.0]
+    )
+    assert summary == {
+        "cpu_synthetic_mask_fill_first_ms": 12.0,
+        "cpu_synthetic_mask_fill_first_share_percent": 54.55,
+        "cpu_synthetic_mask_fill_rest_steps": 4,
+        "cpu_synthetic_mask_fill_rest_total_ms": 10.0,
+        "cpu_synthetic_mask_fill_rest_mean_ms": 2.5,
+        "cpu_synthetic_mask_fill_rest_median_ms": 2.5,
+        "cpu_synthetic_mask_fill_rest_p95_nearest_rank_ms": 4.0,
+        "cpu_synthetic_mask_fill_rest_max_ms": 4.0,
+    }
+
+
+def test_mask_fill_distribution_fails_closed_with_fewer_than_two_steps():
+    summary = _distribution_from_generated_runtime()
+    assert summary([]) is None
+    assert summary([0.5]) is None
+
+
+def test_single_token_trace_refuses_misleading_distribution(tmp_path):
+    result = _run_generated(tmp_path, token_count=1)
+    assert result.returncode == 2
+    report = json.loads(result.stdout)
+    assert report["status"] == "SYNTHETIC_MASK_STEPS_INSUFFICIENT"
+    assert report["model_inference_requests"] == 0
+    assert "cpu_synthetic_mask_fill_rest_p95_nearest_rank_ms" not in report
+
+
+def test_mask_fill_distribution_zero_duration_has_no_invalid_ratio():
+    summary = _distribution_from_generated_runtime()([0.0, 0.0])
+    assert summary["cpu_synthetic_mask_fill_first_share_percent"] is None
+    assert summary["cpu_synthetic_mask_fill_rest_steps"] == 1
+    assert summary["cpu_synthetic_mask_fill_rest_p95_nearest_rank_ms"] == 0.0

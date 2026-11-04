@@ -1383,3 +1383,25 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   **PENDING_SERVER**, Stage11 BLOCKED, Stage12 NOT_STARTED.
   No production changes, model reloads or further
   inference are approved by the observation.
+
+### Stage11 — 2026-11-04 — first-mask vs rest diagnostic instrumentation
+
+- Previous owner-reported Simorgh result: 24 synthetic CPU
+  bitmask fills in 1181.770ms, maximum step 256.853ms, but
+  unknown first-step cost versus later steps. No inference/GPU.
+- **Change:** extend the already-present Stage11 CPU-only
+  tokenizer profile and focused tests to report first fill,
+  share of total, subsequent fill count/total/mean/median/max
+  and nearest-rank P95. Fewer than 2 synthetic tokens are
+  fail-closed. No raw tokens or model artifacts are emitted.
+- **Interpretation:** even a large first fill would not prove
+  the actual serving engine uses the same backend or startup
+  behavior. A warm median alone does not establish production
+  decoding speed. Repeat only during a separately authorized
+  shared-container CPU window, not automatically.
+- **Unchanged:** local model/provider/Schema, strict
+  validation and evidence, shared vLLM runtime, GPU,
+  network and Secret controls. Actual new CPU values and
+  real E2E attribution `PENDING_SERVER`. Stage11
+  `BLOCKED`, Stage12 `NOT_STARTED`; original acceptance
+  gates remain unchanged.
