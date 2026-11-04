@@ -827,3 +827,17 @@ signed image/registry, or recipient infra was tested.
 The prior authorized synthetic full-path test remains
 separate evidence. G11-P05 PARTIAL_CI_VERIFIED;
 G11-P01 BLOCKED, Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+## 2026-11-04 — requester-approved one-shot model diagnostic planning
+
+The existing, previously tested
+`stage11_real_model_criterion_probe.py` is sufficient for
+a single synthetic `media` criterion test with redacted
+diagnostics. No inference was performed in preparing
+`docs/verification/19_stage11_owner_approved_single_live_probe.md`.
+The earlier offline/GitHub CI results remain historical;
+no new test run or model result is claimed here.
+User consent OBSERVED; shared-service-owner permission
+and GPU stop window `PENDING_SERVER`; runtime model/
+Tokenizer/backend `UNVERIFIED`; live diagnostic
+`NOT_RUN`. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

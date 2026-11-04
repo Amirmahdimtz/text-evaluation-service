@@ -182,3 +182,20 @@ identity still UNVERIFIED; G11-P02/03 and original
 mandatory Stage11 acceptance gates remain
 PENDING_SERVER. Do not publish the image or
 claim production readiness on this evidence.
+
+## 2026-11-04 — bounded requester approval, server action still owner-gated
+
+Requester consent for the next bounded synthetic GPU request
+has been provided, but the shared vLLM owner/resource window
+and serving-artifact/active-backend provenance are not yet
+verified. The existing single-domain criterion probe can make
+only one media criterion request, 512 completion tokens,
+one concurrent request, no retry and 45s provider timeout.
+Before it, an approved read-only /v1/models and container
+metadata preflight must pass. Full-domain requests and
+unconstrained A/B probes are outside this consent scope.
+The assistant has **not executed** a GPU request or
+accessed Simorgh. Runbook:
+`docs/verification/19_stage11_owner_approved_single_live_probe.md`.
+Stage11 BLOCKED, Stage12 NOT_STARTED; mandatory gates
+and real model/quality/provenance/No-Egress tests remain open.

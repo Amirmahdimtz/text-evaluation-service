@@ -1687,3 +1687,24 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   G11-P02/03 and organization-dependent
   gates PENDING_SERVER. Stage11 BLOCKED;
   Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — requester consent for bounded GPU diagnostic
+
+- The requester explicitly approved progressing to a bounded Stage11
+  model/GPU test. This **does not establish** the shared service owner's
+  authorization, resource/VRAM stop window, runtime provenance or
+  required organizational approvals.
+- Existing script `stage11_real_model_criterion_probe.py` already
+  supports exactly one fixed synthetic `media` criterion with
+  `--execute-live --domain media --disable-thinking --diagnostics
+  --max-output-tokens 512` (single concurrency, no retries,
+  provider request timeout 45s). No new GPU test code is required.
+- Approved scope/runbook: 
+  `docs/verification/19_stage11_owner_approved_single_live_probe.md`.
+  First run local offline CLI/tests and read-only redacted metadata;
+  if shared-owner approval, endpoint and resource budget are not
+  verified, stop without any GPU request. No Stage12 work,
+  restart, new model, secrets or production changes.
+- New GPU request `NOT_RUN` by assistant (no Simorgh shell access);
+  model/Tokenizer/request-effective guided backend UNVERIFIED.
+  Stage11 BLOCKED, Stage12 NOT_STARTED.
