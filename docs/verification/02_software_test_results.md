@@ -746,3 +746,17 @@ focused tests PASS** are from the previous revision.
 New CI evidence must be observed; no server/GPUs were
 used by the assistant. Model/Backend identity and
 reason-variant results PENDING_SERVER.
+
+### Verified CI on new reason/artifact scripts — 2026-11-04
+
+[GitHub Actions run 41827513749](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41827513749)
+completed **SUCCESS** for commit `5aabc7e65b8e0214425e70f6a776ac6ebaa7d281`.
+Actual job logs: **59** Stage11 offline safety tests passed,
+**213** focused Provider/probe/diagnostic tests passed.
+The default artifact matcher emitted
+`OFFLINE_OWNER_ARTIFACT_ATTESTATION_PLAN`, with zero
+Docker, network or model inference actions.
+These are synthetic/offline test results only, **not**
+owner-verified provenance, actual Simorgh reason sensitivity,
+real guided backend selection or model/quality acceptance.
+Those remain `PENDING_SERVER`, Stage11 `BLOCKED`.

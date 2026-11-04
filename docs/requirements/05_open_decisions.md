@@ -1587,3 +1587,19 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   REQUIRED. All fresh server checks need separate
   operational approval. No Stage11 acceptance
   gate closed; Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — reason sensitivity and artifact match CI verified
+
+- Commit `5aabc7e` prepared the reason-value CPU probe
+  and owner-gated local tokenizer/config equality checker.
+- [CI 41827513749](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41827513749)
+  SUCCESS: **59** offline Stage11 safety tests and
+  **213** focused synthetic/Provider diagnostics tests PASS.
+  Offline default artifact CLI made zero Docker/network/
+  inference calls.
+- Runtime artifact identity and request-effective guided
+  decoding backend remain **UNVERIFIED**; fresh CPU
+  reason-variant data **PENDING_SERVER** until approved
+  on the shared container. No production/quality/security/
+  GPU acceptance gate closed; Stage11 `BLOCKED`,
+  Stage12 `NOT_STARTED`.

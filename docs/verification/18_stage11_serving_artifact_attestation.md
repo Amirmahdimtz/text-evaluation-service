@@ -127,3 +127,13 @@ real vLLM inference/quality benchmark, three domains,
 effective backend proof, model provenance, actual no-egress,
 GPU performance/capacity and service E2E acceptance gates
 remain PENDING_SERVER.
+
+## Offline CI evidence
+
+[GitHub Actions run 41827513749](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41827513749)
+completed SUCCESS for `5aabc7e`: 59 Stage11 offline safety
+tests and 213 focused Provider/probe/diagnostic tests
+passed. This does **not** include any shared-container
+artifact comparison, on-host reason sensitivity probe,
+live backend selection or GPU model calls. All those
+runtime checks remain PENDING_SERVER.
