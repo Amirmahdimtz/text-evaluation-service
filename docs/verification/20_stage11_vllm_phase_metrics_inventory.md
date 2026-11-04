@@ -159,3 +159,15 @@ effective request decoder and per-request lifecycle
 `UNVERIFIED`; model/GPU/security/quality and
 three-domain acceptance `PENDING_SERVER`;
 Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
+
+## CI evidence after the source change
+
+[GitHub Actions run 41839339602](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41839339602)
+completed SUCCESS on `5e977b4`: **59** Stage11
+offline safety tests and **226** focused synthetic
+software/Provider tests passed. The container-image
+build and networkless API liveness/Worker denial
+checks also succeeded. The CI did **not** connect
+to Simorgh or generate an inference request; the
+opt-in metrics GET and any owner-only request
+telemetry inspection remain `PENDING_OPERATOR`.

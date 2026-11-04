@@ -895,3 +895,18 @@ no-network default and opt-in/failure handling.
 No GPU inference or historical per-request decomposition
 was executed. CI results to be recorded independently.
 Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+### Confirmed CI evidence — 2026-11-04 phase inventory
+
+[GitHub Actions run 41839339602](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41839339602)
+completed **SUCCESS** for commit `5e977b43c7f19b90f2a659a3a6a87028a40649d5`.
+Actual job logs: **59** offline Stage11 safety tests
+PASS and **226** focused diagnostics/Provider
+tests PASS; the image build, networkless FastAPI
+liveness and Worker default-deny jobs also PASS.
+This CI executed only the **default zero-network**
+phase inventory, not a read-only GET to Simorgh
+or live model GPU inference. The real on-host
+phase inventory remains `PENDING_OPERATOR`;
+historical request phase attribution `UNAVAILABLE`;
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

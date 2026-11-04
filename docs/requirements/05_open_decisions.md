@@ -1773,3 +1773,22 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   text, IDs or secrets are to be published. Do not
   retry old GPU request or adjust vLLM.
   Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-04 — phase metric inventory CI verified, real phase attribution pending
+
+- Commit `5e977b4`, [CI run 41839339602](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41839339602)
+  SUCCESS: **59** Stage11 safety and **226**
+  focused offline software tests PASS.
+- The opt-in one-GET read-only phase inventory has
+  not been run on Simorgh; CI used only its inert
+  no-network default and synthetic mock histograms.
+  This code cannot recover the 45.072s media
+  request's private per-request queue/prefill/
+  decode timeline from current aggregate counters.
+- Real on-host metadata snapshot `PENDING_OPERATOR`;
+  private owner-retained request-specific
+  lifecycle data `UNVERIFIED`.
+  No GPU request, model configuration change,
+  security clearance or Stage11 product gate
+  was completed. Stage11 `BLOCKED`,
+  Stage12 `NOT_STARTED`.
