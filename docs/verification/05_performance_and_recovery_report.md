@@ -250,3 +250,24 @@ Operator also reported two identical focused offline runs, each
 performance benchmark, load test or model evaluation was done.
 Backend attribution and decoder cost remain PENDING_SERVER; Stage11
 BLOCKED, Stage12 NOT_STARTED.
+
+## 2026-11-04 — tokenizer-aware CPU profiling prepared, not yet measured
+
+A new Stage11-only offline-safe instrument can time local-tokenizer
+load, XGrammar TokenizerInfo creation, a separately constructed
+GrammarCompiler, cold/warm JSON Schema grammar compilation and up
+to 24 CPU fill_next_token_bitmask / accept_token steps on a fixed
+synthetic JSON abstention. It uses the actual project-generated
+criterion Schema and a separately owner-approved local tokenizer
+directory; never the production API/model weights. The additional
+child process is capped to one compiler thread and a 32 MiB grammar
+cache, with process-level CPU/time signals. It never verifies the
+serving process's effective backend, internal caches, GPU logits
+masking or real per-token generation speed.
+
+Prior real converter timings (1.724ms, 1.535ms) are not retested.
+The tokenizer-aware CPU metric remains PENDING_SERVER until an
+approved operator execution. The live 29.118s vs 2.327s request
+comparison remains non-causal, with invalid outputs in both arms.
+Do not tune serving runtime or quality contract from isolated
+microbenchmarks. Stage11 BLOCKED, Stage12 NOT_STARTED.

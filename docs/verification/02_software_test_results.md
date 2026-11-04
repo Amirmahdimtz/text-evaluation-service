@@ -463,3 +463,25 @@ of PASS. Tokenizer-aware compilation, grammar bitmask application,
 real-model structured quality, true backend attribution and Stage11
 acceptance gates are not passed. No real model call, load test,
 runtime or source code changes occurred in this observation.
+
+## 2026-11-04 — Stage11 tokenizer-aware XGrammar CPU diagnostic
+
+New files:
+- scripts/verification/stage11_xgrammar_tokenizer_profile.py
+- tests/test_stage11_xgrammar_tokenizer_profile.py
+
+A local isolated test harness reconstructed the checked
+CriterionInference Pydantic declarations and ran focused diagnostics:
+**10 PASS in 6.83 seconds**. Test coverage: offline dry-run guard,
+generated Python syntax and no-network flags, missing tokenizer path,
+synthetic XGrammar/transformers success with 24 CPU mask steps,
+sanitized import/compile error paths, version mismatch fail-closed,
+required local model config, attempted Python network socket denial,
+and invalid synthetic token rejection. These are **synthetic stub
+tests**; they do NOT measure actual Simorgh tokenizer-aware CPU
+compilation, GPU mask application or production request latency.
+
+The GitHub Actions Stage11 preflight was extended to run the actual
+repository test file and the offline CLI. Its CI outcome must be
+reported separately when available. Runtime test PENDING_SERVER;
+Stage11 BLOCKED; Stage12 NOT_STARTED.

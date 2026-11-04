@@ -604,3 +604,85 @@ appeared twice; post-response Pydantic/source validation stays intact.
 plan for actual vLLM request-phase breakdown and effective backend,
 not another speculative shared-GPU request. No runtime/model/Schema/
 Provider/GPU mutation was performed. Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — no-inference tokenizer-aware compiler and CPU mask investigation
+
+The operator-observed prior schema-to-Grammar conversion timings
+(1.724ms / 1.535ms) do not measure the expensive tokenizer-aware
+compilation and per-token mask steps. The pinned vLLM 0.10.2
+XGrammar backend uses xgr.TokenizerInfo.from_huggingface, an
+xgr.GrammarCompiler with cache, compile_json_schema, and a
+request-specific GrammarMatcher for token bitmasks:
+https://docs.vllm.ai/en/v0.10.2/api/vllm/v1/structured_output/backend_xgrammar.html
+
+Added a narrow Stage11 diagnostic:
+scripts/verification/stage11_xgrammar_tokenizer_profile.py
+and tests/test_stage11_xgrammar_tokenizer_profile.py.
+
+**Default:** offline schema fingerprint, no Docker, network, model/tokenizer
+access or GPU calls. **Operator-only opt-in:** --emit-runtime-script
+prints a self-contained Python program for running in an *additional*
+one-shot Python process in the existing container, only with explicit
+owner approval. This process requires the exact approved, already-present
+local model/tokenizer directory via STAGE11_LOCAL_TOKENIZER_DIR and must
+not disclose the local directory in shared logs or chat. It rejects
+unverified vLLM/XGrammar versions, refuses remote tokenizer code and
+external downloads, denies Python network sockets, hides the GPU from
+this child, suppresses path-bearing error output, caps the child to
+one compiler thread and 32 MiB grammar cache, and applies CPU (25s) and
+best-effort wall (45s) signal budgets. It still consumes shared host
+CPU/RAM, so owner approval is mandatory. A genuine memory hard cap is
+not proven, and native-code responsiveness to Python's wall alarm is
+not guaranteed.
+
+The probe reports separate tokenizer load, TokenizerInfo conversion,
+compiler init, cold compile and cache warm compile times, then advances
+a GrammarMatcher across at most 24 tokens of a **fixed synthetic JSON
+abstention** (locally tokenized; never model-generated). It measures
+CPU fill_next_token_bitmask and accept_token durations. No text,
+tokens, local paths, schema body or model identifiers are printed.
+It does not access the vLLM serving process's compiler or cache and
+does NOT measure GPU logits masking, real GPU decoding, throughput,
+real request latency or actual backend choice. The probe uses
+max_threads=1 and cache_limit_bytes=32MiB (not proven equal to the
+actual serving process's configuration), and any_whitespace=True,
+so real production timings must not be inferred from this subprocess.
+
+**Operator offline validation (no container):**
+
+~~~bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest \
+  -q -p no:cacheprovider tests/test_stage11_xgrammar_tokenizer_profile.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m \
+  scripts.verification.stage11_xgrammar_tokenizer_profile
+~~~
+
+**Only after separate shared-container-owner authorization and the
+operator identifying the exact matching installed tokenizer path
+*inside the container*, privately set the host-side forwarding variable**
+(the path must not be posted to the assistant or committed):
+
+~~~bash
+read -r -p 'Approved in-container tokenizer path: ' STAGE11_LOCAL_TOKENIZER_DIR
+export STAGE11_LOCAL_TOKENIZER_DIR
+cd /srv/projects/text-evaluation-service
+set -o pipefail
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m \
+  scripts.verification.stage11_xgrammar_tokenizer_profile --emit-runtime-script \
+  | docker exec -i -e PYTHONDONTWRITEBYTECODE=1 \
+      -e STAGE11_LOCAL_TOKENIZER_DIR \
+      ai-inference-vllm-1 /usr/bin/python3 -
+unset STAGE11_LOCAL_TOKENIZER_DIR
+~~~
+
+Do not use a remote HF model ID. A tokenizer without local
+config.json or unsupported/custom code will fail closed; do not
+download/install anything to work around a failure in the shared
+container. A successful
+CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED only quantifies isolated
+CPU operations on a synthetic JSON token sequence; the real vLLM
+request path and end-to-end performance diagnosis remain
+PENDING_SERVER. No additional inference approval is implied.
+Stage11 BLOCKED, Stage12 NOT_STARTED.

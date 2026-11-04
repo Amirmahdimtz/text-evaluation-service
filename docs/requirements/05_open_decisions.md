@@ -1281,3 +1281,28 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   shared GPU, timeout or token cap based on this observation.
 - **Stage11 BLOCKED; Stage12 NOT_STARTED**. No original mandatory
   acceptance ID is marked PASS solely from this diagnostic.
+
+### Stage11 — 2026-11-04 isolated tokenizer-aware XGrammar investigation
+
+- Following measured real schema-to-Grammar conversion at 1.724ms
+  and 1.535ms, the exact vLLM 0.10.2 XGrammar flow was reviewed:
+  tokenizer metadata, cached GrammarCompiler.compile_json_schema,
+  request GrammarMatcher's fill_next_token_bitmask and accept_token.
+- Added stage11_xgrammar_tokenizer_profile.py with offline-by-default
+  plan and explicit script emission for separately authorized,
+  one-shot CPU-only measurement using an existing local tokenizer
+  directory. No inference, network access or model weights, no
+  shared-service mutation, no raw tokenizer path/model ID in report.
+  Fixed synthetic JSON abstention and actual CriterionInference
+  schema are the only payload.
+- The isolated CPU probe **does not** use the live engine's cache,
+  configuration or GPU and cannot establish per-token GPU overhead
+  or selected serving backend. Local stub tests: 10 PASS;
+  actual on-prem tokenizer-aware timings PENDING_SERVER.
+- The owner of the shared inference runtime must approve the
+  additional CPU/RAM workload and the approved already-installed
+  tokenizer directory before operator execution. No remote
+  tokenizer/model artifact fetch, restart or runtime tuning is
+  authorized or necessary.
+- Stage11 remains BLOCKED; Stage12 NOT_STARTED. Existing mandatory
+  acceptance IDs remain pending and not waived.
