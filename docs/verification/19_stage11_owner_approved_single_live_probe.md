@@ -140,3 +140,72 @@ shared-GPU owner authorization, identity and
 resource limits PENDING_SERVER; actual new
 one-shot media inference NOT_RUN; Stage11
 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — actual operator-reported one-shot outcome: timeout, NOT PASS
+
+After pulling `main` through `ef498ce`, the Simorgh operator
+executed the two focused test files and read-only metadata check:
+- `tests/test_stage11_real_model_criterion_probe.py` and
+  `tests/test_stage11_container_metadata.py` **68 passed in 0.35s**.
+- `stage11_container_metadata` reported
+  `container_running=true`, installed vLLM **0.10.2** from
+  package metadata in the running container, and one redacted model
+  advertised by the local `/v1/models` endpoint. This is neither
+  serving-artifact/tokenizer attestation nor proof of effective
+  request-level guided-decoding backend.
+- Exactly one synthetic `media_message_clarity` live criterion
+  was attempted with `--disable-thinking --diagnostics
+  --max-output-tokens 512` and returned
+  `REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE`,
+  `contract=failed`, **45072ms**, `LLM_CIRCUIT_OPEN`,
+  `failure_kind=REQUEST_TIMEOUT`. `requests_attempted=1`,
+  `retries=0`, `stopped_after_circuit_open=true`.
+  The generic three-domain status string is used by the existing
+  probe even when one domain was selected; **do not interpret it as
+  three attempted requests**.
+
+The diagnostic response metadata was
+`finish_reason=UNAVAILABLE`, `json_syntax=UNAVAILABLE`,
+`reported_usage=null`, because no complete HTTP response
+payload reached the diagnostic wrapper on this timed-out request.
+This is **not proof that the model returned invalid JSON**, nor
+proof that vLLM shut down; it is a provider-level request timeout.
+The circuit-breaker was configured to open on one failure.
+`src/infrastructure/providers/llm/local_llm_provider.py` uses
+`httpx.Timeout` and an `asyncio.timeout(45)` stream scope;
+caught timeout maps to `REQUEST_TIMEOUT` and then
+`LLM_CIRCUIT_OPEN`.
+
+The before/after shared vLLM metrics read returned status
+`AVAILABLE_SHARED_UNATTRIBUTED` with these *global*
+counter deltas: `generation_tokens_total=401`,
+`inter_token_latency_seconds_count=400`,
+`inter_token_latency_seconds_sum=44.846746`,
+`prompt_tokens_total=635`, `num_preemptions_total=0`.
+All four sampled request-success/decode-time counter deltas
+were zero. These values are **not attributable to this
+request**; no per-request decode rate, effective backend,
+GPU occupancy or final completion count is established.
+Do not infer that the 401 tokens all belonged to the
+media request or that XGrammar caused the 45-second timeout.
+
+**Authorization consumed:** the one scoped live request was
+executed by the operator. A failure cannot be automatically
+retried under that approval. **Stop**; do not increase
+`timeout_seconds`, token cap, concurrency, change backend,
+schema or serving configuration, send another request,
+or restart shared vLLM. A new test must have an explicitly
+new approved owner/resource window, validated serving identity
+and a controlled request-level timing/termination plan.
+
+**Updated next critical path:** owner-established loaded model/
+tokenizer revision and selected guided decoder per request;
+private redacted request lifecycle observation (generation
+rate, completion/abort and whether the server continues after
+client timeout), current shared-service resource baseline,
+then a separately authorized bounded full-contract run with
+stop policy. CPU-only XGrammar synthetic mask profiles
+remain *noncausal*. Real-model contract and performance
+gate FAIL for this specific attempt; formal Stage11
+quality/No-Egress/E2E acceptance `PENDING_SERVER`,
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

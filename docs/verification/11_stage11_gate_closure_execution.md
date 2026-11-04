@@ -161,3 +161,20 @@ Optional owner-approved file comparison was
 and active backend remain UNVERIFIED. No mandatory
 Stage11 product gates closed. Stage11 BLOCKED,
 Stage12 NOT_STARTED.
+
+## 2026-11-04 — new real-model media request timeout evidence
+
+The operator ran 68 targeted offline tests (all passed)
+and redacted read-only container/loopback metadata:
+running vLLM 0.10.2, one model metadata item.
+One separately permitted full `media_message_clarity`
+structured criterion attempt then **FAILED** at
+45072ms with `LLM_CIRCUIT_OPEN` and underlying
+`REQUEST_TIMEOUT`. Response JSON and
+`finish_reason` remain unobservable, so no
+model contract, performance or quality gate was
+passed. Shared Prometheus deltas were unattributed.
+The authorized single request is spent. Further
+GPU inference or timeout/model changes require
+new owner scope and bounded-stop conditions.
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

@@ -481,3 +481,35 @@ length/total mask sums are not a controlled service speedup
 estimate. Owner-supplied served artifact comparison was skipped;
 actual serving model/tokenizer/backend and real GPU performance
 remain UNVERIFIED/PENDING_SERVER. Stage11 BLOCKED.
+
+## 2026-11-04 — Simorgh 512-token media criterion request timeout
+
+Operator's **one** approved actual `media_message_clarity`
+request, disabled thinking, structured JSON Schema and
+max_output_tokens=512, failed after **45072ms** with
+`LLM_CIRCUIT_OPEN` / `REQUEST_TIMEOUT`.
+Configured provider request timeout 45 seconds, one
+concurrent request, one attempt (zero retries).
+No complete model response arrived in the diagnostic
+wrapper; finish reason, JSON syntax and usage
+`UNAVAILABLE`. These are **unknown**, not negative
+JSON validity assertions.
+
+Shared vLLM metrics changed over the interval:
+generation_tokens_total +401; inter-token latency
+count +400; inter-token latency sum +44.846746 seconds;
+prompt_tokens_total +635; num_preemptions_total +0.
+All are shared global counters and cannot identify
+which request generated the tokens. They are compatible
+with time being spent in incremental decoding but do
+not prove per-request throughput or XGrammar/GPU masking
+attribution. Live guided backend/model/tokenizer
+provenance remains unverified, and CPU mask-fill spikes
+in the synthetic reason field explain at most a
+different isolated CPU microbenchmark.
+
+**Stop rule triggered; one-request approval consumed.**
+No retry, token-budget increase, timeout increase,
+model change or new GPU request without fresh
+explicit owner resource approval and per-request
+lifecycle evidence. Stage11 BLOCKED, Stage12 NOT_STARTED.

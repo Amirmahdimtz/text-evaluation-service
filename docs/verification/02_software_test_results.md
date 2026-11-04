@@ -841,3 +841,38 @@ User consent OBSERVED; shared-service-owner permission
 and GPU stop window `PENDING_SERVER`; runtime model/
 Tokenizer/backend `UNVERIFIED`; live diagnostic
 `NOT_RUN`. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — Simorgh single live media criterion failed timeout
+
+Operator pulled source through `ef498ce`. Targeted
+`test_stage11_real_model_criterion_probe.py` and
+`test_stage11_container_metadata.py` reported
+**68 PASSED in 0.35s**. Owner-invoked metadata probe:
+running container, installed vLLM 0.10.2, exactly
+one redacted model at `127.0.0.1:8000/v1/models`.
+This is local metadata, not immutable loaded-artifact
+or effective backend proof.
+
+The **one** scoped live criterion `media_message_clarity`
+attempt returned, after **45072ms**,
+`REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE`,
+`contract=failed`, `LLM_CIRCUIT_OPEN` with
+`failure_kind=REQUEST_TIMEOUT`, zero retry and
+one attempt. The generic "three-domain" report
+status does not imply three executed requests.
+Response `finish_reason=UNAVAILABLE`,
+`json_syntax=UNAVAILABLE` and
+`reported_usage=null`; no complete response reached
+the validator. This is **not** JSON/semantic-evaluation
+PASS and **not** proof of malformed JSON.
+
+The diagnostics included global, unattributed metric
+deltas: 401 generated tokens, 400 inter-token latency
+observations summing 44.846746 seconds, 635 prompt
+tokens and zero preemptions. Other tenants' activity
+may contribute; per-request attribution is NOT measured.
+The single-request authorization was consumed.
+Status for this specific real-model criterion
+`FAILED_REQUEST_TIMEOUT`; broader Stage11 model
+quality/security/E2E acceptance `PENDING_SERVER`,
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

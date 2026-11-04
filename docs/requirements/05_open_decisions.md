@@ -1708,3 +1708,38 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - New GPU request `NOT_RUN` by assistant (no Simorgh shell access);
   model/Tokenizer/request-effective guided backend UNVERIFIED.
   Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — live media criterion timed out, stop condition met
+
+- On Simorgh after `ef498ce`, two focused source test
+  files **68 PASS (0.35s)**. Read-only runtime metadata
+  saw one redacted served model and vLLM 0.10.2 in
+  a running container. Immutable serving model/tokenizer
+  and effective guided decoder remain `UNVERIFIED`.
+- One permitted live synthetic media criterion attempt
+  `media_message_clarity`, output cap 512 and disabled
+  thinking, failed after **45072ms**, with
+  `LLM_CIRCUIT_OPEN`, `failure_kind=REQUEST_TIMEOUT`,
+  zero retries. Finish reason, response JSON validity,
+  usage and actual content were **UNAVAILABLE**,
+  not confirmed invalid.
+- Shared metrics in the interval included +401
+  generated tokens, 400 inter-token observations
+  summing 44.846746s, +635 prompt tokens, zero
+  preemptions; **shared counters cannot be assigned
+  to this individual request** or identify XGrammar
+  as cause. These are not single-request throughput
+  measurements.
+- Decision: the one-request permission has been
+  consumed and explicit STOP reached. Do not retry
+  or change timeout/token limit/backend/schema
+  to force a PASS. Obtain independent owner-approved
+  artifact/backend identity, redacted per-request
+  generation/abort evidence and a NEW scoped
+  resource window for any subsequent inference.
+  The baseline synthetic CPU string-mask observations
+  remain separate.
+- Real media criterion attempt `FAILED_REQUEST_TIMEOUT`.
+  Formal enterprise and product acceptance still
+  `PENDING_SERVER`; Stage11 `BLOCKED`,
+  Stage12 `NOT_STARTED`.
