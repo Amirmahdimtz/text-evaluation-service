@@ -571,3 +571,13 @@ change and does not validate the new fields. No new on-server
 measurements were executed by the assistant. The real first/rest
 times remain `PENDING_SERVER`; formal Stage11 acceptance and
 GPU timing remain unverified. Stage11 `BLOCKED`.
+
+### Actual GitHub Actions evidence — 2026-11-04
+
+[GitHub Actions 41814799628](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41814799628)
+completed SUCCESS at commit `7f53610`: **59** offline Stage11
+safety tests passed; **191** focused Provider/probe/diagnostic tests
+passed. Default tokenizer profiler reported
+`OFFLINE_TOKENIZER_PROFILE_PLAN`, zero Docker/network/inference
+actions. These are synthetic/software tests; new real Simorgh
+first-versus-rest CPU measurements remain `PENDING_SERVER`.

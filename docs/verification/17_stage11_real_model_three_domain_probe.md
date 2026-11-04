@@ -855,3 +855,8 @@ compiler/cache, real GPU token masking and attribution of the old
 **Gate:** Offline diagnostic enhancement is a narrowly scoped
 preparation, not closure of any Stage11 model/performance/security
 acceptance ID. Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
+
+**Verified CI:** [GitHub Actions 41814799628](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41814799628)
+SUCCESS on commit `7f53610`, with 59 Stage11 offline safety and
+191 focused synthetic diagnostic/Provider tests passing. No
+on-server first/rest mask cost or GPU inference was measured.
