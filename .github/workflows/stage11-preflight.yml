@@ -28,6 +28,8 @@ on:
       - "scripts/verification/stage11_serving_artifact_match.py"
       - "tests/test_stage11_serving_artifact_match.py"
       - "Dockerfile.stage11-candidate"
+      - "requirements.txt"
+      - "src/**"
       - "tests/test_stage11_candidate_image_contract.py"
       - "src/infrastructure/providers/llm/local_llm_provider.py"
       - "tests/test_stage07_local_llm.py"
@@ -101,4 +103,52 @@ jobs:
           assert config.settings.worker.enabled is False
           assert app.openapi_url is None
           print("IMAGE_IMPORT_FAIL_CLOSED_PASS")
+          '
+      - name: Exercise actual API health and disabled Worker in networkless container
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 64 --memory 512m \
+            --entrypoint python tes-stage11-api-candidate:ci -c '
+          import json
+          import subprocess
+          import sys
+          import time
+          from urllib.request import ProxyHandler, build_opener
+
+          process = subprocess.Popen(
+              [sys.executable, "-m", "src.host.app"],
+              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+          )
+          try:
+              opener = build_opener(ProxyHandler({}))
+              success = False
+              for _ in range(50):
+                  if process.poll() is not None:
+                      raise RuntimeError("STAGE11_API_EXITED_EARLY")
+                  try:
+                      with opener.open(
+                          "http://127.0.0.1:18080/health/live",
+                          timeout=1,
+                      ) as response:
+                          success = (
+                              response.status == 200 and
+                              json.load(response) == {"status": "alive"}
+                          )
+                          if success:
+                              break
+                  except OSError:
+                      time.sleep(0.1)
+              assert success, "STAGE11_API_NOT_READY"
+              print("IMAGE_API_LOOPBACK_LIVENESS_PASS")
+          finally:
+              process.terminate()
+              process.wait(timeout=5)
+
+          worker = subprocess.run(
+              [sys.executable, "-m", "src.host.evaluation_worker"],
+              capture_output=True, text=True, check=False, timeout=10,
+          )
+          assert worker.returncode != 0
+          assert "WORKER_DISABLED" in worker.stderr
+          print("IMAGE_WORKER_DEFAULT_DENY_PASS")
           '
