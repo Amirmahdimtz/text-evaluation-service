@@ -246,3 +246,25 @@ owner, or marking unavailable historical
 evidence UNRECOVERABLE. GPU test consent
 already consumed; no new GPU request.
 Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+## 2026-11-04 — local tracing services not found; remote evidence unresolved
+
+Operator's read-only Docker/systemd/process-name
+search returned `CHECKED` for each source and
+`NOT_SEEN` for Jaeger, Tempo, OpenTelemetry,
+Zipkin, Grafana Alloy, Prometheus and Grafana.
+No inference or service configuration change.
+This is **not** an enterprise-wide trace
+retention test. A local vLLM exporter still
+exists at `/metrics`, but supplies shared
+aggregates, not the historical request timeline.
+
+Remaining owner dependency: identify whether
+an **approved remote** tracing/audit or gateway
+sink kept per-request timestamps and disconnect/
+cancellation status. If not retained after
+proper verification, mark the prior 45.072s
+phase split `UNRECOVERABLE`; otherwise
+extract only approved redacted phase durations
+and check request attribution locally.
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

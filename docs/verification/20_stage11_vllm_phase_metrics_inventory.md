@@ -324,3 +324,47 @@ without owner authorization. Request phase
 decomposition remains `UNAVAILABLE` (not
 `UNRECOVERABLE` until retention/traces checked).
 Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — Simorgh local observability-service discovery: no candidates observed
+
+The operator ran a bounded read-only local inventory using
+`docker ps -a --format`, `systemctl list-units --all
+--type=service`, and `ps -eo comm=`. All three sources
+reported `CHECKED`. Searches over the returned service,
+container-name/image, and process-command-name strings for
+`jaeger`, `tempo`, `opentelemetry`/`otelcol`,
+`zipkin`, `grafana_alloy`, `prometheus` and `grafana`
+all reported `NOT_SEEN`. The operator's tool reported
+`gpu_inference_requests=0` and `configuration_changes=0`.
+No raw process listings, paths, logs, names or telemetry
+were published.
+
+**Interpretation:** none of the specifically enumerated
+observability/tracing **candidates were identifiable in
+this host inventory**. This is NOT evidence that no
+observability exists at the organization level, that
+there is no remote collector or exporter, that vLLM
+never emitted spans, or that no other trace sink may
+retain the request. The vLLM local `/metrics` endpoint
+already observed emits Prometheus-compatible metrics;
+`prometheus=NOT_SEEN` only refers to the named service/
+process/container candidate search, **not to metric
+export itself**. Searches may miss custom service names,
+containers outside the operator's visibility, remote
+deployments and tracing configurations not exposed in
+names.
+
+**Updated critical path:** no further repeated generic
+Docker log/host-name scans. Ask the authorized
+infrastructure/vLLM owner whether historical per-request
+traces or API gateway/access events were retained in
+an approved **remote** observability/audit system.
+Only redacted existence and phase timing/abort metadata
+may enter the project report; do not publish private
+request IDs, logs or any raw user data. In the absence
+of verified retained request-correlated telemetry,
+the historical 45.072s queue/prefill/decode breakdown
+is still `UNAVAILABLE`, **not** formally
+`UNRECOVERABLE`. New GPU inference requires a
+separate permission and stop budget. Stage11
+`BLOCKED`, Stage12 `NOT_STARTED`.

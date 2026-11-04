@@ -1881,3 +1881,32 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   private owner-authorized request-correlated
   observability exists. Stage11 `BLOCKED`,
   Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-04 — no named local tracing stack detected
+
+- On Simorgh, the operator's read-only Docker,
+  systemd and process-name discovery all returned
+  `CHECKED`. Jaeger, Tempo, OpenTelemetry,
+  Zipkin, Grafana Alloy, Prometheus and Grafana
+  all returned `NOT_SEEN`. GPU requests=0,
+  configuration changes=0.
+- Decision: **no identifiable local named tracing
+  candidate** in the inspected scopes; this does
+  not establish absence of a remote collector,
+  enterprise observability service, custom-named
+  exporter or prior request event history.
+  The live `/metrics` exporter remains observed
+  despite no Prometheus *server* name detected.
+- Stop repeated host-name/log scans; ask the
+  authorized vLLM/Infrastructure owner **privately**
+  whether request-correlated ingress, queue,
+  prefill, first-token, abort/completion timestamps
+  or retained OpenTelemetry traces exist in
+  any allowed remote audit/observability sink.
+  Do not export raw logs, request identifiers,
+  prompts or private paths to GitHub/chat.
+- Old 45.072-second media request timeline
+  `UNAVAILABLE`, remote trace availability
+  `UNVERIFIED`. No new GPU work and no
+  Stage11 acceptance gates closed.
+  Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

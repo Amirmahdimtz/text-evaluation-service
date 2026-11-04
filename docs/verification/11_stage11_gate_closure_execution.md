@@ -210,3 +210,18 @@ Per-request timing/effective backend
 `UNVERIFIED` pending owner-retained evidence,
 else historical decomposition `UNRECOVERABLE`.
 Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — host-local observability discovery
+
+All three read-only Simorgh local inventory sources
+(Docker names/images, systemd services, process
+commands) were `CHECKED`; no named candidates
+for Jaeger, Tempo, OpenTelemetry, Zipkin,
+Grafana Alloy, Prometheus or Grafana were
+observed. This result does not exclude remote
+observability or custom service names. No GPU
+inference or configuration changes occurred;
+historical request timings are still
+`UNAVAILABLE`, remote private trace retention
+`UNVERIFIED`. No Stage11 gate was passed;
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

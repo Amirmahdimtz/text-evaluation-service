@@ -978,3 +978,22 @@ or raw-log exposure. Owner-only request-level
 historical trace `UNVERIFIED`,
 phase split `UNAVAILABLE`, Stage11 `BLOCKED`,
 Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — Simorgh host-local tracing/monitoring inventory
+
+Operator performed read-only service discovery with
+Docker, systemd and process-list commands; all three
+checks were `CHECKED`. Named candidates Jaeger,
+Tempo, OpenTelemetry/otelcol, Zipkin, Grafana Alloy,
+Prometheus and Grafana were all `NOT_SEEN`.
+No GPU inference requests or configuration changes
+were made. This is categorical host-local service
+name evidence, not a complete enterprise-wide
+observability audit or proof of missing remote tracing.
+No new tests were run by the assistant or claimed
+PASS. vLLM's previously observed loopback
+`/metrics` exporter is not invalidated by a
+nonmatching `prometheus` service-name search.
+Historical per-request phase split `UNAVAILABLE`;
+remote owner-approved trace retention `UNVERIFIED`,
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
