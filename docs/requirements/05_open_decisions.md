@@ -1306,3 +1306,9 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   authorized or necessary.
 - Stage11 remains BLOCKED; Stage12 NOT_STARTED. Existing mandatory
   acceptance IDs remain pending and not waived.
+
+### Stage11 — 2026-11-04 — tokenizer CPU diagnostic CI evidence
+
+- GitHub Actions [41809757700](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41809757700) succeeded on commit 365ef1a5: **59** offline Stage11 safety tests and **184** focused Provider/probe/diagnostic tests passed; new default CLI confirmed no network, no container access, no tokenizer load and no GPU inference.
+- Prior local isolated tests: **10 PASS**. The generated runtime probe has been verified only against stubs, not the installed Simorgh tokenizer; real CPU compiler/cache/mask durations remain **PENDING_SERVER** until separate shared-owner approval and operator execution.
+- No existing enterprise acceptance item has been converted to PASSED by these tests. Stage11 BLOCKED, Stage12 NOT_STARTED.

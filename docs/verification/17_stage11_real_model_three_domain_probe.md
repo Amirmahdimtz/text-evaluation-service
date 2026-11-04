@@ -686,3 +686,9 @@ CPU operations on a synthetic JSON token sequence; the real vLLM
 request path and end-to-end performance diagnosis remain
 PENDING_SERVER. No additional inference approval is implied.
 Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+**Repository CI evidence:** GitHub Actions [run 41809757700](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41809757700)
+completed SUCCESS at commit 365ef1a5: 59 Stage11 offline
+safety checks PASS, 184 focused offline tests PASS. The actual
+tokenizer-aware diagnostic inside Simorgh and GPU token-mask
+application remain PENDING_SERVER; neither was executed by CI.

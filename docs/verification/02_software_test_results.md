@@ -485,3 +485,16 @@ The GitHub Actions Stage11 preflight was extended to run the actual
 repository test file and the offline CLI. Its CI outcome must be
 reported separately when available. Runtime test PENDING_SERVER;
 Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+### GitHub Actions actual CI — 2026-11-04
+
+Run [41809757700](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41809757700)
+completed **SUCCESS** on main commit
+365ef1a5f59262c023087a03f71a8948254c1795. CI output:
+**59 Stage11 safety tests PASS**, **184 focused offline tests PASS**.
+The default no-network tokenizer-grammar profiler returned
+OFFLINE_TOKENIZER_PROFILE_PLAN, schema hash matched, and
+tokenizer_aware_compilation_measured=false, with zero Docker,
+GPU or model inference actions. Local isolated earlier 10 PASS
+is a separate validation. The actual Simorgh local tokenizer
+compiler and CPU mask times remain PENDING_SERVER.
