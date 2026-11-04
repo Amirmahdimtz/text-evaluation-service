@@ -190,3 +190,27 @@ performance SLO. No baseline-valid JSON completion was observed
 from either arm. Existing schema/validation cannot be removed.
 Further live experimentation requires a separately justified
 and approved controlled setup. Stage11 `BLOCKED`.
+
+## ## Stage11 vLLM 0.10.2 backend static verification — 2026-11-04
+
+Pinned vLLM v0.10.2 uses `--guided-decoding-backend` (default
+`auto`). Its V1 processor tests XGrammar compatibility and falls
+back to Guidance for schemas that XGrammar rejects; request-level
+backend changes are unsupported on V1. The actual application schema
+has 8 top-level fields, 4 arrays limited to 32 items, 1 `$ref`,
+1 nullable `anyOf` and 2 objects with
+`additionalProperties=false`. Its **static known-unsupported
+keyword** scan for v0.10.2 returned none. No grammar
+compilation/latency execution was made; this is not a benchmark.
+
+The earlier observed 29.118s structured versus 2.327s
+unconstrained two-arm timing difference remains real but
+non-causal and **neither arm passed the model contract**.
+Actual selected backend, compilation time, per-token grammar
+masking cost and source of the observed gap remain `UNVERIFIED`.
+
+Offline [CI 41796324266](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41796324266)
+59 + 162 PASS. Only read-only sanitized Docker launch-flag
+inspection is prepared for the approved operator; no GPU, runtime,
+timeout, model or production configuration changes.
+Stage11 performance gate `BLOCKED`.

@@ -394,3 +394,26 @@ Offline CI [41667673237](https://github.com/Amirmahdimtz/text-evaluation-service
 59 preflight / 143 focused PASS remains a separate test population.
 No new tests run in this documentation update. Stage11
 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## Stage11 vLLM 0.10.2 backend static verification — 2026-11-04
+
+New script `scripts/verification/stage11_guided_backend_inspect.py`
+reports the actual Pydantic-generated `CriterionInference` schema
+structure without network, inference, model text or Docker by default.
+Tests `tests/test_stage11_guided_backend_inspect.py` cover the schema
+fields, v0.10.2 XGrammar unsupported keyword rules, redaction of
+synthetic Docker arguments/credentials, invalid container input,
+shell-wrapped commands, `sudo -n` opt-in and fail-closed inspection.
+Stage11 preflight CI was extended to cover this new tool.
+
+Initial CI run 41796144954 had one test failure revealing that an
+explicitly empty `--container` value was treated as no opt-in.
+The single-line validation fix was pushed and the subsequent
+[CI 41796324266](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41796324266)
+succeeded: **59 preflight PASS; 162 focused tests PASS**; default
+inspection CLI ran with **zero Docker calls and zero inference**.
+
+This is `PASSED_OFFLINE_STATIC`. The actual deployed backend,
+XGrammar compiler results, runtime interpretation of `auto` and GPU
+inference were **not** verified. Stage11 `BLOCKED`, Stage12
+`NOT_STARTED`.
