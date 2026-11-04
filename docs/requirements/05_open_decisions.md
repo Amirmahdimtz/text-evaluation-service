@@ -1214,3 +1214,33 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   runtime's guided decoding configuration and actual schema. Any
   further GPU experiment needs separate owner approval. Stage11
   `BLOCKED`; Stage12 `NOT_STARTED`; quality/latency gates remain open.
+
+### Stage11 — 2026-11-04 pinned vLLM 0.10.2 guided-decoding backend review
+
+- **Pinned code/doc review:** vLLM 0.10.2's setting is
+  `--guided-decoding-backend` (documented default `auto`).
+  V1 auto first checks XGrammar schema support then Guidance fallback;
+  per-request Backend override is unsupported on V1.
+- **Current software contract:** the real `CriterionInference`
+  Schema contains eight top-level fields, one definition, one ref,
+  one nullable anyOf and four `maxItems=32` arrays. The static
+  XGrammar unsupported-keyword check returned `[]` on the actual
+  generated Schema, but compiler acceptance/latency were NOT tested.
+  The independent Pydantic cross-field/evidence checks remain mandatory.
+- **New non-invasive tool:** `scripts/verification/stage11_guided_backend_inspect.py`
+  (default offline; optional Docker inspect of only launch entrypoint and
+  command, safe allowlisted output; no GPU, network, Docker exec,
+  runtime mutation, raw arguments or environment output).
+  Tests `tests/test_stage11_guided_backend_inspect.py`, Stage11 CI updated.
+- **Actual CI:** first run 41796144954 detected a one-test empty-container
+  validation defect, corrected in `eb503464`;
+  final [41796324266](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41796324266)
+  `SUCCESS`: 59 + 162 offline tests passed and schema-only preflight ran.
+- **Runtime gate open:** the observed 12.51x single-pair response-duration
+  gap does not prove XGrammar was active, that Guidiance was used, or
+  that grammar compilation dominates. Need authorized read-only Docker
+  metadata on Simorgh; when auto or unavailable, resolved per-request
+  backend stays `UNVERIFIED` until trusted operator/runtime evidence.
+- **Change decision:** no runtime reconfiguration, server restart,
+  production Provider/Schema change, additional inference or GPU
+  performance claim. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

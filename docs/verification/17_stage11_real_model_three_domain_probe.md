@@ -443,3 +443,67 @@ validity experiment only after resource-owner sign-off. Do not
 deploy unconstrained inference in production; always retain typed
 Schema and evidence validation. Stage11 `BLOCKED`; Stage12
 `NOT_STARTED`.
+
+## 2026-11-04 pinned vLLM 0.10.2 guided-decoding backend review
+
+**Exact-version external source review (not a running-container inspection):**
+- vLLM v0.10.2 CLI uses `--guided-decoding-backend`, valid values
+  `auto`, `xgrammar`, `guidance`, `outlines`, `lm-format-enforcer`,
+  with documented default `auto`.
+  Source: https://docs.vllm.ai/en/v0.10.2/configuration/engine_args.html
+- In vLLM V1, the request processor resolves `auto` by first checking
+  XGrammar support, then trying Guidance if XGrammar rejects the schema.
+  Selecting the backend differently per request is not supported by V1;
+  engine configuration and grammar acceptance are separate concepts.
+  Source: https://docs.vllm.ai/en/v0.10.2/api/vllm/v1/engine/processor.html
+- The v0.10.2 XGrammar validation code lists unsupported schema features
+  including numeric `multipleOf`, array `uniqueItems/contains`,
+  string `format`, and object `patternProperties`.
+  Source: https://docs.vllm.ai/en/v0.10.2/api/vllm/v1/structured_output/backend_xgrammar.html
+
+**Actual project/schema inspection:** the unchanged production
+`LocalLlmProvider` sends `response_format.type=json_schema`
+with `CriterionInference.model_json_schema()` and `strict=True`.
+`stage11_guided_backend_inspect` evaluated this real code-generated
+schema **offline**, recording 8 top-level fields, one definition,
+one `$ref`, one `anyOf`, four arrays with `maxItems=32`,
+two object `additionalProperties=false` constraints, and **no
+known unsupported XGrammar keyword by the v0.10.2 static rule set**.
+This does not prove XGrammar grammar compilation, actual backend
+selection, decode performance or semantic Pydantic cross-field rules.
+The latter remain enforced by the application's strict decoder.
+
+**Actual CI:** first run 41796144954 failed one test exposing an empty
+container-name input being silently treated as no opt-in. Fixed that
+edge case and reran:
+[41796324266](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41796324266)
+`SUCCESS`: 59 Stage11 preflight tests passed, 162 focused
+Provider/probe/backend-inspection tests passed. Default CLI emitted
+`READ_ONLY_BACKEND_PREFLIGHT`, no Docker access and zero inference.
+No live runtime backend was observed by the assistant.
+
+**Operator-authorized, no-inference metadata-only next step:**
+
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_guided_backend_inspect.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_guided_backend_inspect
+# Only with shared-owner approval for Docker read-only metadata access:
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_guided_backend_inspect --container ai-inference-vllm-1
+```
+
+The opt-in mode uses exactly two `docker inspect` metadata lookups:
+`Config.Entrypoint` and `Config.Cmd`. It never prints raw command,
+model identifier, image reference, Secret, environment, process list,
+logs or paths; Docker permission failure becomes `UNVERIFIED`. Do not
+run `sudo` unless the shared-runtime owner separately approves
+the explicit `--sudo-docker` option (noninteractive `sudo -n` only).
+Shell-wrapped commands are deliberately not parsed.
+
+**Interpretation:** A configured `auto` is not proof that the request
+resolved to XGrammar. The running engine's actual selected backend and
+which part of 29.118s was grammar compilation versus decode are still
+`UNVERIFIED`. Do not change the shared server, restart vLLM or send
+new GPU requests to answer this. Stage11 `BLOCKED`, Stage12
+`NOT_STARTED`.
