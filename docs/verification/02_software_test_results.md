@@ -961,3 +961,20 @@ No new inference, GPU, Docker settings or
 service modifications occurred.
 Historical 45.072s request phases `UNAVAILABLE`;
 Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — operator Docker log line count
+
+Operator's read-only pipeline for
+2026-11-04T13:00:00Z to 13:30:00Z returned
+**10 lines of combined stdout/stderr**. The
+previous last-1200-lines pattern scan is
+therefore *likely* complete for that 30-minute
+window if the Docker command exited successfully
+and retention did not change. The pipeline
+exit status was not recorded, so an error message
+may have contributed to the line count.
+No new model or GPU test, Docker setting change
+or raw-log exposure. Owner-only request-level
+historical trace `UNVERIFIED`,
+phase split `UNAVAILABLE`, Stage11 `BLOCKED`,
+Stage12 `NOT_STARTED`.

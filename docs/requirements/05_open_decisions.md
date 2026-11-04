@@ -1855,3 +1855,29 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - No request to GPU, raw logs published or
   Stage11 acceptance gate closed. Stage11
   `BLOCKED`, Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-04 — bounded Docker log count narrows search coverage
+
+- Operator's `docker logs --since 13:00 --until 13:30`
+  pipeline printed **10** combined stdout/stderr
+  lines for 2026-11-04 UTC. If Docker exited
+  successfully, the earlier last-1200-lines
+  pattern scan covered all records in that
+  time window. The exit status was not captured
+  and an error could be included; mark this
+  confirmation `CONDITIONAL`.
+- Known per-request/phase/timing patterns were
+  absent; engine periodic statistics were
+  present in the prior scan. Even full coverage
+  cannot establish that per-request trace
+  events were ever emitted or retained, or
+  that another authorized tracing system lacks
+  them. Historical queue/prefill/decode for
+  the 45.072s timeout stays `UNAVAILABLE`.
+- Decision: do not infer or reconstruct missing
+  timings from generic engine statistics,
+  and do not re-run GPU inference. Verify
+  Docker read success and determine whether
+  private owner-authorized request-correlated
+  observability exists. Stage11 `BLOCKED`,
+  Stage12 `NOT_STARTED`.

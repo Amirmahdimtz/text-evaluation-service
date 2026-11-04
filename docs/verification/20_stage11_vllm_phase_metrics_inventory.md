@@ -280,3 +280,47 @@ per-request timings remain `UNAVAILABLE`; owner-only
 trace existence `UNVERIFIED`. No GPU
 request, service change or log configuration change.
 Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-04 — Docker log volume check: only 10 output lines
+
+The Simorgh operator ran a *read-only* shell pipeline:
+
+```bash
+set -o pipefail
+timeout 15s docker logs \
+  --since "2026-11-04T13:00:00Z" \
+  --until "2026-11-04T13:30:00Z" \
+  ai-inference-vllm-1 2>&1 | wc -l
+```
+
+It displayed **10**. This is far below the previous
+**last-1200-lines** log-pattern scan cap for the same UTC
+window and is consistent with full window coverage by
+the previous scan. However, because the operator
+did not report the pipeline exit status, the total
+could include Docker/timeout diagnostic stderr
+and **successful log extraction is not independently
+proven**. The line count is a count of combined
+stdout/stderr, not necessarily 10 valid log entries.
+
+Conditional on successful Docker reading and unchanged
+retention, the previous `request_marker=NO`,
+`queue_timing=NO`, `prefill_timing=NO`,
+`decode_timing=NO`, `first_token_timing=NO`,
+`abort_or_disconnect=NO`, and
+`periodic_engine_stats=YES` apply to all
+returned log lines for that window. It remains
+a search for known regex patterns and cannot
+exclude unknown event formats, missing/rotated
+records, another logging sink, or the precise
+historical request being outside the window.
+
+**Next owner-only action:** verify command success
+without emitting log bodies, and privately check
+the configured tracing/audit sink or retained
+request lifecycle telemetry. Do not repeat
+GPU requests or increase the source-log scope
+without owner authorization. Request phase
+decomposition remains `UNAVAILABLE` (not
+`UNRECOVERABLE` until retention/traces checked).
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
