@@ -360,3 +360,31 @@ They cannot prove a particular XGrammar state or the
 source of the earlier vLLM latency gap. Owner authorization
 is required for a new isolated CPU-only diagnostic.
 Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+## 2026-11-04 — Simorgh synthetic CPU mask fill positions observed
+
+Operator-provided evidence from main `a11d520`:
+**20** focused tokenizer-profiler tests passed in **1.16s**.
+The separate fixed synthetic JSON CPU-only probe returned
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`. Both threshold
+lists contained exactly **[15,16,17,18,19]**, i.e. five
+contiguous mask-fill positions strictly >100ms and
+also >10ms. The other 19 positions were at or below 10ms.
+Total **1150.577ms** over 24 fills; first **0.087ms**,
+remaining 23 sum **1150.490ms**, mean **50.021ms**,
+median **0.011ms**, nearest-rank P95 **226.338ms**,
+max **246.710ms**. Cold compile **231.962ms**,
+warm **0.024ms**, TokenizerInfo **764.192ms**,
+tokenizer load **450.091ms**, token accept total
+**0.116ms**; pinned vLLM 0.10.2 / XGrammar 0.1.23.
+
+This disproves first-step-only overhead *in this trace*,
+and precisely locates which fixed synthetic steps exhibit
+intermittent CPU cost. It **does not identify why** they
+cost more, nor measure live vLLM backend, request throughput,
+GPU logits masking, or a serving SLO. An unknown mapping
+of the cached tokenizer to live serving artifacts remains
+open. Previous 29.118s / 2.327s paired requests remain
+noncausal and incomplete. No production changes or new
+automated performance gates have been satisfied. Stage11
+`BLOCKED`; Stage12 `NOT_STARTED`.

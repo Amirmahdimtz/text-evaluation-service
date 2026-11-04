@@ -1458,3 +1458,33 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   still PENDING_SERVER; backend, GPU performance and
   release acceptance remain unverified. Stage11 BLOCKED;
   Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — observed slow CPU mask positions
+
+- Operator fast-forwarded to `a11d520`, then reported
+  `tests/test_stage11_xgrammar_tokenizer_profile.py`:
+  **20 passed in 1.16s**. The opt-in synthetic CPU-only
+  child returned `CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`
+  on vLLM 0.10.2 / XGrammar 0.1.23 with unchanged
+  application schema SHA-256
+  `da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`.
+- The two strict threshold lists, >10ms and >100ms,
+  both were **[15,16,17,18,19]** (1-based positions).
+  Of 24 mask fills (total **1150.577ms**), first
+  **0.087ms**, later 23 total **1150.490ms**;
+  later median **0.011ms** and maximum **246.710ms**.
+  The other 19 positions were <=10ms each, based on
+  already rounded 3-decimal values.
+- **Decision:** rule out a first-mask-only bottleneck for
+  this fixed synthetic trace. Five contiguous subsequent
+  steps are slow, but their cause and grammar states
+  cannot be inferred from position alone; no raw tokens,
+  IDs or model/user data were disclosed.
+- **Still OPEN:** verified live model/tokenizer provenance,
+  active guided-decoding backend, live service-level
+  masking overhead, quality and proper controlled
+  benchmark. Owner approval is required for further
+  tests; no automatic GPU activity or service changes.
+  Synthetic localization `OBSERVED`, model-backed gates
+  `PENDING_SERVER`, Stage11 `BLOCKED`,
+  Stage12 `NOT_STARTED`.

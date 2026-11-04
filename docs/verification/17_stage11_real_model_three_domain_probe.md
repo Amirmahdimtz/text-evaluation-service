@@ -941,3 +941,63 @@ indices. The new indices are PENDING_SERVER until another
 separately authorized owner-gated CPU-only container run.
 Stage11 BLOCKED, Stage12 NOT_STARTED. No production code,
 schema or GPU/runtime service was modified.
+
+## 2026-11-04 — operator-observed Simorgh slow mask step positions
+
+**Observed on the server, not inferred from CI:** after fast-forwarding
+`main` through `a11d520`, the operator ran
+`tests/test_stage11_xgrammar_tokenizer_profile.py`: **20 passed in
+1.16s**. A separately invoked, one-shot fixed-synthetic-output CPU
+profile inside the existing vLLM container reported
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`. The two new fields were
+identical:
+`cpu_synthetic_mask_fill_steps_gt_10ms=[15,16,17,18,19]` and
+`cpu_synthetic_mask_fill_steps_gt_100ms=[15,16,17,18,19]`.
+
+**Technical evidence:**
+- Exactly five **consecutive 1-based steps**, 15 through 19,
+  each exceeded 100ms. All other 19 of the 24 sampled steps
+  were at or below 10ms (on 3-decimal rounded timings).
+  There were no sampled steps strictly between 10ms and 100ms.
+- The 24 fills totaled **1150.577ms**. The first fill was
+  **0.087ms** (0.01% of total), later 23 fills totaled
+  **1150.490ms** (mean **50.021ms**, median **0.011ms**,
+  nearest-rank P95 **226.338ms**, maximum **246.710ms**).
+  Individual timings at positions 15-19 were **not** emitted.
+- Local tokenizer load **450.091ms**; TokenizerInfo
+  **764.192ms**; cold compile **231.962ms**; warm
+  compile **0.024ms**; token accepts **0.116ms** total;
+  vLLM 0.10.2, XGrammar 0.1.23, vocabulary 151936;
+  `CriterionInference` schema SHA-256
+  `da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`.
+- The bounded fixed-synthetic profiler submitted zero
+  inference requests, did not measure GPU mask application,
+  reported no verified effective serving backend and did
+  not measure the shared in-process serving cache.
+
+**Interpretation:** the first-mask-only and uniform-per-step-cost
+hypotheses do not explain this *particular* synthetic trace.
+Five contiguous later positions dominated total CPU mask-fill time.
+They identify a *location* in the fixed synthetic token stream,
+not an actual XGrammar state, accepted text span, root cause or
+per-token GPU inference slowdown. An unverified tokenizer-to-live-model
+mapping and independently launched child mean that the old
+29.118s versus 2.327s one-pair comparison remains noncausal,
+with both model responses invalid. The five slow-step indices
+must not be described as production P95 or an accepted SLO.
+
+**Next evidence need:** first establish, by authorized, redacted
+serving-owner attestation, that the model/tokenizer and guided
+decoding backend are actually those used by live vLLM. Separately,
+a bounded *CPU-only* repeat could correlate these numerical
+step indices with non-sensitive structural categories of the
+fixed synthetic JSON, while preserving no token/ID/user-text
+output. Such repeat requires its own approved execution window.
+Do not reconfigure vLLM, change the JSON Schema, expand token
+budgets, run GPU inference, install models or claim a speed fix
+without controlled live evidence.
+
+**Status:** on-host synthetic slow-step localization
+`OBSERVED`; all model-backed security/performance/quality
+acceptance gates remain `PENDING_SERVER`, Stage11 `BLOCKED`,
+Stage12 `NOT_STARTED`.

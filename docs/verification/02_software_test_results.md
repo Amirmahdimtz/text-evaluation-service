@@ -634,3 +634,32 @@ and its synthetic regression tests, not any real
 on-host positions. One shared-container operator-run
 CPU-only profiler with owner approval remains
 PENDING_SERVER. No Stage11 acceptance gate was closed.
+
+## 2026-11-04 — Simorgh actual slow-step index observation
+
+After pulling `main` through `a11d520`, the operator's
+focused `tests/test_stage11_xgrammar_tokenizer_profile.py`
+execution passed **20 tests in 1.16s**. The default offline
+probe execution was not included in this operator transcript;
+do not count it as re-run for this revision.
+
+Separately, the CPU-only opt-in diagnostic in the existing
+running container reported
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`:
+`cpu_synthetic_mask_fill_steps_gt_10ms=[15,16,17,18,19]`
+and `cpu_synthetic_mask_fill_steps_gt_100ms=[15,16,17,18,19]`;
+24 synthetic token-mask steps, total **1150.577ms**,
+first **0.087ms**, subsequent median **0.011ms**,
+subsequent P95 **226.338ms**, max **246.710ms**,
+cold compile **231.962ms**, warm **0.024ms**,
+schema SHA-256
+`da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`.
+vLLM=0.10.2, XGrammar=0.1.23.
+
+The on-host *narrow diagnostic* and its focused tests are
+`OBSERVED/PASS`. The actual model-tokenizer identity,
+in-process guided backend, GPU mask cost, three-domain
+quality and E2E performance have **not** been tested
+by this diagnostic; they stay `PENDING_SERVER`.
+Stage11 remains `BLOCKED`. No code changes are part
+of recording this evidence.

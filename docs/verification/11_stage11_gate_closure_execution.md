@@ -81,3 +81,21 @@ new values are not yet measured on Simorgh; follow-up
 requires shared-container owner approval. No Stage11
 acceptance gate has been satisfied by this software
 instrumentation. Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — CPU slow-position evidence; formal gates unchanged
+
+The Simorgh operator pulled `a11d520`, ran **20 focused
+tests passed in 1.16s**, and executed the owner-invoked
+one-shot fixed synthetic CPU tokenizer probe. Slow
+mask-fill positions for both strict >10ms and >100ms
+thresholds were exactly **[15,16,17,18,19]**.
+First fill was 0.087ms; all 24 fills totaled 1150.577ms.
+The observed contiguous slow positions do not prove a
+specific internal XGrammar matcher state or effective
+vLLM serving backend.
+
+This is diagnostic completion only: no model-driven
+quality/latency/security gate or real serving GPU
+acceptance was closed. No code or operational runtime
+changes were needed. Stage11 `BLOCKED`,
+Stage12 `NOT_STARTED`.
