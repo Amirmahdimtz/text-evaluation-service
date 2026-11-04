@@ -137,3 +137,25 @@ passed. This does **not** include any shared-container
 artifact comparison, on-host reason sensitivity probe,
 live backend selection or GPU model calls. All those
 runtime checks remain PENDING_SERVER.
+
+## 2026-11-04 — actual operator status for first optional artifact check
+
+The operator ran the three focused test files on Simorgh:
+**58 passed in 1.80s**, and completed the separate
+bounded synthetic CPU reason-sensitivity child (result
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`).
+The optional owner-artifact comparison command then
+prompted for `STAGE11_OWNER_SERVED_ARTIFACT_DIR`
+and returned to the shell without any comparison result.
+It is therefore **NOT_RUN**, not PASSED.
+No identity/path attestation for the active serving
+model/tokenizer was established. A blank entry at that
+prompt is the expected skip path; no guess, filesystem
+scan or forced probe should be substituted.
+
+A future approved comparison requires a second directory
+independently and privately confirmed by the serving owner.
+Even a successful local byte comparison cannot independently
+prove that the live process used that artifact or XGrammar;
+authorization and runtime provenance evidence are still
+required. Stage11 remains BLOCKED; Stage12 NOT_STARTED.

@@ -1197,3 +1197,67 @@ run on Simorgh yet. Real served model provenance, request-
 effective guided backend, GPU mask cost and structured
 response validity PENDING_SERVER. Stage11 BLOCKED,
 Stage12 NOT_STARTED.
+
+## 2026-11-04 — Simorgh approved CPU reason sensitivity: actual operator evidence
+
+**Observed:** operator pulled `main` through `fb6eb64`, ran
+`tests/test_stage11_xgrammar_tokenizer_profile.py`,
+`tests/test_stage11_serving_artifact_match.py`, and
+`tests/test_stage11_guided_backend_inspect.py`: **58 PASS in 1.80s**.
+The bounded opt-in `--reason-sensitivity` CPU-only child returned
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED` with unchanged schema hash
+`da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`;
+vLLM **0.10.2**, XGrammar **0.1.23**, vocabulary **151936**,
+one compiler thread, 32MiB compiler cache, and zero model inference
+or network requests. The results concern **the cached tokenizer
+candidate, not the proved effective serving artifact**.
+
+| Synthetic CPU mask-fill trace | Sum (ms) | Steps >100ms | Complete reason-value steps | Reason-value cost (ms) |
+|---|---:|---|---:|---:|
+| baseline fixed JSON | 1159.961 | [15,16,17,18,19] | 4 | 931.077 |
+| second independent baseline matcher | 1154.664 | [15,16,17,18,19] | 4 | 926.463 |
+| REASON_SHORT | 473.408 | [15,16] | 1 | 247.710 |
+| REASON_SAME_LENGTH | 1148.708 | [15,16,17,18,19] | 4 | 923.114 |
+
+All four traces reported structurally aligned tokenizer offsets for
+the reported slow positions. Baseline first fill **0.076ms**;
+first baseline subsequent median **0.010ms**, maximum
+**247.741ms**. Cold grammar compile **235.052ms**, warm
+**0.025ms**, TokenizerInfo **780.412ms**, tokenizer load
+**448.744ms**. Second baseline first fill **0.021ms**, rest
+median **0.009ms**.
+
+For `REASON_SHORT`, step 15 lies fully within the third sorted JSON
+field's VALUE (`reason`), while step 16 crosses a structural
+boundary. For `REASON_SAME_LENGTH`, steps 15–18 are
+VALUE(`reason`) and step 19 CROSS_REGION, exactly like baseline.
+The baseline fully aligned reason-value steps account for
+**931.077 / 1159.961 ≈80.3%** of mask-fill duration;
+this does not include the cross-region 19th step.
+The results are consistent with repeated expensive CPU mask
+computation at fixed synthetic string-value positions; they do
+**not** establish the implementation-level cause or actual
+service-level latency effect. The variants differ in tokenization
+and how much of the JSON appears within the 24-token cap, so
+total-time ratios are **not an isolated causal comparison**.
+
+**Artifact comparison not run:** The operator's shell returned
+after prompting for the owner-confirmed served directory, with
+no output headed `OWNER_SUPPLIED_ARTIFACT_FILES_COMPARED`
+or any other artifact comparison report. Do **not** count
+matching file bytes as tested, and do not infer that the
+cached Qwen3-8B-AWQ artifact was used by live vLLM. No new
+request-level guided backend proof was supplied; the earlier
+launch-only probe returned default `auto` with
+`effective_request_backend=UNVERIFIED`.
+
+**Next gates, owner-dependent:** privately establish authoritative
+serving model/tokenizer revision and per-request backend from approved
+deployment/runtime evidence. Only then approve a controlled GPU
+request trial with equal synthetic prompts, explicit completion
+validity checks, safe redacted timing phases and strict stop criteria.
+Do not optimize schema, change vLLM configuration or lower validation
+requirements based solely on a synthetic CPU-only profile.
+Narrow CPU hypothesis `OBSERVED`; provenance and backend
+`UNVERIFIED`; model/GPU/security/quality/performance gates
+`PENDING_SERVER`; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

@@ -144,3 +144,20 @@ No on-server execution of these new checks has occurred.
 The last on-host 26 diagnostic tests and backend
 AUTO metadata do not close any model/GPU/security/quality
 gate. Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+## 2026-11-04 — reason-value CPU sensitivity observed; gates remain open
+
+Operator-reported Simorgh targeted tests **58 PASS in 1.80s**;
+opt-in four-trace CPU-only fixed synthetic reason sensitivity
+successful. Baseline and same-length reason have five
+>100ms mask-fill positions [15,16,17,18,19];
+short reason has two [15,16]. Complete reason-value
+regions account for 931.077ms baseline, 926.463ms
+repeat, 247.710ms short and 923.114ms same-length.
+This is narrow synthetic CPU evidence, NOT real
+serving backend/quality/performance causality.
+Optional owner-approved file comparison was
+**NOT_RUN**, no result emitted; live artifact identity
+and active backend remain UNVERIFIED. No mandatory
+Stage11 product gates closed. Stage11 BLOCKED,
+Stage12 NOT_STARTED.

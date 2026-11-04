@@ -455,3 +455,29 @@ No new Simorgh measurements were performed. The 1159.124ms
 and 1146.884ms last-observed baseline times are unchanged.
 Effective backend/provenance, real GPU performance and
 production SLO remain PENDING_SERVER. Stage11 BLOCKED.
+
+## 2026-11-04 — controlled CPU reason-value sensitivity observed on Simorgh
+
+The operator ran **58** focused offline tests (1.80s PASS) and the
+one-shot Stage11 CPU reason-variant diagnostic, without GPU inference.
+First baseline fixed-synthetic trace: 24 fills **1159.961ms**,
+>100ms steps [15,16,17,18,19], complete reason-value four steps
+**931.077ms** (~80.3% of total); second baseline **1154.664ms**,
+same >100ms steps and reason-value four steps **926.463ms**.
+Short synthetic reason: **473.408ms** total, two >100ms steps
+[15,16], one reason-value step **247.710ms**.
+Different text of equal character length:
+**1148.708ms** total, five >100ms steps [15,16,17,18,19],
+four reason-value steps **923.114ms**.
+All structural tokenizer alignment statuses were ALIGNED.
+First-trace cold compile **235.052ms**, warm **0.025ms**.
+
+This strongly supports a fixed-synthetic CPU string-region
+association, not a measured request-level XGrammar backend,
+a production latency p95, or a verified bottleneck in the
+shared vLLM service. The 24-token prefix and tokenizer
+segmentation can differ across reason variants, so output
+length/total mask sums are not a controlled service speedup
+estimate. Owner-supplied served artifact comparison was skipped;
+actual serving model/tokenizer/backend and real GPU performance
+remain UNVERIFIED/PENDING_SERVER. Stage11 BLOCKED.

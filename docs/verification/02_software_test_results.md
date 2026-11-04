@@ -760,3 +760,29 @@ These are synthetic/offline test results only, **not**
 owner-verified provenance, actual Simorgh reason sensitivity,
 real guided backend selection or model/quality acceptance.
 Those remain `PENDING_SERVER`, Stage11 `BLOCKED`.
+
+## 2026-11-04 — real on-host reason sensitivity and artifact status
+
+After pulling through `fb6eb64` on Simorgh, the operator executed
+the three targeted test files:
+**58 passed in 1.80s**. The separate approved CPU-only
+`--reason-sensitivity` diagnostic returned
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`.
+Four fixed synthetic CPU traces: first baseline **1159.961ms**,
+second baseline **1154.664ms**, short reason **473.408ms**,
+same-length alternative reason **1148.708ms**. Strict >100ms
+positions respectively [15–19], [15–19], [15,16], [15–19].
+Validated offset maps: baseline reason-value four steps
+**931.077ms**; repeat **926.463ms**; short one step
+**247.710ms**; same-length four steps **923.114ms**.
+vLLM=0.10.2, XGrammar=0.1.23, zero inference/network calls.
+These are synthetic CPU observations, NOT real provider or GPU
+acceptance results.
+
+The optional owner-approved artifact comparison did **not**
+produce any execution/result JSON in the submitted terminal
+record; mark `NOT_RUN`, not PASS. No owner-confirmed served
+directory, actual in-process loaded revision, or request-level
+effective decoder evidence was supplied. Formal Stage11
+model/security/latency/quality gates remain `PENDING_SERVER`
+and Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

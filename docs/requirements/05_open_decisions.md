@@ -1603,3 +1603,36 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   on the shared container. No production/quality/security/
   GPU acceptance gate closed; Stage11 `BLOCKED`,
   Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-04 — Simorgh reason sensitivity observed, artifact match NOT_RUN
+
+- Operator pulled `fb6eb64`; targeted Stage11 tokenizer profile,
+  local artifact matcher and guided backend inspection tests
+  **58 passed in 1.80s**.
+- Opt-in fixed synthetic CPU reason-variant test returned
+  `CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`: baseline/repeat
+  mask totals **1159.961 / 1154.664ms**, both >100ms at
+  [15,16,17,18,19]; REASON_SHORT **473.408ms**,
+  >100ms at [15,16]; REASON_SAME_LENGTH **1148.708ms**,
+  >100ms at [15,16,17,18,19].
+  Fully aligned reason-VALUE mask sums:
+  **931.077 / 926.463 / 247.710 / 923.114ms**
+  for 4/4/1/4 synthetic steps respectively.
+- Decision: CPU-only evidence supports repeated expensive
+  synthetic string-value mask fills (reason field).
+  It does NOT prove the effective live guided backend,
+  model identity, request latency, a XGrammar defect or a
+  justified production config change. Different fixture
+  tokenization and a fixed 24-step prefix confound
+  direct total-time comparisons.
+- Owner artifact comparison: `NOT_RUN` (operator received
+  the served-directory prompt and the command returned;
+  no comparison JSON). A cached tokenizer candidate does
+  not establish active live model/tokenizer provenance.
+  The prior launch-flag `auto` observation still leaves
+  request-effective backend `UNVERIFIED`.
+- Next owner-dependent gates: authoritative private
+  served artifact/version attestation and safe effective
+  backend evidence; controlled, approved GPU request
+  trial later. Stage11 `BLOCKED`, Stage12
+  `NOT_STARTED`; outstanding gates `PENDING_SERVER`.
