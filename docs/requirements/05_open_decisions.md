@@ -1431,3 +1431,18 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   PENDING_SERVER. Do not alter schema, model, timeout, token
   cap, GPU or shared inference service on this evidence.
   Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — masked slow-step index diagnostic
+
+- Previously observed: 24 synthetic XGrammar CPU mask fills
+  totaling 1149.502ms; first 0.094ms and later maximum
+  247.760ms, but no slow-step positions.
+- Stage11-only diagnostics now report strictly >10ms and
+  >100ms 1-based step positions (maximum 24), with no
+  user text, synthetic token values, IDs, matcher state or
+  local private path in the output.
+- A position alone cannot identify the cause or internal
+  grammar state. Real in-process backend, GPU and acceptance
+  gates remain PENDING_SERVER. New positions PENDING_SERVER
+  until a separately authorized owner run. Stage11 BLOCKED;
+  Stage12 NOT_STARTED.

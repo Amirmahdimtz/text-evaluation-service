@@ -605,3 +605,16 @@ request latency/GPU masking and formal acceptance remain
 PENDING_SERVER. No new automated tests or code changes were made
 by the assistant when recording these operator results.
 Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — synthetic slow-step index tests
+
+The existing 24-step Stage11 XGrammar CPU-only profiler adds
+two lists of strictly >10ms and >100ms mask-fill *positions*.
+Targeted synthetic tests check 1-based bounds, strict
+threshold boundary, index order and subset relation,
+empty/24-step behavior and absence of synthetic token
+contents from stdout. The preceding Simorgh 17 focused
+tests PASS pertained to an older version. New CI results
+and new real on-host indices must be recorded separately.
+No model inference, server change or GPU test occurred
+in preparing this code. Stage11 BLOCKED.

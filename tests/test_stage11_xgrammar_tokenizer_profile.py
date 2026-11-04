@@ -43,6 +43,8 @@ def test_generated_script_is_static_pinned_and_no_network_or_gpu(capsys):
     assert "fill_next_token_bitmask" in source
     assert "accept_token" in source
     assert "MAX_STEPS = 24" in source
+    assert "_slow_mask_step_indices(fill_ms, 10.0)" in source
+    assert "_slow_mask_step_indices(fill_ms, 100.0)" in source
     assert "cpu_synthetic_mask_fill_first_ms" in source
     assert "cpu_synthetic_mask_fill_rest_p95_nearest_rank_ms" in source
     assert "max_threads=1" in source
@@ -152,6 +154,12 @@ def test_synthetic_tokenizer_compiler_and_mask_success(tmp_path):
     assert report["tokenizer_aware_compilation_measured"] is True
     assert report["cpu_synthetic_mask_fill_steps"] == 24
     assert report["cpu_synthetic_mask_fill_rest_steps"] == 23
+    gt10 = report["cpu_synthetic_mask_fill_steps_gt_10ms"]
+    gt100 = report["cpu_synthetic_mask_fill_steps_gt_100ms"]
+    assert gt10 == sorted(set(gt10))
+    assert gt100 == sorted(set(gt100))
+    assert all(type(i) is int and 1 <= i <= 24 for i in gt10 + gt100)
+    assert set(gt100).issubset(gt10)
     assert report["cpu_synthetic_mask_fill_first_ms"] >= 0
     assert report["cpu_synthetic_mask_fill_rest_mean_ms"] >= 0
     assert report["cpu_synthetic_mask_fill_rest_median_ms"] >= 0
@@ -242,18 +250,18 @@ def test_import_failures_have_distinct_sanitized_status(tmp_path, failure_type, 
     assert "SENSITIVE_" not in result.stdout + result.stderr
 
 
-def _distribution_from_generated_runtime():
-    """Isolate the pure generated helper for deterministic data tests."""
+def _distribution_from_generated_runtime(name="_mask_fill_distribution"):
+    """Isolate pure generated helpers for deterministic data tests."""
     parsed = ast.parse(profile.build_runtime_script())
     function = next(
         node for node in parsed.body
         if isinstance(node, ast.FunctionDef)
-        and node.name == "_mask_fill_distribution"
+        and node.name == name
     )
     namespace = {}
     exec(compile(ast.Module(body=[function], type_ignores=[]),
-                 "<synthetic-distribution>", "exec"), namespace)
-    return namespace["_mask_fill_distribution"]
+                 "<synthetic-runtime-helper>", "exec"), namespace)
+    return namespace[name]
 
 
 def test_mask_fill_distribution_first_vs_rest_with_fixed_values():
@@ -292,3 +300,33 @@ def test_mask_fill_distribution_zero_duration_has_no_invalid_ratio():
     assert summary["cpu_synthetic_mask_fill_first_share_percent"] is None
     assert summary["cpu_synthetic_mask_fill_rest_steps"] == 1
     assert summary["cpu_synthetic_mask_fill_rest_p95_nearest_rank_ms"] == 0.0
+
+
+def test_slow_step_indices_use_strict_thresholds_and_one_based_positions():
+    """Threshold equality is excluded; only synthetic positions are returned."""
+    classify = _distribution_from_generated_runtime("_slow_mask_step_indices")
+    timings = [0.094, 10.0, 10.001, 100.0, 100.001, 247.760]
+    assert classify(timings, 10.0) == [3, 4, 5, 6]
+    assert classify(timings, 100.0) == [5, 6]
+
+
+def test_slow_step_indices_empty_and_bounded_trace():
+    classify = _distribution_from_generated_runtime("_slow_mask_step_indices")
+    assert classify([], 10.0) == []
+    timings = [0.0] * 24
+    timings[0] = 10.01
+    timings[23] = 100.01
+    assert classify(timings, 10.0) == [1, 24]
+    assert classify(timings, 100.0) == [24]
+
+
+def test_generated_success_report_exposes_no_synthetic_tokens(tmp_path):
+    result = _run_generated(tmp_path, token_count=300)
+    assert result.returncode == 0
+    report = json.loads(result.stdout)
+    assert isinstance(report["cpu_synthetic_mask_fill_steps_gt_10ms"], list)
+    assert isinstance(report["cpu_synthetic_mask_fill_steps_gt_100ms"], list)
+    assert "synthetic_output" not in result.stdout.lower()
+    assert "sample_code" not in result.stdout
+    assert "synthetic diagnostic only" not in result.stdout.lower()
+    assert "local-tokenizer" not in result.stdout

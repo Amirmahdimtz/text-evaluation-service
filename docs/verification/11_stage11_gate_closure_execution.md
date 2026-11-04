@@ -71,3 +71,13 @@ Use [Pragmatic Production-Grade Baseline](../requirements/07_pragmatic_stage11_b
 3. **Waves 3–4**: reuse concrete signed JWT verifier, AES-256-GCM, approved OS/environment secret management, PostgreSQL and the existing Worker design. The protected-text resolver/JobExecutor gap is the **primary unfinished code work**. Build it with the smallest existing-layer patch; stage behind authorization, never weaken API/Worker config defaults to force a demo.
 4. **Waves 3–5**: No-Egress, scoped authorization, log sanitization, backup/restore and measured p95/capacity are **required**. Separate Vault/SSO systems, Kubernetes/HA, service mesh, per-hop mTLS on a proven same-host boundary or large soak rigs are **conditional** on threat model, existing infrastructure and actual SLO.
 5. **Wave 6**: reuse one execution run for multiple original test IDs **only** with individually traceable acceptance assertions and evidence. None of the 56 may be marked PASS because another related smoke passed. Keep Stage11 `BLOCKED` until the full original gate is satisfied.
+
+## 2026-11-04 — Stage11 CPU diagnostic preparation
+
+Implemented safe synthetic slow-step index summaries for
+mask fills >10ms and >100ms. Output consists solely
+of bounded step numbers, never token values. These
+new values are not yet measured on Simorgh; follow-up
+requires shared-container owner approval. No Stage11
+acceptance gate has been satisfied by this software
+instrumentation. Stage11 BLOCKED; Stage12 NOT_STARTED.

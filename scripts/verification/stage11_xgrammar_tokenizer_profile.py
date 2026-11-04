@@ -108,6 +108,18 @@ def _elapsed_ms(start):
     return round((time.perf_counter() - start) * 1000.0, 3)
 
 
+def _slow_mask_step_indices(fill_ms, threshold_ms):
+    """Return only one-based synthetic step indices above a fixed threshold.
+
+    No token values, token IDs, matcher states or model output are exposed.
+    This uses the same millisecond observations as the existing report.
+    """
+    return [
+        index for index, elapsed_ms in enumerate(fill_ms, start=1)
+        if elapsed_ms > threshold_ms
+    ]
+
+
 def _mask_fill_distribution(fill_ms):
     """Compare first-use cost with subsequent synthetic mask fills.
 
@@ -273,6 +285,12 @@ def main():
         cpu_synthetic_mask_fill_steps=len(fill_ms),
         cpu_synthetic_mask_fill_total_ms=round(sum(fill_ms), 3),
         cpu_synthetic_mask_fill_max_ms=round(max(fill_ms), 3),
+        cpu_synthetic_mask_fill_steps_gt_10ms=(
+            _slow_mask_step_indices(fill_ms, 10.0)
+        ),
+        cpu_synthetic_mask_fill_steps_gt_100ms=(
+            _slow_mask_step_indices(fill_ms, 100.0)
+        ),
         **distribution,
         cpu_synthetic_token_accept_total_ms=round(sum(accept_ms), 3),
         tokenizer_aware_compilation_measured=True,

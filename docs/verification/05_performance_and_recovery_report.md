@@ -346,3 +346,17 @@ observations is **not** a production latency P95; the real
 invalid responses. Do not infer target SLO or multiply the mean
 to predict a full response. Formal capacity/quality gates
 PENDING_SERVER; Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — synthetic CPU mask slow-step locator
+
+The on-host fixed synthetic CPU trace reported 24 fills
+totalling 1149.502ms, first 0.094ms, later median 0.014ms,
+later max 247.760ms. It did not identify the slow steps.
+The Stage11-only diagnostic now emits 1-based step indices
+for fixed synthetic mask fills >10ms and >100ms; no token
+content, IDs, grammar state or user data is logged.
+These indices have not yet been observed on Simorgh.
+They cannot prove a particular XGrammar state or the
+source of the earlier vLLM latency gap. Owner authorization
+is required for a new isolated CPU-only diagnostic.
+Stage11 BLOCKED, Stage12 NOT_STARTED.

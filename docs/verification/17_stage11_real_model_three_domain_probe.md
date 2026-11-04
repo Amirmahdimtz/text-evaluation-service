@@ -920,3 +920,24 @@ modification or production Schema/Provider edit was performed
 by the assistant from this evidence. Narrow CPU first/rest test
 OBSERVED; real serving performance and acceptance gates
 PENDING_SERVER. Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — bounded synthetic CPU mask step indices
+
+The Stage11 CPU-only tokenizer profiler now reports two additional
+arrays: `cpu_synthetic_mask_fill_steps_gt_10ms` and
+`cpu_synthetic_mask_fill_steps_gt_100ms`. Values are 1-based indices
+into at most 24 fixed synthetic JSON tokenizer steps. Thresholds
+are strict greater-than comparisons against already-rounded (3
+decimal) millisecond observations. No raw tokens, token IDs, model
+output, tokenizer paths or matcher state is printed.
+
+This prepares identification of locations of occasional CPU mask
+latency spikes in a synthetic trace, but an index is not evidence
+of a particular XGrammar state, nor does it establish the live
+serving backend or GPU inference latency. The previous operator
+run observed 24 fills totaling 1149.502ms, median later fill
+0.014ms and maximum later fill 247.760ms; it did not record
+indices. The new indices are PENDING_SERVER until another
+separately authorized owner-gated CPU-only container run.
+Stage11 BLOCKED, Stage12 NOT_STARTED. No production code,
+schema or GPU/runtime service was modified.
