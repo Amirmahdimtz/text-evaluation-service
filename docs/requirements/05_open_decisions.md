@@ -1351,3 +1351,35 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   remains PENDING_SERVER and cannot be called PASSED.
 - The previous operator status REQUIRED_RUNTIME_IMPORT_UNAVAILABLE
   remains recorded. Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — real tokenizer-aware CPU grammar metrics
+
+- Operator pulled b3f4278; focused diagnostic tests
+  **13 passed in 0.95s** on Simorgh. The owner-invoked
+  token-aware CPU diagnostic returned
+  **CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED**,
+  unchanged schema hash
+  `da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`,
+  vLLM 0.10.2, XGrammar 0.1.23, vocab 151936.
+- Measured isolated child process:
+  tokenizer load 455.070ms,
+  TokenizerInfo 764.613ms,
+  compiler init 0.029ms,
+  cold compile 231.697ms,
+  warm/cache compile 0.028ms,
+  24 synthetic bitmask fills 1181.770ms total
+  (max 256.853ms per fill),
+  accept_token total 0.118ms.
+- **Decision:** recognize meaningful CPU synthetic mask-fill
+  costs as a latency hypothesis, **not proof** that the
+  serving process uses the same backend or incurs equivalent
+  per-token cost. No exact token-step distribution,
+  live backend selection, real GPU mask application,
+  valid production criterion response or causal A/B
+  attribution is known. The earlier 29.118s/2.327s
+  observation remains non-causal and both outputs failed.
+- Stage11 *narrow CPU diagnostic* OBSERVED/PASS;
+  serving backend/quality/performance acceptance
+  **PENDING_SERVER**, Stage11 BLOCKED, Stage12 NOT_STARTED.
+  No production changes, model reloads or further
+  inference are approved by the observation.

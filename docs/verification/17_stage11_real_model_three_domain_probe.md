@@ -736,3 +736,61 @@ approved bounded synthetic tokenizer CPU diagnostic using a private
 in-container tokenizer directory. Do not post paths or model files.
 Actual tokenizer-aware compiler timings and GPU token-mask cost
 remain PENDING_SERVER, Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+## 2026-11-04 — operator confirms tokenizer-aware CPU grammar timings
+
+**Real Simorgh operator evidence:** checked out main through commit
+b3f4278, executed the focused offline tests (13 PASS, 0.95s), and
+ran the owner-gated one-shot tokenizer-aware CPU probe inside the
+existing shared `ai-inference-vllm-1` container. Its status was
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`, with vLLM 0.10.2,
+XGrammar 0.1.23, vocabulary size 151,936, and the exact unchanged
+application schema SHA-256:
+`da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`.
+
+| Independent child-process CPU measurement | Observed |
+|---|---:|
+| Local tokenizer load | 455.070 ms |
+| XGrammar TokenizerInfo creation | 764.613 ms |
+| GrammarCompiler initialization (1 thread, 32 MiB cache) | 0.029 ms |
+| Tokenizer-aware compile, cold | 231.697 ms |
+| Same grammar compile, warm/cache | 0.028 ms |
+| Fill token bitmask over 24 synthetic JSON token steps | 1181.770 ms total |
+| Max single bitmask-fill step | 256.853 ms |
+| CPU accept_token over 24 steps | 0.118 ms total |
+
+Mean bitmask-fill step over this **specific** 24-step synthetic
+trace was ~49.24ms (1181.77/24), but the 256.853ms maximum shows
+substantial per-step variation. No first-step-vs-rest distribution
+was emitted by this version; neither mean nor maximum may be
+extrapolated to a real 256-token completion. No measured vLLM
+request in this experiment, no GPU execution, no tokenizer-specific
+serving cache observation, and no actual GPU logits-mask
+application. The private tokenizer-cache candidate was
+Qwen3-8B-AWQ; **whether it is the effective model/tokenizer used
+by the serving process remains UNVERIFIED**.
+
+**Interpretation:** the narrow schema-only conversion cost
+previously observed (~1.5-1.7ms) is low. Tokenizer-aware cold
+compilation (~232ms) is substantially greater but well below the
+29.118s historical single structured request; warm compiler cache
+lookup was ~0.028ms. CPU token-mask filling can be nontrivial even
+without inference, making it a plausible component of structured
+request latency. However the 24 synthetic token steps, a fresh
+child process, shared-server activity, possible first-use work,
+different token streams, unknown effective backend, and lack of
+per-token GPU instrumentation prohibit **causal attribution** of
+the previous structured/unconstrained gap. Both historical model
+responses remained incomplete and invalid.
+
+**Next diagnostic** (requires a new, specific shared-runtime owner
+approval for any runtime measurement): separate first mask fill
+from subsequent fills, report bounded distribution and warm-up,
+verify actual serving backend and model/tokenizer provenance with
+redacted authorized operator attestation; only then design a
+controlled end-to-end latency/validity trial. Do not install,
+restart, reconfigure, change the schema, drop strict validation
+or submit an unapproved GPU request. This CPU subprocess probe is
+OBSERVED/PASS only as a **narrow diagnostic**, not any formal
+quality/performance acceptance gate. Stage11 BLOCKED, Stage12
+NOT_STARTED.

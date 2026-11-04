@@ -532,3 +532,25 @@ successful real XGrammar/Transformers imports in Simorgh. The
 operator's prior REQUIRED_RUNTIME_IMPORT_UNAVAILABLE remains a real
 failed diagnostic. Retest on server is PENDING_SERVER. No original
 Stage11 acceptance gate was closed.
+
+## 2026-11-04 — actual Simorgh tokenizer CPU profile observation
+
+Operator pulled main through b3f4278 and ran
+`tests/test_stage11_xgrammar_tokenizer_profile.py`:
+**13 passed in 0.95s**. Separately executed owner-gated CPU
+diagnostic yielded
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED` with
+schema SHA-256
+`da781d766a47140e7ba844d501fc35c7ae65ae5506a3975440118c77d0e2c584`,
+vLLM=0.10.2, XGrammar=0.1.23, vocab_size=151936.
+Measured TokenizerInfo=764.613ms,
+cold compile=231.697ms, warm=0.028ms,
+24 synthetic CPU token-mask fills=1181.770ms total
+(max single=256.853ms); tokenizer load=455.070ms,
+token acceptance=0.118ms, compiler init=0.029ms.
+
+The CPU synthetic diagnostic is OBSERVED/PASS as narrowly
+defined. It did not execute GPU inference, real serving
+request, GPU logits masking or full application/model
+contract. None of the product/enterprise acceptance tests
+are marked PASS by this result. Stage11 BLOCKED.

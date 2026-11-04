@@ -271,3 +271,31 @@ approved operator execution. The live 29.118s vs 2.327s request
 comparison remains non-causal, with invalid outputs in both arms.
 Do not tune serving runtime or quality contract from isolated
 microbenchmarks. Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+## 2026-11-04 — real Simorgh tokenizer-aware XGrammar CPU profile
+
+The operator ran the bounded Stage11 local CPU-only diagnostic:
+13 focused tests PASS (0.95s) and
+`CPU_TOKENIZER_GRAMMAR_PROFILE_OBSERVED`.
+Reported on the actual pinned vLLM 0.10.2 / XGrammar 0.1.23
+container with 151,936 tokenizer vocabulary:
+tokenizer load **455.070ms**, TokenizerInfo **764.613ms**,
+cold compile **231.697ms**, warm compile **0.028ms**,
+CPU bitmask-fill **1181.770ms total over 24 synthetic steps**
+(max one step **256.853ms**), token accept **0.118ms total**.
+Compiler init **0.029ms**, one thread, 32MiB separate cache.
+
+This is meaningful CPU work in a *fresh, separately launched*
+Python process, not in the shared vLLM serving request; GPU model
+inference and GPU mask application were NOT measured. Effective
+served backend, model/tokenizer identity and serving-cache hit/miss
+remain UNVERIFIED. Mask-fill mean for this trace ~49.24ms/step
+must not be multiplied by 256 to predict service latency;
+per-step costs differ and the experiment has no first-use
+distribution breakdown. The earlier 29.118s vs 2.327s pair
+remains non-causal, with invalid output in both arms. No
+production configuration, model, Schema or Provider changed.
+
+On-host CPU microbenchmark: OBSERVED. Formal performance/quality
+acceptance and actual request root-cause attribution:
+PENDING_SERVER. Stage11 BLOCKED, Stage12 NOT_STARTED.
