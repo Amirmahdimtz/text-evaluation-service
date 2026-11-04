@@ -1253,3 +1253,9 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - Local isolated engineering tests: 12 passed using a reconstructed equivalent Pydantic model schema; full-repository CI needs independent verification. Actual CPU conversion duration, tokenizer-aware compilation/cache and per-token masking are PENDING_SERVER.
 - Engineering decision: do not infer that the observed 29.118s vs 2.327s pair was caused by schema conversion; both responses were incomplete and invalid. No modification to the production Schema, Provider, model, GPU, backend, timeout or token limit.
 - Stage11 BLOCKED; Stage12 NOT_STARTED. No original Stage11 acceptance ID was converted from PENDING_SERVER to PASS.
+
+### Stage11 — 2026-11-04 — verified CI after XGrammar CPU diagnostic commit
+
+- On main commit 98a35d089c5948ef571848facb28efb947454b98, GitHub Actions run 41805920106 completed SUCCESS: 59 synthetic safety tests and 174 focused no-network diagnostic/Provider tests passed; default diagnostic CLI emitted zero inference and no Docker actions.
+- Proven in CI: code imports, schemas, redaction, generated Python syntax, synthetic success/failure handling and no-network default. Not proven: actual CPU conversion timing on Simorgh, tokenizer-aware XGrammar compilation/cache, token masking, real rubric contract or performance improvement.
+- Real container CPU timing remains PENDING_SERVER and requires separate owner authorization for shared-container exec. No change in Stage11 BLOCKED or Stage12 NOT_STARTED.

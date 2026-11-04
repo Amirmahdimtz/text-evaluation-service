@@ -432,3 +432,16 @@ detection, schema hashing, safe defaults, generated script AST,
 synthetic XGrammar stub success/failure and sanitized errors. The
 real vLLM/XGrammar runtime conversion latency remains PENDING_SERVER.
 Repository CI must be reported separately, with no implied runtime PASS.
+
+### Actual GitHub Actions evidence — 2026-11-04
+
+Stage11 preflight run 41805920106 succeeded on commit
+98a35d089c5948ef571848facb28efb947454b98:
+https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41805920106
+
+GitHub-hosted Python 3.12 completed **59 Stage11 synthetic safety tests PASS**
+and **174 focused Provider/probe/inspection/XGrammar CPU-profile tests PASS**.
+Both default no-network diagnostic CLIs ran. This independently validates
+the **actual repository tests and generated script**, not xgrammar 0.1.23
+on Simorgh or any GPU inference. The on-host CPU conversion runtime
+measurement remains PENDING_SERVER; per-token masking remains NOT_RUN.

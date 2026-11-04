@@ -563,3 +563,9 @@ masking or decode time. Even very fast conversion would not rule out other
 guided-decoding bottlenecks. Runtime measurement PENDING_SERVER; no production
 Schema, Provider, model, backend, token cap, timeout or GPU settings changed.
 Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+**Actual focused CI evidence for the CPU profiling utility:**
+GitHub Actions run 41805920106, commit 98a35d0, SUCCESS: 59 synthetic
+Stage11 safety checks and 174 focused provider/probe/inspection/CPU-profile
+tests passed. This confirms the real repository's offline CI integration;
+the two-pass conversion timing has **not** been run inside Simorgh.
