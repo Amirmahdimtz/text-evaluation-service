@@ -1660,3 +1660,30 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   expert-quality/security acceptance. G11-P01
   remains BLOCKED, G11-P05 PARTIAL_PENDING_CI,
   Stage11 BLOCKED, Stage12 NOT_STARTED.
+
+### Stage11 — 2026-11-04 — isolated candidate image/Worker-denial CI
+
+- Source `ad57140` added the Stage11-only nonroot
+  application image candidate; `b48cbde` added
+  real isolated API loopback HTTP health and Worker
+  default-deny tests, plus triggers for source/
+  pinned requirements changes.
+- [CI 41832434846](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41832434846)
+  SUCCESS: **59** Stage11 safety and **215** focused
+  software tests passed. Image built; API loopback
+  returned HTTP 200 inside networkless/read-only
+  container; Worker refused default disabled flags.
+- Decision: accept only a **CI-verified packaging
+  candidate**, not a secure staging or Production
+  deployment. No shared Simorgh resource/model,
+  private data, DB or operational configuration
+  was touched. G11-P05 `PARTIAL_CI_VERIFIED`,
+  G11-P01 `BLOCKED`.
+- Highest priority non-code dependency: service
+  owner's approved model/tokenizer/backend
+  provenance, explicit resource/stop approvals,
+  secure execution environment and a full-path
+  real-model inference acceptance window.
+  G11-P02/03 and organization-dependent
+  gates PENDING_SERVER. Stage11 BLOCKED;
+  Stage12 NOT_STARTED.

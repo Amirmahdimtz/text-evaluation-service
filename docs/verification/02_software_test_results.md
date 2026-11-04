@@ -804,3 +804,26 @@ the actual CI run, not assumed PASS.
 This candidate is **not** a production or
 organization-staging deployment. Stage11
 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-04 — actual Stage11 isolated candidate image CI
+
+[GitHub Actions 41832434846](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41832434846)
+completed **SUCCESS** on `b48cbde`. The two jobs produced:
+**59** Stage11 offline safety tests PASSED and
+**215** focused Python safety/contract tests PASSED;
+the real application Docker build and a nonroot,
+no-external-network/read-only container smoke succeeded.
+The child API process returned HTTP 200 on
+`127.0.0.1:18080/health/live` inside the container
+(`IMAGE_API_LOOPBACK_LIVENESS_PASS`). The Worker
+child failed closed with `WORKER_DISABLED`
+(`IMAGE_WORKER_DEFAULT_DENY_PASS`). The image also
+passed an import/default disabled-flags check.
+
+This is a **packaging/security-default check**, not real
+secure deployment or real HTTP authenticated business
+E2E. No Postgres, model, GPU, staging secrets,
+signed image/registry, or recipient infra was tested.
+The prior authorized synthetic full-path test remains
+separate evidence. G11-P05 PARTIAL_CI_VERIFIED;
+G11-P01 BLOCKED, Stage11 BLOCKED, Stage12 NOT_STARTED.

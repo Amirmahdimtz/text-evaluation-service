@@ -75,3 +75,21 @@ Worker E2E is already evidenced, so the next high-value
 external prerequisite is authoritative served model/
 tokenizer/backend attestation followed by separately
 approved full-path GPU E2E. Stage11 BLOCKED.
+
+## 2026-11-04 — actual image build and loopback API smoke in CI
+
+The Stage11-only `Dockerfile.stage11-candidate` now
+builds successfully on isolated GitHub runners and the
+installed application actually starts under UID/GID
+10001, read-only filesystem and Docker `--network none`,
+returning HTTP 200 to its own `/health/live` endpoint.
+The Worker correctly rejects default disabled config.
+[Run 41832434846](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41832434846)
+SUCCESS, with 59 offline safety + 215 focused software
+tests PASSED. Not a recipient-approved deployment.
+G11-P05 candidate packaging **PARTIAL_CI_VERIFIED**:
+immutable approved image digest/signature/SBOM, private
+registry delivery, secure non-test-only database config,
+actual API+Worker deployment and external ingress
+remain unimplemented or untested. G11-P01 BLOCKED,
+G11-P02 real-model E2E PENDING_SERVER.

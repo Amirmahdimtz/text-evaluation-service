@@ -166,3 +166,19 @@ synthetic GPU model test, then run expert-labeled tri-domain
 quality and capacity/security gates. See
 `docs/deployment/12_stage11_candidate_image.md`.
 No Stage11 mandatory test ID upgraded to PASS.
+
+## 2026-11-04 — image candidate now CI verified, not deployed
+
+[Stage11 preflight workflow 41832434846](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41832434846)
+SUCCESS: **59** Stage11 safety tests, **215**
+focused tests, actual restricted API image build,
+real API loopback health HTTP 200 and Worker
+default-deny. This advances G11-P05 to
+`PARTIAL_CI_VERIFIED`. The app's intentional
+development/test-DB and disabled-model/Worker
+guards were not weakened. G11-P01 secure deployable
+runtime remains P0 **BLOCKED**; live model/backend
+identity still UNVERIFIED; G11-P02/03 and original
+mandatory Stage11 acceptance gates remain
+PENDING_SERVER. Do not publish the image or
+claim production readiness on this evidence.

@@ -102,3 +102,32 @@ downloads are permitted. It does not access the private inference
 runtime. Do not run Docker builds on shared Simorgh without the
 owner's CPU/RAM/storage and network permission. CI testing proves
 only the correctness of this engineering candidate.
+
+## 2026-11-04 — actual isolated GitHub CI evidence
+
+Two actual Stage11 preflight executions are available.
+[Run 41832153164](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41832153164)
+SUCCESS for image-build/import and nonroot/no-network/read-only checks;
+59 offline safety and 215 focused Python tests passed.
+[Run 41832434846](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41832434846)
+SUCCESS on commit `b48cbde86bfe0d27fc5317cf9e1db26903afb731`:
+- Real Docker build of `Dockerfile.stage11-candidate` succeeded;
+- `IMAGE_IMPORT_FAIL_CLOSED_PASS` with nonroot UID/GID,
+  no network, read-only rootfs, all caps dropped and disabled app flags;
+- `IMAGE_API_LOOPBACK_LIVENESS_PASS`: actual Python API
+  process started in an isolated container and returned
+  `/health/live` HTTP 200 via its own loopback namespace;
+- `IMAGE_WORKER_DEFAULT_DENY_PASS`: a separate Worker
+  process refused to run with default disabled settings;
+- 59 Stage11 offline safety tests and 215 focused
+  synthetic diagnostics/Provider/image-contract tests passed.
+
+**No** real model, GPU, database, live Worker task,
+recipient network, authorized staging install or
+private source data was involved. No image was published,
+signed or deployed. For G11-P05 this closes the
+narrow *CI image build + API loopback smoke* uncertainty,
+but does not complete secure distribution/install,
+full application stack, external access or immutable
+base image attestation. G11-P01 remains BLOCKED;
+Stage11 BLOCKED; Stage12 NOT_STARTED.
