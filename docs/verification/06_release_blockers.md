@@ -268,3 +268,13 @@ phase split `UNRECOVERABLE`; otherwise
 extract only approved redacted phase durations
 and check request attribution locally.
 Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-05 — repeat single-media live timeout, no contract verdict
+
+The operator fast-forwarded the Simorgh checkout to `465b42c` and ran an offline focused preflight: **68 passed in 0.34s**. A read-only point-in-time `nvidia-smi` sample showed GPU index 0 at 0% utilization, 19,601/24,576 MiB memory used; this is **not** utilization measured while inference was running. The bounded container/loopback metadata check found the existing container running, vLLM package version `0.10.2`, and one advertised model with identity/hash/license **unverified**.
+
+The operator then executed exactly **one synthetic** `media_message_clarity` request with the existing fixed `--execute-live --domain media --disable-thinking --diagnostics --max-output-tokens 512` path. Outcome: `contract=failed`, `LLM_CIRCUIT_OPEN`, sanitized `failure_kind=REQUEST_TIMEOUT`, elapsed **45,046 ms**, **zero retries**, one criterion attempted, and no complete response (`finish_reason=UNAVAILABLE`, `json_syntax=UNAVAILABLE`, `reported_usage=null`). This **does not** prove invalid model JSON, an incorrect score, or insufficient Persian evaluation quality; the model failed to deliver a complete response within the request deadline.
+
+The before/after exporter deltas included **+402 shared generation tokens**, +401 shared inter-token latency samples (44.963347 seconds summed), +635 shared prompt tokens, no preemptions recorded, and no newly completed request-phase histogram samples. All exporter deltas are `SHARED_SERVICE_UNATTRIBUTED`, potentially mixing other traffic; they cannot be used to prove this request's token rate, queue/decode duration, cancellation behavior, backend choice or GPU saturation. The `num_requests_running` delta is a difference of global gauge snapshots, **not** a per-request trace. An idle GPU point sample before the test is not a live load measurement.
+
+**Immediate priority under today's limited server access:** secure authorization/limits from the shared vLLM owner; privately establish the actually served model/tokenizer/backend, retained request-level lifecycle/abort evidence if available, and a non-disruptive GPU/resource baseline **before** any new experiment. Do **not** repeat the 45-second POST, raise timeouts/output cap, restart/change the shared model, install a new monitoring stack or publish private logs on the consumed single-request permission. Model output correctness/three-domain quality, GPU capacity, real E2E and Stage11 original acceptance items remain `PENDING_SERVER`. **Stage11 = BLOCKED; Stage12 = NOT_STARTED**.
