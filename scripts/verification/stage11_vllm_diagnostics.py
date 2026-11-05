@@ -10,8 +10,10 @@ import json
 import math
 
 import httpx
+from pydantic import ValidationError
 
 from src.infrastructure.providers.llm.local_llm_provider import LlmProviderError, LocalLlmProvider
+from src.infrastructure.providers.llm.structured_response import decode_criterion_response
 
 _METRICS_URL = "http://127.0.0.1:8000/metrics"
 _MAX_METRICS_BYTES = 2 * 1024 * 1024
@@ -86,17 +88,122 @@ def _response_metadata(data: dict) -> dict:
     }
 
 
+
+# Fixed taxonomy only. Never expose validation messages, model content, or offsets.
+_SAFE_SCHEMA_CATEGORIES = frozenset({
+    "CONTRACT_VALID", "RESPONSE_ENVELOPE_INVALID", "MODEL_RESPONSE_MISMATCH",
+    "JSON_SYNTAX_INVALID", "JSON_DUPLICATE_KEY", "JSON_NONFINITE_VALUE",
+    "JSON_RESPONSE_TOO_LARGE", "SCHEMA_MISSING_OR_INVALID_FIELD",
+    "SCHEMA_EVIDENCE_INVALID", "STATUS_EVIDENCE_INCONSISTENT",
+    "CRITERION_CODE_MISMATCH", "EVIDENCE_QUOTE_NOT_FOUND",
+    "EVIDENCE_OFFSET_INVALID", "UNAVAILABLE",
+})
+
+
+def _classify_criterion_payload(
+    response: dict, *, model_id: str, criterion_code: str,
+    source_text: str, max_response_bytes: int,
+) -> str:
+    """Reapply the real decoder only for redacted failure taxonomy, not recovery."""
+    if not isinstance(response, dict):
+        return "RESPONSE_ENVELOPE_INVALID"
+    if response.get("model") != model_id:
+        return "MODEL_RESPONSE_MISMATCH"
+    choices = response.get("choices")
+    if not isinstance(choices, list) or len(choices) != 1:
+        return "RESPONSE_ENVELOPE_INVALID"
+    choice = choices[0]
+    if not isinstance(choice, dict):
+        return "RESPONSE_ENVELOPE_INVALID"
+    if choice.get("finish_reason") != "stop":
+        return "UNAVAILABLE"
+    message = choice.get("message")
+    if not isinstance(message, dict) or not isinstance(message.get("content"), str):
+        return "RESPONSE_ENVELOPE_INVALID"
+    try:
+        decode_criterion_response(
+            message["content"], expected_code=criterion_code,
+            source_text=source_text, max_response_bytes=max_response_bytes,
+        )
+        return "CONTRACT_VALID"
+    except json.JSONDecodeError:
+        return "JSON_SYNTAX_INVALID"
+    except ValidationError as exc:
+        try:
+            errors = exc.errors(
+                include_input=False, include_context=False, include_url=False,
+            )
+            if not errors:
+                return "SCHEMA_MISSING_OR_INVALID_FIELD"
+            location = errors[0].get("loc")
+            if not location:
+                return "STATUS_EVIDENCE_INCONSISTENT"
+            if isinstance(location, (tuple, list)) and location[0] == "evidence":
+                return "SCHEMA_EVIDENCE_INVALID"
+            return "SCHEMA_MISSING_OR_INVALID_FIELD"
+        except Exception:
+            return "UNAVAILABLE"
+    except ValueError as exc:
+        # Only exact developer-owned codes; never stringify an unknown error.
+        code = exc.args[0] if len(exc.args) == 1 and type(exc.args[0]) is str else None
+        return {
+            "LLM_WRONG_CRITERION": "CRITERION_CODE_MISMATCH",
+            "LLM_QUOTE_NOT_FOUND": "EVIDENCE_QUOTE_NOT_FOUND",
+            "LLM_QUOTE_OFFSET_INVALID": "EVIDENCE_OFFSET_INVALID",
+            "LLM_DUPLICATE_JSON_KEY": "JSON_DUPLICATE_KEY",
+            "LLM_NONFINITE_JSON_NUMBER": "JSON_NONFINITE_VALUE",
+            "LLM_RESPONSE_TOO_LARGE": "JSON_RESPONSE_TOO_LARGE",
+            "LLM_INVALID_JSON": "JSON_SYNTAX_INVALID",
+        }.get(code, "SCHEMA_MISSING_OR_INVALID_FIELD")
+    except (TypeError, KeyError, AttributeError, IndexError):
+        return "RESPONSE_ENVELOPE_INVALID"
+
+
 class DiagnosticLocalLlmProvider(LocalLlmProvider):
     """Stage11-only transport observation; uses the production request/validator."""
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.response_diagnostic: dict | None = None
+        self._classification_context: tuple[str, str] | None = None
+        self._schema_failure_category = "UNAVAILABLE"
+
+    async def evaluate_async(
+        self, *, source_text: str, criterion_code: str,
+        instructions: str, rubric_checksum: str,
+    ):
+        self._classification_context = (source_text, criterion_code)
+        self._schema_failure_category = "UNAVAILABLE"
+        try:
+            return await super().evaluate_async(
+                source_text=source_text, criterion_code=criterion_code,
+                instructions=instructions, rubric_checksum=rubric_checksum,
+            )
+        except LlmProviderError as exc:
+            if str(exc) == "LLM_SCHEMA_REJECTED":
+                # An allowlisted category only; no exception message is exposed.
+                exc.failure_kind = self._schema_failure_category
+            raise
+        finally:
+            self._classification_context = None
 
     async def _send(self, method: str, path: str, payload: dict | None = None) -> dict:
         result = await super()._send(method, path, payload)
         if method == "POST" and path == "/chat/completions":
             self.response_diagnostic = _response_metadata(result)
+            context = self._classification_context
+            if context is not None:
+                try:
+                    self._schema_failure_category = _classify_criterion_payload(
+                        result, model_id=self._config.model_id,
+                        criterion_code=context[1], source_text=context[0],
+                        max_response_bytes=max(
+                            65536, self._config.max_output_tokens * 48,
+                        ),
+                    )
+                except Exception:
+                    # Diagnostics must never change the production decoder outcome.
+                    self._schema_failure_category = "UNAVAILABLE"
         return result
 
 

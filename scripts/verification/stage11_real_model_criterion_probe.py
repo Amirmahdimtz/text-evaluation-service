@@ -25,7 +25,8 @@ from src.infrastructure.providers.llm.local_llm_provider import (
 from src.infrastructure.security.secrets import SecretResolver
 from scripts.verification.stage11_vllm_diagnostics import (
     CompactResponseDiagnosticLocalLlmProvider, DiagnosticLocalLlmProvider,
-    UnconstrainedDiagnosticLocalLlmProvider, metrics_delta, read_metrics,
+    UnconstrainedDiagnosticLocalLlmProvider, _SAFE_SCHEMA_CATEGORIES,
+    metrics_delta, read_metrics,
 )
 from src.infrastructure.utils.config_reader import ConfigReader
 
@@ -152,6 +153,12 @@ async def _run_cases(evaluator: CriterionEvaluationService, *, domain: str | Non
                 }
                 error["failure_kind"] = (
                     exc.failure_kind if exc.failure_kind in allowed_kinds
+                    else "UNAVAILABLE"
+                )
+            if code == "LLM_SCHEMA_REJECTED" and isinstance(exc, LlmProviderError):
+                category = exc.failure_kind
+                error["schema_failure_category"] = (
+                    category if category in _SAFE_SCHEMA_CATEGORIES
                     else "UNAVAILABLE"
                 )
             details.append(error)

@@ -254,3 +254,88 @@ def test_read_metrics_is_bounded_local_and_does_not_follow_redirects(
     else:
         assert result is None
     assert "PRIVATE-OWNER" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("mode,expected", [
+    ("quote_not_found", "EVIDENCE_QUOTE_NOT_FOUND"),
+    ("offset_invalid", "EVIDENCE_OFFSET_INVALID"),
+    ("missing_reason", "SCHEMA_MISSING_OR_INVALID_FIELD"),
+    ("status_evidence", "STATUS_EVIDENCE_INCONSISTENT"),
+    ("wrong_code", "CRITERION_CODE_MISMATCH"),
+    ("duplicate_json_key", "JSON_DUPLICATE_KEY"),
+    ("invalid_json", "JSON_SYNTAX_INVALID"),
+])
+def test_schema_failure_diagnostic_categories_use_real_provider_and_decoder(
+    monkeypatch, mode, expected,
+):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        CompactResponseDiagnosticLocalLlmProvider,
+    )
+    from src.infrastructure.providers.llm.local_llm_provider import LlmProviderError
+
+    case, _, _ = probe._load_selected_rubrics()[1]
+    base = {
+        "criterion_code": "media_message_clarity", "status": "not_assessed",
+        "score": None, "reason": "Synthetic test value",
+        "strengths": [], "weaknesses": [], "recommendations": [],
+        "evidence": [],
+    }
+    if mode in ("quote_not_found", "offset_invalid"):
+        base.update(status="assessed", score=3)
+        base["evidence"] = [{
+            "source_kind": "original_submission",
+            "quote": "not-in-synthetic-source" if mode == "quote_not_found" else "امروز",
+            "start_offset": 1, "end_offset": 24 if mode == "quote_not_found" else 6,
+        }]
+    elif mode == "missing_reason":
+        del base["reason"]
+    elif mode == "status_evidence":
+        base["score"] = 3
+    elif mode == "wrong_code":
+        base["criterion_code"] = "speech_clarity"
+
+    content = json.dumps(base, ensure_ascii=False)
+    if mode == "duplicate_json_key":
+        content = '{"criterion_code":"media_message_clarity","criterion_code":"speech_clarity"}'
+    elif mode == "invalid_json":
+        content = "{not-valid-private-model-json"
+
+    async def handler(request):
+        assert request.url.path == "/v1/chat/completions"
+        return httpx.Response(200, json=_model_reply(content=content))
+
+    monkeypatch.setattr(
+        probe, "CompactResponseDiagnosticLocalLlmProvider",
+        lambda config, secrets: CompactResponseDiagnosticLocalLlmProvider(
+            config, secrets, transport=httpx.MockTransport(handler),
+        ),
+    )
+    async def no_metrics():
+        return None
+    monkeypatch.setattr(probe, "read_metrics", no_metrics)
+    report = asyncio.run(probe._run_live(
+        domain="media", disable_thinking=True, diagnostics=True,
+        compact_response=True, max_output_tokens=512,
+    ))
+    row = report["results"][0]
+    assert row["contract"] == "failed"
+    assert row["error_code"] == "LLM_SCHEMA_REJECTED"
+    assert row["schema_failure_category"] == expected
+    safe = json.dumps(report, ensure_ascii=False)
+    assert "not-in-synthetic-source" not in safe
+    assert "not-valid-private-model-json" not in safe
+    assert "Synthetic test value" not in safe
+    assert case.original_text not in safe
+
+
+def test_unknown_schema_error_category_never_leaks_arbitrary_failure_kind():
+    from src.infrastructure.providers.llm.local_llm_provider import LlmProviderError
+    class FakeEvaluator:
+        async def evaluate_criterion_async(self, **kwargs):
+            raise LlmProviderError(
+                "LLM_SCHEMA_REJECTED",
+                failure_kind="private-free-text-untrusted",
+            )
+    result = asyncio.run(probe._run_cases(FakeEvaluator(), domain="media"))
+    assert result["results"][0]["schema_failure_category"] == "UNAVAILABLE"
+    assert "private-free-text-untrusted" not in json.dumps(result)
