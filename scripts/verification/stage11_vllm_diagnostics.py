@@ -99,6 +99,11 @@ _SAFE_SCHEMA_CATEGORIES = frozenset({
     "SCHEMA_EVIDENCE_INVALID", "STATUS_EVIDENCE_INCONSISTENT",
     "CRITERION_CODE_MISMATCH", "EVIDENCE_QUOTE_NOT_FOUND",
     "EVIDENCE_OFFSET_INVALID", "EVIDENCE_QUOTE_AMBIGUOUS", "UNAVAILABLE",
+    "SCHEMA_MULTIPLE_FIELDS_INVALID", "MODEL_RULE_REJECTED",
+    "SCHEMA_FIELD_CRITERION_CODE_INVALID", "SCHEMA_FIELD_STATUS_INVALID",
+    "SCHEMA_FIELD_SCORE_INVALID", "SCHEMA_FIELD_REASON_INVALID",
+    "SCHEMA_FIELD_STRENGTHS_INVALID", "SCHEMA_FIELD_WEAKNESSES_INVALID",
+    "SCHEMA_FIELD_RECOMMENDATIONS_INVALID", "SCHEMA_FIELD_EVIDENCE_INVALID",
 })
 
 
@@ -392,6 +397,55 @@ def _source_anchor_unique(*, source_text: str, quote: str) -> tuple[int, int]:
     return start, start + len(quote)
 
 
+
+_QUOTE_ONLY_FIELDS = frozenset({
+    "criterion_code", "status", "score", "reason",
+    "strengths", "weaknesses", "recommendations", "evidence",
+})
+
+
+def _quote_only_validation_category(exc: ValidationError) -> str:
+    """Return only a fixed schema location; never serialize Pydantic messages."""
+    try:
+        entries = exc.errors(
+            include_input=False, include_context=False, include_url=False,
+        )
+        if not entries:
+            return "SCHEMA_MISSING_OR_INVALID_FIELD"
+        fields: set[str] = set()
+        for entry in entries:
+            location = entry.get("loc")
+            if not location:
+                # Root validators reject inconsistent score/status/evidence,
+                # missing explanation and other business invariants.
+                return "MODEL_RULE_REJECTED"
+            if not isinstance(location, (list, tuple)):
+                return "SCHEMA_MISSING_OR_INVALID_FIELD"
+            head = location[0]
+            if type(head) is not str or head not in _QUOTE_ONLY_FIELDS:
+                return "SCHEMA_MISSING_OR_INVALID_FIELD"
+            fields.add(head)
+        if len(fields) != 1:
+            return "SCHEMA_MULTIPLE_FIELDS_INVALID"
+        return "SCHEMA_FIELD_" + next(iter(fields)).upper() + "_INVALID"
+    except Exception:
+        return "UNAVAILABLE"
+
+
+def _quote_only_value_error_category(exc: ValueError) -> str:
+    """Match only immutable internal error codes, never exception messages."""
+    code = exc.args[0] if len(exc.args) == 1 and type(exc.args[0]) is str else None
+    return {
+        "LLM_WRONG_CRITERION": "CRITERION_CODE_MISMATCH",
+        "LLM_DUPLICATE_JSON_KEY": "JSON_DUPLICATE_KEY",
+        "LLM_NONFINITE_JSON_NUMBER": "JSON_NONFINITE_VALUE",
+        "LLM_RESPONSE_TOO_LARGE": "JSON_RESPONSE_TOO_LARGE",
+        "LLM_QUOTE_NOT_FOUND": "EVIDENCE_QUOTE_NOT_FOUND",
+        "LLM_QUOTE_OFFSET_INVALID": "EVIDENCE_OFFSET_INVALID",
+        "LLM_INVALID_JSON": "JSON_SYNTAX_INVALID",
+    }.get(code, "SCHEMA_MISSING_OR_INVALID_FIELD")
+
+
 def _convert_quote_only_response(
     *, response: dict, source_text: str, criterion_code: str,
     max_response_bytes: int,
@@ -465,8 +519,22 @@ def _convert_quote_only_response(
         return updated
     except LlmProviderError:
         raise
-    except (ValueError, ValidationError, TypeError, KeyError, IndexError,
-            AttributeError, UnicodeError, RecursionError):
+    except ValidationError as exc:
+        raise LlmProviderError(
+            "LLM_SCHEMA_REJECTED",
+            failure_kind=_quote_only_validation_category(exc),
+        ) from None
+    except json.JSONDecodeError:
+        raise LlmProviderError(
+            "LLM_SCHEMA_REJECTED", failure_kind="JSON_SYNTAX_INVALID",
+        ) from None
+    except ValueError as exc:
+        raise LlmProviderError(
+            "LLM_SCHEMA_REJECTED",
+            failure_kind=_quote_only_value_error_category(exc),
+        ) from None
+    except (TypeError, KeyError, IndexError, AttributeError,
+            UnicodeError, RecursionError):
         raise LlmProviderError(
             "LLM_SCHEMA_REJECTED", failure_kind="SCHEMA_MISSING_OR_INVALID_FIELD",
         ) from None

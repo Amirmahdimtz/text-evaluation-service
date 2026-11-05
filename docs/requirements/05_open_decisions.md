@@ -2053,3 +2053,27 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - Successfully observed **one** synthetic `media_message_clarity` **quote-only Stage11 diagnostic** contract, 1 exact matched evidence, candidate score 2/5, **31,700ms** elapsed, 315 completion tokens, exit 0. This does not mean the production service or three-domain rubric scoring is validated.
 - Follow-up correction ensures single-domain calls report `REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS/FAILURE`, not the misleading three-domain status; the experimental quote-only diagnostic is now selectable in `speech`, `media`, `research` **one domain/request at a time**. [GitHub Actions 41998455483](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41998455483) SUCCESS: 59 safety and 287 relevant offline tests, candidate image checks PASS; **no new GPU inference** from these commits.
 - Next inference tests require distinct explicit authorized shared-GPU resource windows, with stop-on-failure. Production default/schema/score remains untouched. Actual tri-domain expert quality, second model, No-Egress, provenance and signed encrypted API→Worker→LLM→DB E2E `PENDING_SERVER`; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+
+### Stage11 — 2026-11-05 — speech passes, research returns schema rejection
+
+- Simorgh after `38e5ea9`: 192 local focused tests PASS.
+  One `speech_clarity` experimental quote-only POST
+  `contract=valid` / score 4/5 / 1 matched evidence /
+  18,370ms / exit 0. One `research_academic_writing`
+  POST `LLM_SCHEMA_REJECTED` /
+  `SCHEMA_MISSING_OR_INVALID_FIELD` / 36,029ms /
+  exit 2. Both returned `finish_reason=stop` and
+  syntax-valid JSON; neither output is an expert-quality
+  verdict. Previous media valid quote-only contract
+  remains one sample, not a production integration PASS.
+- No existing redacted research payload distinguishes which
+  field/business rule failed. A Stage11-only fixed-taxonomy
+  diagnostic refinement is prepared/tested offline;
+  production schema and strict validation remain unchanged.
+- No new live inference/approval claimed. Two of three
+  narrow experimental domain contracts valid, the third
+  still `PENDING_SERVER` for a possible separately
+  approved test. No formal Golden Dataset, alternative
+  model comparison, API/Worker/DB E2E or No-Egress gate
+  proved; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

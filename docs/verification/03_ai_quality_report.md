@@ -169,3 +169,20 @@ semantic quality or expert agreement. Model quality remains
 ## 2026-11-05 — media synthetic quote-only rubric contract valid, not golden quality
 
 **One real synthetic `media_message_clarity` criterion contract PASS on Simorgh:** `status=assessed`, **provisional score 2/5**, **one exact original source evidence match**, 315 completion tokens, 31,700ms, exit 0; only under the Stage11 experimental quote-only schema with deterministic unique exact quote offsets derived by Python. This supports a narrow software feasibility result for evidence positioning **not** expert-rated semantic relevance, rubric correctness, model accuracy, hallucination rate, dataset agreement or bias across the full product. A semantic reviewer still needs to verify the cited evidence supports the chosen score. Speech and research real-model samples, second model comparison and formal three-domain Golden Dataset remain `PENDING_SERVER`. Tool's historical `REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS` label was for one request only; corrected in follow-up. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+
+## 2026-11-05 — two successful synthetic domains, research still fails
+
+Simorgh real synthetic quote-only runs: **speech_clarity PASS**
+with one exact-matched source evidence span, candidate score 4/5,
+18,370ms; **research_academic_writing FAIL** after 36,029ms
+with `SCHEMA_MISSING_OR_INVALID_FIELD` despite `stop` and
+syntax-valid JSON. **media_message_clarity previously PASS**
+with candidate score 2/5, 31,700ms. Two of three
+**single-criterion contract** probes succeeded; no expert
+judgments or official company-grade scores exist. Research
+failure field not determined from redacted past result.
+The quote-only model-side schema is experimental and is
+not enabled in production. Unverified: actual accuracy,
+semantic evidence relevance, full domain coverage,
+artifact and runtime identity, enterprise benchmark and E2E.

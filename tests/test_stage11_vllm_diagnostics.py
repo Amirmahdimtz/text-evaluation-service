@@ -387,7 +387,7 @@ def test_quote_only_schema_removes_offsets_only_from_model_wire_contract():
     ("none", "valid"), ("missing", "EVIDENCE_QUOTE_NOT_FOUND"),
     ("duplicate", "EVIDENCE_QUOTE_AMBIGUOUS"),
     ("model_offsets", "SCHEMA_EVIDENCE_INVALID"),
-    ("wrong_status", "SCHEMA_MISSING_OR_INVALID_FIELD"),
+    ("wrong_status", "MODEL_RULE_REJECTED"),
 ])
 def test_quote_only_diagnostic_retains_full_final_validation(
     monkeypatch, fault, expected,
@@ -526,3 +526,97 @@ def test_quote_only_provider_is_bounded_to_one_explicit_domain_no_network(
     ))
     assert result["prompt_variant"] == "quote_only_evidence_candidate_v1"
     assert result["status"] == "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS"
+
+
+@pytest.mark.parametrize("fault,category", [
+    ("reason_missing", "SCHEMA_FIELD_REASON_INVALID"),
+    ("score_invalid", "SCHEMA_FIELD_SCORE_INVALID"),
+    ("status_invalid", "SCHEMA_FIELD_STATUS_INVALID"),
+    ("wrong_criterion", "CRITERION_CODE_MISMATCH"),
+    ("missing_evidence", "MODEL_RULE_REJECTED"),
+    ("duplicate_key", "JSON_DUPLICATE_KEY"),
+    ("json_syntax", "JSON_SYNTAX_INVALID"),
+])
+def test_quote_only_research_rejection_reports_safe_specific_category(
+    monkeypatch, fault, category,
+):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        QuoteOnlyEvidenceDiagnosticLocalLlmProvider,
+    )
+
+    case, _, _ = probe._load_selected_rubrics()[2]
+    reply = {
+        "criterion_code": "research_academic_writing", "status": "assessed",
+        "score": 3, "reason": "Synthetic explanation",
+        "strengths": [], "weaknesses": [], "recommendations": [],
+        "evidence": [{
+            "source_kind": "original_submission",
+            "quote": case.original_text[:21],
+        }],
+    }
+    if fault == "reason_missing":
+        del reply["reason"]
+    elif fault == "score_invalid":
+        reply["score"] = "three"
+    elif fault == "status_invalid":
+        reply["status"] = "other"
+    elif fault == "wrong_criterion":
+        reply["criterion_code"] = "speech_clarity"
+    elif fault == "missing_evidence":
+        reply["evidence"] = []
+
+    content = json.dumps(reply, ensure_ascii=False)
+    if fault == "duplicate_key":
+        content = content.replace('"score": 3', '"score": 3, "score": 3')
+    elif fault == "json_syntax":
+        content = "{SENSITIVE_EXAMPLE}"
+
+    async def handler(request):
+        assert request.url.path == "/v1/chat/completions"
+        return httpx.Response(
+            200, json=_model_reply(content=content),
+        )
+
+    monkeypatch.setattr(
+        probe, "QuoteOnlyEvidenceDiagnosticLocalLlmProvider",
+        lambda config, secrets: QuoteOnlyEvidenceDiagnosticLocalLlmProvider(
+            config, secrets, transport=httpx.MockTransport(handler),
+        ),
+    )
+    async def no_metrics():
+        return None
+
+    monkeypatch.setattr(probe, "read_metrics", no_metrics)
+    outcome = asyncio.run(probe._run_live(
+        domain="research", disable_thinking=True, diagnostics=True,
+        compact_response=True, quote_only_evidence=True,
+    ))
+    row = outcome["results"][0]
+    assert row["contract"] == "failed"
+    assert row["error_code"] == "LLM_SCHEMA_REJECTED"
+    assert row["schema_failure_category"] == category
+    assert "Synthetic explanation" not in json.dumps(outcome)
+    assert "SENSITIVE_EXAMPLE" not in json.dumps(outcome)
+
+
+@pytest.mark.parametrize("inputs,expected", [
+    ([("reason",), ("reason",)], "SCHEMA_FIELD_REASON_INVALID"),
+    ([("reason",), ("score",)], "SCHEMA_MULTIPLE_FIELDS_INVALID"),
+    ([()], "MODEL_RULE_REJECTED"),
+    ([("private-unexpected-name",)], "SCHEMA_MISSING_OR_INVALID_FIELD"),
+])
+def test_quote_only_pydantic_location_diagnostic_is_allowlisted(
+    inputs, expected,
+):
+    class RedactedValidationError:
+        def errors(self, **kwargs):
+            assert kwargs == {
+                "include_input": False,
+                "include_context": False,
+                "include_url": False,
+            }
+            return [{"loc": loc} for loc in inputs]
+
+    assert diag._quote_only_validation_category(
+        RedactedValidationError(),
+    ) == expected

@@ -366,3 +366,46 @@ The Simorgh operator ran **181 focused offline tests PASS (1.43s)** and the dry-
 Shared vLLM exporter deltas for that window: one completed E2E histogram sample **31.659440s**, decode **31.415452s**, prefill **0.199588s**, queue **0.042499s**. They are shared snapshots, not per-request trace evidence; decoding dominates the observed interval and **the speed bottleneck is still open**. Quote-only output validity is not an approved score or evidence semantic relevance proof.
 
 Stage11-only CLI now permits the same single-criterion quote-only diagnostic for `speech` and `research` in **separately authorized one-shot GPU windows** with existing 45s deadline, max512 tokens and zero retries. [GitHub Actions 41998455483](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41998455483) **SUCCESS**: 59 safety tests and 287 focused synthetic/provider tests passed, plus API candidate image checks. No speech/research real model request or official multi-domain Golden Benchmark has yet occurred; actual model/tokenizer provenance, security No-Egress, API/Worker/DB/model E2E, second-model comparison and original mandatory gates remain **PENDING_SERVER**. **Stage11 BLOCKED; Stage12 NOT_STARTED**.
+
+
+## 2026-11-05 — speech criterion passes; research rejects full quote-only schema
+
+The operator fast-forwarded the Simorgh checkout to `38e5ea9`
+and ran **192 focused offline tests PASS in 1.44s**. Two
+separately owner-approved synthetic quote-only criterion requests
+were attempted, each with max 512 generated tokens, timeout 45s,
+concurrency 1, zero retries:
+
+- **speech / speech_clarity:** `REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS`,
+  `contract=valid`, `status=assessed`, provisional score 4/5,
+  one exact source-quote evidence span, elapsed **18,370ms**,
+  output 283 tokens, `SPEECH_EXIT=0`. Its shared exporter
+  E2E/decoding increment: 18.327647s / 18.139260s.
+- **research / research_academic_writing:**
+  `REAL_MODEL_SINGLE_DOMAIN_CONTRACT_FAILURE`,
+  `LLM_SCHEMA_REJECTED`, `SCHEMA_MISSING_OR_INVALID_FIELD`,
+  elapsed **36,029ms**, output 296 tokens,
+  `finish_reason=stop`, JSON syntax valid, `RESEARCH_EXIT=2`.
+  Its shared exporter E2E/decoding increment:
+  35.987432s / 35.799262s. No accepted score/evidence.
+
+Together with the earlier single media result, **two of three
+single-criterion synthetic contract probes are valid in the
+Stage11-only experimental quote-only mode**. These three separate
+samples are not a true three-domain Golden Dataset benchmark;
+quality, relevance, SLO, real model provenance, E2E and security
+gates remain PENDING_SERVER. Each global Prometheus metric
+interval is `SHARED_SERVICE_UNATTRIBUTED`, not a request trace.
+
+The research failure category is **not a root cause**: the
+quote-only experimental conversion currently maps multiple
+Pydantic field, business rule and envelope errors to
+`SCHEMA_MISSING_OR_INVALID_FIELD`. No raw model response
+was retained and no definitive failing field can be recovered.
+No evidence supports changing the Rubric, loosening validators
+or correcting an unknown output. An offline-only category
+refinement now reports safe, static schema field identifiers,
+model-level rule failures, duplicate keys and wrong criteria
+without emitting private input, model output or exception
+messages. A future GPU trial requires another fresh owner-
+approved single-request budget and must stop on failure.
