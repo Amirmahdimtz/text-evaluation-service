@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import re
 
 import httpx
 from pydantic import ValidationError
@@ -272,6 +273,83 @@ class CompactResponseDiagnosticLocalLlmProvider(DiagnosticLocalLlmProvider):
             instructions=compact_criterion_instructions(instructions),
             rubric_checksum=rubric_checksum,
         )
+
+
+# Diagnostic-only indexed excerpts. Derive spans from the exact original source.
+# This never adjusts model offsets after generation or relaxes the strict decoder.
+def indexed_evidence_instructions(instructions: str, source_text: str) -> str:
+    """Give the synthetic model short, exact Unicode-indexed evidence options."""
+    if (not isinstance(source_text, str)
+            or not 32 <= len(source_text) <= 2048
+            or not source_text.isprintable()):
+        raise LlmProviderError("LLM_INPUT_REJECTED")
+    base = compact_criterion_instructions(instructions)
+
+    anchors: list[dict[str, object]] = []
+    for match in re.finditer(r"[^.!؟\\n]+[.!؟]?", source_text):
+        fragment = match.group(0)
+        leading = len(fragment) - len(fragment.lstrip())
+        start = match.start() + leading
+        phrase = fragment[leading:].rstrip()
+        if len(phrase) < 16:
+            continue
+        if len(phrase) > 56:
+            boundary = phrase.rfind(" ", 24, 57)
+            if boundary <= 24:
+                raise LlmProviderError("LLM_INPUT_REJECTED")
+            phrase = phrase[:boundary]
+        end = start + len(phrase)
+        if not (source_text[start:end] == phrase and start < end):
+            raise LlmProviderError("LLM_INPUT_REJECTED")
+        anchors.append({
+            "quote": phrase, "start_offset": start, "end_offset": end,
+        })
+        if len(anchors) > 8:
+            raise LlmProviderError("LLM_INPUT_REJECTED")
+    if not anchors:
+        raise LlmProviderError("LLM_INPUT_REJECTED")
+
+    try:
+        payload = json.loads(base)
+    except ValueError:
+        raise LlmProviderError("LLM_INPUT_REJECTED") from None
+    guidance = (
+        "Stage11 synthetic-only offset diagnostic: choose only semantically "
+        "relevant evidence from the following exact source substrings, copying "
+        "quote, start_offset and end_offset together WITHOUT modification. "
+        "The offsets are Python Unicode codepoint indices in the untouched "
+        "original source (start inclusive, end exclusive). Do not calculate "
+        "offsets yourself, normalize the quote or add any other output fields. "
+        "If none of these snippets adequately supports a rubric assessment, "
+        "return not_assessed with null score and empty evidence; never invent "
+        "a score or evidence. Pre-indexed evidence choices: "
+    )
+    payload["response_guidance"] += (
+        " " + guidance
+        + json.dumps(anchors, ensure_ascii=False, separators=(",", ":"))
+    )
+    output = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    )
+    if len(output) > 10000:
+        raise LlmProviderError("LLM_INPUT_REJECTED")
+    return output
+
+
+class IndexedEvidenceDiagnosticLocalLlmProvider(DiagnosticLocalLlmProvider):
+    """Opt-in test; leave production schema, scoring and quote checking intact."""
+
+    async def evaluate_async(
+        self, *, source_text: str, criterion_code: str,
+        instructions: str, rubric_checksum: str,
+    ):
+        return await super().evaluate_async(
+            source_text=source_text,
+            criterion_code=criterion_code,
+            instructions=indexed_evidence_instructions(instructions, source_text),
+            rubric_checksum=rubric_checksum,
+        )
+
 
 def parse_metrics(raw: bytes) -> dict[str, float]:
     """Sum approved Prometheus samples across labels without exposing labels."""

@@ -500,3 +500,141 @@ def test_compact_live_mode_selects_diagnostic_provider_without_network(monkeypat
 def test_compact_direct_api_call_rejects_unsafely_broad_run():
     with pytest.raises(ValueError, match="STAGE11_DIAGNOSTICS_SCOPE_INVALID"):
         asyncio.run(probe._run_live(compact_response=True))
+
+
+def test_indexed_evidence_anchors_match_exact_original_unicode_offsets():
+    from scripts.verification.stage11_vllm_diagnostics import (
+        indexed_evidence_instructions,
+    )
+
+    case, rubric, checksum = probe._load_selected_rubrics()[1]
+    class Capture:
+        instructions = ""
+        async def evaluate_async(self, **kwargs):
+            self.instructions = kwargs["instructions"]
+            from src.infrastructure.providers.llm.structured_response import (
+                CriterionInference,
+            )
+            return CriterionInference(
+                criterion_code=kwargs["criterion_code"],
+                status="not_assessed", score=None, reason="No evidence",
+                strengths=[], weaknesses=[], recommendations=[], evidence=[],
+            )
+
+    from src.core.services.text_evaluation.criterion_evaluation_service import (
+        CriterionEvaluationService,
+    )
+    capture = Capture()
+    asyncio.run(CriterionEvaluationService(capture).evaluate_criterion_async(
+        criterion=rubric, original_text=case.original_text,
+        rubric_checksum=checksum,
+    ))
+    raw = json.loads(capture.instructions)
+    guided = json.loads(indexed_evidence_instructions(
+        capture.instructions, case.original_text,
+    ))
+    assert {
+        k: v for k, v in guided.items() if k != "response_guidance"
+    } == {
+        k: v for k, v in raw.items() if k != "response_guidance"
+    }
+    import re
+    items = re.search(
+        r"Pre-indexed evidence choices: (\\[.*\\])$",
+        guided["response_guidance"],
+    )
+    assert items is not None
+    anchors = json.loads(items.group(1))
+    assert len(anchors) == 3
+    assert all(
+        case.original_text[row["start_offset"]:row["end_offset"]] == row["quote"]
+        for row in anchors
+    )
+    assert any(row["start_offset"] > 0 for row in anchors)
+    assert any("\u200c" in row["quote"] for row in anchors)
+    assert all(16 <= len(row["quote"]) <= 56 for row in anchors)
+    assert set(anchors[0]) == {"quote", "start_offset", "end_offset"}
+    assert len(indexed_evidence_instructions(
+        capture.instructions, case.original_text,
+    )) <= 10000
+
+
+@pytest.mark.parametrize("source", [
+    "", "short", "x" * 2049, "x" * 40, "a" * 30 + "\\n" + "b" * 30,
+])
+def test_indexed_evidence_rejects_unbounded_or_unsupported_source(source):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        indexed_evidence_instructions,
+    )
+    with pytest.raises(LlmProviderError, match="LLM_INPUT_REJECTED"):
+        indexed_evidence_instructions(
+            json.dumps({
+                "criterion_code": "media_message_clarity",
+                "operational_definition": "Synthetic",
+                "evaluation_instructions": "Synthetic",
+                "evidence_requirements": "Synthetic",
+                "applicability_rules": "Synthetic",
+                "score_anchors": {},
+                "response_guidance": "Preserve evidence",
+            }),
+            source,
+        )
+
+
+def test_indexed_evidence_dry_run_requires_no_network(monkeypatch, capsys):
+    async def forbidden(**kwargs):
+        pytest.fail("No model request permitted during dry-run")
+
+    monkeypatch.setattr(probe, "_run_live", forbidden)
+    args = [
+        "--domain", "media", "--compact-response", "--indexed-evidence",
+        "--disable-thinking", "--diagnostics", "--max-output-tokens", "512",
+    ]
+    assert probe.main(args) == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["status"] == "DRY_RUN_NO_NETWORK"
+    assert output["prompt_variant"] == "indexed_evidence_candidate_v1"
+    assert output["requests_planned"] == 1
+
+
+@pytest.mark.parametrize("args", [
+    ["--indexed-evidence"],
+    ["--indexed-evidence", "--domain", "media", "--diagnostics", "--disable-thinking"],
+    ["--indexed-evidence", "--compact-response", "--domain", "speech", "--diagnostics", "--disable-thinking"],
+])
+def test_indexed_evidence_flag_rejects_broader_or_unsafe_scope(args, capsys):
+    with pytest.raises(SystemExit) as e:
+        probe.main(["--execute-live", *args])
+    assert e.value.code == 2
+    assert "--indexed-evidence requires" in capsys.readouterr().err
+
+
+def test_indexed_evidence_provider_selection_and_no_network(monkeypatch):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        IndexedEvidenceDiagnosticLocalLlmProvider,
+    )
+    monkeypatch.setenv("TES_ENVIRONMENT", "development")
+    for key in (
+        "TES_STAGE11_SETTINGS_FILE", "TES_STAGE05_DATABASE_URL",
+        "TES_STAGE11_PROCESS_E2E",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    async def no_metrics():
+        return None
+
+    async def fake_run_cases(evaluator, *, domain):
+        assert domain == "media"
+        assert isinstance(
+            evaluator._provider, IndexedEvidenceDiagnosticLocalLlmProvider
+        )
+        return {"status": "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS"}
+
+    monkeypatch.setattr(probe, "read_metrics", no_metrics)
+    monkeypatch.setattr(probe, "_run_cases", fake_run_cases)
+    outcome = asyncio.run(probe._run_live(
+        domain="media", compact_response=True, indexed_evidence=True,
+        disable_thinking=True, diagnostics=True, max_output_tokens=512,
+    ))
+    assert outcome["prompt_variant"] == "indexed_evidence_candidate_v1"
+    assert outcome["diagnostics"]["response"]["finish_reason"] == "UNAVAILABLE"

@@ -1958,3 +1958,24 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Actual on-host synthetic compact media:** 146 offline tests passed; one `--execute-live --domain media --disable-thinking --diagnostics --max-output-tokens 512 --compact-response` result: `finish_reason=stop`, JSON syntax valid, 428 completion tokens, 31,143ms, but `LLM_SCHEMA_REJECTED` and exit 2. Strict criterion/evidence contract **FAIL**; quality not assessed.
 - **Stage11-only correction:** prompt remains unchanged; diagnostic now emits allowlisted schema rejection categories using the same typed/evidence validator. Unknown exception strings and private model content are never reported. GitHub [41992600596](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41992600596): **59 safety + 249 focused offline checks PASS**; no GPU/model POST occurred in CI.
 - **Open:** exact historical rejection cause `UNAVAILABLE` because raw result was intentionally not retained; a new separately approved single model POST may give a safe category. Runtime artifact/backend/quality/E2E remain `PENDING_SERVER`. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; no production changes or new approvals assumed.
+
+
+### Stage11 — 2026-11-05 — media evidence-offset failure; indexed diagnostic prepared
+
+- Actual operator result after `428b3fc`: 154 focused
+  software tests PASS, one synthetic strict compact media
+  inference (`finish_reason=stop`, 428 completion tokens,
+  31,034ms) failed with `EVIDENCE_OFFSET_INVALID` and
+  exit code 2. Valid JSON syntax was not a valid grounded report.
+- Decision: **retain fail-closed quote/offset validation**;
+  no automatic correction/normalization of model response.
+  The new opt-in, synthetic-only `--indexed-evidence` candidate
+  supplies Python-calculated original-source evidence triples
+  as prompt guidance without changing the score, rubric,
+  output schema or production path. It tests an offset-anchoring
+  hypothesis; relevance, accuracy and speed remain unverified.
+- No production schema/engine/server modifications or new
+  GPU requests by the assistant. Further inference needs a
+  new approved scoped window. Stage11 `BLOCKED`,
+  original acceptance tests `PENDING_SERVER`,
+  Stage12 `NOT_STARTED`.

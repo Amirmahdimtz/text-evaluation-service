@@ -1328,3 +1328,59 @@ stubs; no real on-prem GPU request or real compact-mode completion occurred.
 
 **Status:** `COMPACT_VARIANT=OFFLINE_CI_VERIFIED`; latency/criterion correctness
 on Simorgh `PENDING_SERVER`; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+
+## 2026-11-05 — experimental source-indexed evidence prompting after real offset failure
+
+Operator on Simorgh fast-forwarded to `428b3fc`: **154 local
+offline tests passed**. One additional authorized synthetic compact-response
+media request returned `finish_reason=stop`, `json_syntax=valid`,
+428 completion tokens, 739 prompt tokens, and **31,034ms** criterion
+wall time. The strict provider rejected it with
+`LLM_SCHEMA_REJECTED` / `EVIDENCE_OFFSET_INVALID`,
+`PROBE_EXIT=2`. This indicates a quote was present in the original
+synthetic source but its claimed Unicode offsets were inconsistent.
+No acceptance-quality assessment was obtained. The before/after
+**shared-service** exporter reported one E2E sample of 30.995317s,
+decode 30.956226s, prefill 0.036045s, queue 0.000198s,
+and +428 generation tokens; not proof of exclusive attribution.
+The error category does not expose the quote or the actual offsets.
+
+Root issue at this contract boundary: a generator can reproduce
+a correct quote but fail to count exact Python Unicode codepoint
+positions (including Persian zero-width non-joiners).
+**Do not silently re-find or repair a model-provided offset.**
+A new **Stage11 diagnostic-only** `--indexed-evidence` flag adds
+short, deterministically extracted, pre-validated candidate
+quote/start_offset/end_offset triples to `response_guidance`.
+The source remains unchanged; the same strict Pydantic schema,
+Rubric/score anchors, original-quote equality check and
+`not_assessed` safety are enforced. The model is told to select
+only semantically relevant existing anchors or abstain.
+This tests *whether supplying trusted offsets improves validity*,
+not whether the model can locate arbitrary evidence autonomously.
+It is not a production fix, not a quality benchmark, and it
+does not establish reference relevance.
+
+The candidate is limited to one synthetic `media` criterion;
+standard behavior and the prior compact flag remain unchanged.
+The dry-run sends no network/model requests:
+
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py tests/test_stage07_local_llm.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_model_criterion_probe --domain media --compact-response --indexed-evidence --disable-thinking --diagnostics --max-output-tokens 512
+```
+
+Any actual `--execute-live` use requires a **new explicit**
+shared-GPU owner approved one-request window (one synthetic POST,
+no retries, 512 max output tokens, one in-flight, 45s timeout,
+unchanged model/runtime/other tenants) and a resource stop plan.
+Do not repeat the previous 31s request or adjust the shared server.
+Success requires a schema-valid and exactly quoted source-grounded
+result, not merely HTTP 200 or syntax-valid JSON; a valid abstention
+is still not evidence of expert-rated score accuracy. If it fails,
+record only the redacted category and stop. Stage11 `BLOCKED`,
+three-domain real quality and full E2E `PENDING_SERVER`,
+Stage12 `NOT_STARTED`.

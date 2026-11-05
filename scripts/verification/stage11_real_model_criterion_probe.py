@@ -25,6 +25,7 @@ from src.infrastructure.providers.llm.local_llm_provider import (
 from src.infrastructure.security.secrets import SecretResolver
 from scripts.verification.stage11_vllm_diagnostics import (
     CompactResponseDiagnosticLocalLlmProvider, DiagnosticLocalLlmProvider,
+    IndexedEvidenceDiagnosticLocalLlmProvider,
     UnconstrainedDiagnosticLocalLlmProvider, _SAFE_SCHEMA_CATEGORIES,
     metrics_delta, read_metrics,
 )
@@ -190,6 +191,7 @@ async def _run_live(
     *, domain: str | None = None, disable_thinking: bool = False,
     diagnostics: bool = False, max_output_tokens: int = 512,
     comparison_unconstrained: bool = False, compact_response: bool = False,
+    indexed_evidence: bool = False,
 ) -> dict:
     if (diagnostics and domain is None
             or max_output_tokens not in (256, 512)
@@ -199,7 +201,10 @@ async def _run_live(
                 or not disable_thinking))
             or (compact_response and (
                 not diagnostics or domain is None or not disable_thinking
-                or comparison_unconstrained))):
+                or comparison_unconstrained))
+            or (indexed_evidence and (
+                not compact_response or domain != "media"
+                or not diagnostics or not disable_thinking))):
         raise ValueError("STAGE11_DIAGNOSTICS_SCOPE_INVALID")
     _require_safe_environment()
     config = ConfigReader()
@@ -221,7 +226,9 @@ async def _run_live(
     config.settings = config.settings.model_copy(update={"llm": llm_settings})
     before = await read_metrics() if diagnostics else None
     provider = (
-        CompactResponseDiagnosticLocalLlmProvider(config, SecretResolver())
+        IndexedEvidenceDiagnosticLocalLlmProvider(config, SecretResolver())
+        if indexed_evidence
+        else CompactResponseDiagnosticLocalLlmProvider(config, SecretResolver())
         if compact_response
         else UnconstrainedDiagnosticLocalLlmProvider(config, SecretResolver())
         if comparison_unconstrained
@@ -238,7 +245,8 @@ async def _run_live(
             await evaluator.close_async()
     report["thinking_mode_requested"] = llm_settings.thinking_mode
     report["prompt_variant"] = (
-        "compact_response_candidate_v1" if compact_response else "standard"
+        "indexed_evidence_candidate_v1" if indexed_evidence
+        else "compact_response_candidate_v1" if compact_response else "standard"
     )
     if diagnostics:
         status, deltas = metrics_delta(before, after)
@@ -273,7 +281,16 @@ def main(argv: list[str] | None = None) -> int:
                         default=512, help="Opt-in reduced cap only with diagnostics.")
     parser.add_argument("--compact-response", action="store_true",
                         help="Opt-in concise prompt while preserving full strict schema.")
+    parser.add_argument("--indexed-evidence", action="store_true",
+                        help="Use synthetic, pre-indexed original-source evidence spans.")
     args = parser.parse_args(argv)
+    if args.indexed_evidence and (
+            not args.compact_response or args.domain != "media"
+            or not args.diagnostics or not args.disable_thinking):
+        parser.error(
+            "--indexed-evidence requires --compact-response "
+            "--domain media --diagnostics --disable-thinking"
+        )
     if args.compact_response and (
             args.domain is None or not args.diagnostics or not args.disable_thinking):
         parser.error("--compact-response requires --domain --diagnostics --disable-thinking")
@@ -295,7 +312,8 @@ def main(argv: list[str] | None = None) -> int:
                 "requires": "--execute-live",
                 "diagnostics_requested": args.diagnostics,
                 "prompt_variant": (
-                    "compact_response_candidate_v1" if args.compact_response
+                    "indexed_evidence_candidate_v1" if args.indexed_evidence
+                    else "compact_response_candidate_v1" if args.compact_response
                     else "standard"
                 ),
                 "max_output_tokens": args.max_output_tokens,
@@ -315,6 +333,8 @@ def main(argv: list[str] | None = None) -> int:
         }
         if args.compact_response:
             options["compact_response"] = True
+        if args.indexed_evidence:
+            options["indexed_evidence"] = True
         results = asyncio.run(_run_live(**options))
         print(json.dumps(results, ensure_ascii=False, sort_keys=True))
         return 0 if results["status"] == "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS" else 2
