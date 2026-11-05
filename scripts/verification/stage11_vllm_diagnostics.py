@@ -281,12 +281,13 @@ def indexed_evidence_instructions(instructions: str, source_text: str) -> str:
     """Give the synthetic model short, exact Unicode-indexed evidence options."""
     if (not isinstance(source_text, str)
             or not 32 <= len(source_text) <= 2048
-            or not source_text.isprintable()):
+            or any(ord(char) < 32 or ord(char) == 127 for char in source_text)
+            or not any(char in source_text for char in ".!؟")):
         raise LlmProviderError("LLM_INPUT_REJECTED")
     base = compact_criterion_instructions(instructions)
 
     anchors: list[dict[str, object]] = []
-    for match in re.finditer(r"[^.!؟\\n]+[.!؟]?", source_text):
+    for match in re.finditer(r"[^.!؟\n]+[.!؟]?", source_text):
         fragment = match.group(0)
         leading = len(fragment) - len(fragment.lstrip())
         start = match.start() + leading

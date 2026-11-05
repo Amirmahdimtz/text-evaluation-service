@@ -540,7 +540,7 @@ def test_indexed_evidence_anchors_match_exact_original_unicode_offsets():
     }
     import re
     items = re.search(
-        r"Pre-indexed evidence choices: (\\[.*\\])$",
+        r"Pre-indexed evidence choices: (\[.*\])$",
         guided["response_guidance"],
     )
     assert items is not None
