@@ -205,3 +205,7 @@ content. The experimental quote-only `media` and `speech`
 contract examples remain valid independently, but
 three-domain quality, reviewer relevance and accuracy
 remain `PENDING_SERVER`.
+
+## 2026-11-05 — research full JSON repeatedly fails model-level rule
+
+Operator tested the experimental quote-only research criterion on Simorgh and received **`LLM_SCHEMA_REJECTED/MODEL_RULE_REJECTED`**, 296 completion tokens, elapsed **35,987ms**, JSON syntax valid and `finish_reason=stop` but no validated evidence or score. This does not prove a particular inconsistency, even though the standard Pydantic root rules require evidence and score for assessed results and forbid them for abstention. A Stage11-only redacted discriminator has passed offline CI ([42003194641](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/42003194641), 59 safety/309 focused tests); no new model inference occurred. `media` and `speech` experimental individual contracts have passed once; research has not. This is **not** a three-domain AI quality benchmark or an expert calibration result. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
