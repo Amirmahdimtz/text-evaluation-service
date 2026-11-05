@@ -2142,3 +2142,10 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   Model quality/No-Egress/API-Worker-DB E2E/performance
   `PENDING_SERVER`. Stage11 `BLOCKED`,
   Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-05 — research abstention cross-field conflict and targeted experiment verified offline
+
+- **Actual operator evidence:** 214 local focused tests PASS; one authorized synthetic `research_academic_writing` completed after 35,887ms, `stop`, JSON valid, 296 generated tokens, but `MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE`, exit 2. Under original Pydantic contract, `not_assessed` cannot include score/evidence. The redacted result cannot reveal which forbidden item was present.
+- Decision: do not clear numeric score, drop evidence, change status or weaken the validator to make this result pass. Experimental Stage11 **research-only** `--research-consistent-status` system-prompt guidance instructs exclusive assessed versus abstention branches, with original rubric/evidence and final strict decoder untouched. Standard production and prior media/speech paths unchanged.
+- [CI 42009010683](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/42009010683) failed initially due to an unmatched bracket in a newly created test, fixed in `f370e68f`. [CI 42009148620](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/42009148620) **SUCCESS**: 59 safety and 320 focused offline provider/synthetic tests plus candidate container checks. No new live model test in this change. Live behavior `PENDING_SERVER`; shared-owner permission to run any further GPU request must be separately reconfirmed; no automatic retry.
+- The independent `text-similarity/app` operator shell command is outside scope and did not change the Stage11 evidence. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; no acceptance gate waived.
