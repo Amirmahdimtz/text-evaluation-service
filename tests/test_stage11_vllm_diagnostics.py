@@ -510,8 +510,10 @@ def test_quote_only_provider_is_bounded_to_one_explicit_domain_no_network(
     async def no_metrics():
         return None
 
-    async def fake_cases(evaluator, *, domain: selected):
-        assert selected == domain
+    expected_domain = domain
+
+    async def fake_cases(evaluator, *, domain):
+        assert domain == expected_domain
         assert isinstance(evaluator._provider, QuoteOnlyEvidenceDiagnosticLocalLlmProvider)
         return {"status": "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS"}
 
