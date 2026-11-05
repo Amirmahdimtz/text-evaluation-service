@@ -310,3 +310,43 @@ contract. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
 Shared vLLM phase histograms for the window added one E2E sample of 31.103686s and decode sample of 30.983111s, prefill 0.118173s, queue 0.000531s, with +428 shared generation tokens; attribution is not strictly isolated on a shared service. This is one negative criterion-contract example and no validated output quality or SLO. No GPU restart, new model, secret, firewall or production configuration change reported.
 
 **Targeted software fix:** Stage11-only diagnostic `10c8a743` classifies subsequent `LLM_SCHEMA_REJECTED` into a fixed safe category while reusing the exact strict validator and emitting neither raw response nor error messages. [CI 41992600596](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41992600596) succeeded with **59 safety and 249 focused synthetic tests** and networkless image tests. No historical per-category result can be recovered from the prior sanitized log, and **no new live test has been run**. Further model POST needs fresh shared-owner permission/resource ceiling; never auto-retry. Stage11 `BLOCKED`; original enterprise gates `PENDING_SERVER`; Stage12 `NOT_STARTED`.
+
+## 2026-11-05 — compact criterion completes but evidence offset invalid
+
+The Simorgh operator pulled through `428b3fc` and ran focused local
+software tests: **154 passed in 1.30s**. One separately authorized synthetic
+`media_message_clarity` real vLLM call, using the strict-schema compact
+prompt (512 max completion tokens; no retries), completed with
+`finish_reason=stop`, valid JSON syntax, **428 completion tokens**, and
+**31,034ms** criterion wall time. The real application rejected it with
+`LLM_SCHEMA_REJECTED` / `EVIDENCE_OFFSET_INVALID`, exit code 2.
+This fixed category means the model-provided evidence quote was found
+somewhere in the original synthetic text but the provided offset range
+did not correspond exactly. Neither the quote nor the offsets were
+exposed in logs. **No valid grounded criterion or approved score resulted.**
+
+The before/after **shared-service** exporter showed +1 completed E2E
+sample (30.995317s), +1 decode sample (30.956226s), prefill 0.036045s,
+queue 0.000198s, +428 generated tokens, and no recorded preemptions.
+These are shared aggregate deltas, not independently isolated per-request
+phase traces. No GPU utilization at execution time was supplied.
+
+**Targeted engineering response:** rather than repairing a generated offset
+or weakening strict quote-equality checks, a Stage11-only
+`--indexed-evidence` prompt experiment constructs short exact original-
+source quote/start/end triples using Python Unicode codepoint offsets;
+it is limited to the synthetic media diagnostic and requires compact,
+non-thinking, single-domain and bounded diagnostics flags. Any model output
+must still pass the same `CriterionInference` and original-evidence
+validator; unsupported evidence must be rejected or abstained.
+This is NOT a production fix or demonstration of free-form evidence location.
+
+Source commits `d1e70a4`, `85236a9`; GitHub Actions
+[41994261909](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41994261909)
+**SUCCESS**: 59 offline safety checks and 260 focused synthetic/provider
+checks passed; the candidate container build/networkless health checks
+also passed. None involved live inference. **Live indexed-evidence
+criterion accuracy/latency remains PENDING_SERVER**, further GPU use
+requires a fresh owner-approved one-shot resource window, with no automatic
+repeat of the prior request. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`;
+original 56 mandatory acceptance checks unchanged.

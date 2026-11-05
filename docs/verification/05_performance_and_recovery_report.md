@@ -585,3 +585,22 @@ Operator-reported on Simorgh: 146 local offline regression tests passed in 1.24 
 One **shared-service** request histogram sample was added over the observation window: end-to-end 31.103686s, decode 30.983111s, prefill 0.118173s, queue 0.000531s, TTFT 0.120736s; shared generated tokens +428 and prompt tokens +739. These counts match this run's usage, supporting but **not proving** isolated attribution on a shared vLLM instance; they establish no general production latency SLO, concurrency ceiling, GPU saturation or root-cause backend diagnosis. Compared with the earlier 512-token timed-out standard request and 256-token truncated request, prompts/token limits/outcomes differ; claims of speedup or fix are **not supported**.
 
 **Diagnosis gap:** `LLM_SCHEMA_REJECTED` aggregates Pydantic field/status failures, wrong criterion, invalid original-source evidence or response envelope problems. The 31-second run preserved no safe per-category exception detail, and raw model response must not be published. Stage11-only fixed-category diagnostics added in `10c8a743`, verified in GitHub Actions [41992600596](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41992600596): 59 safety + 249 focused software tests passed. No new model request. Only a separately owner-approved single synthetic POST may reveal which fixed category occurred; no automated retry and no production provider relaxation. Stage11 `BLOCKED`; model/accuracy/E2E/acceptance `PENDING_SERVER`; Stage12 `NOT_STARTED`.
+
+## 2026-11-05 — compact indexed-evidence diagnostic, no fresh GPU claim
+
+Operator-reported one synthetic strict-schema compact-media POST finished
+in **31.034s** with valid JSON syntax and 428 completion tokens but failed
+`EVIDENCE_OFFSET_INVALID`. The shared exporter interval added one
+E2E sample of **30.995317s**, decode **30.956226s**, prefill
+**0.036045s** and queue **0.000198s**. Thus the dominant observed
+shared-service cost remains decoding, but a real quoted-evidence
+contract **did not pass**. Do not infer precision/recall, speedup
+or genuine model quality from this outcome.
+
+A diagnostic-only prompt with deterministic source-indexed quote/offset
+triples was prepared to test the exact observed failure without
+relaxing any validator or automatically relocating text. GitHub Actions
+[41994261909](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41994261909)
+passed 59 safety and 260 focused offline tests; **real performance
+and model correctness of this new variant are NOT_RUN/PENDING_SERVER**.
+No new GPU request or server/runtime configuration change was made.

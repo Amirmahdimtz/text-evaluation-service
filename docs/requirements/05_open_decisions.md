@@ -1979,3 +1979,23 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   new approved scoped window. Stage11 `BLOCKED`,
   original acceptance tests `PENDING_SERVER`,
   Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-05 — evidence-offset failure and offline indexed repair proposal
+
+- Operator executed 154 offline tests PASS and exactly one authorized
+  synthetic compact-media inference. It returned `finish_reason=stop`,
+  syntax-valid JSON, 428 output tokens, 31,034ms, but failed
+  `EVIDENCE_OFFSET_INVALID`; evidence grounding **FAIL**, not a passed
+  evaluation or official score.
+- Opt-in Stage11 diagnostic `indexed_evidence_candidate_v1` offers
+  Python-indexed exact quote/offset anchors in synthetic-only prompt
+  guidance; unchanged strict schema, original quote equality checks,
+  Rubric score anchors and ordinary production behavior.
+- Commits `d1e70a4`, `85236a9`; [CI 41994261909](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41994261909)
+  **SUCCESS**, 59 safety + 260 focused offline tests passed and image
+  startup checks passed. No live inference tested in this CI.
+- Do not interpret pre-indexed evidence as proven arbitrary-span model
+  grounding, expert relevance or production performance. One more live
+  test needs distinct approved scope and resource limits; no automatic
+  retries or shared vLLM changes. Stage11 `BLOCKED`, all original
+  mandatory enterprise checks `PENDING_SERVER`, Stage12 `NOT_STARTED`.
