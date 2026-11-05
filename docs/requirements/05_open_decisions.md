@@ -1910,3 +1910,10 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   `UNVERIFIED`. No new GPU work and no
   Stage11 acceptance gates closed.
   Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-05 — one synthetic media request timed out again
+
+- Operator's read-only on-host preflight: fast-forward to `465b42c`, **68/68 tests passed**, shared vLLM container running with installed `0.10.2`, one model advertised but actual model/tokenizer provenance unverified. GPU point sample before inference: 19,601/24,576 MiB resident, utilization 0% at that instant; no inference-time GPU utilization evidence.
+- Exactly one authorized synthetic `media_message_clarity` request via the already-reviewed strict production provider path failed at **45,046ms** with `LLM_CIRCUIT_OPEN` / `REQUEST_TIMEOUT`. No retries, no complete payload, no valid criterion output. Do not infer invalid JSON or a model quality score from a timeout.
+- Shared cumulative exporter delta across the interval: +402 generation tokens, +401 inter-token samples, sum +44.963347s. These are not request-correlated measurements. No inference-phase root cause, live memory/utilization, effective decoder/backend, or successful response proven. Existing one-request permission consumed; **no automatic retry**.
+- **Status unchanged:** Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; real-model quality, capacity and E2E `PENDING_SERVER`. Priority: owner-authorized request-level timing/abort/provenance and controlled live-model/gpu window, not deploying additional monitoring products. No business decision or approval was newly confirmed. Evidence: [Stage11 release blocker register](../verification/06_release_blockers.md).
