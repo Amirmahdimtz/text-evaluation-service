@@ -1482,3 +1482,57 @@ Candidate dry-run has zero model calls and only one selected
 criterion. Full staging E2E/No-Egress/quality/model
 identity/alternative model and 56 mandatory Stage11 gates
 remain PENDING_SERVER. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+
+## 2026-11-05 — research cross-field rule failure and conditional prompt experiment
+
+The Simorgh operator pulled through `9b4ec67`: **214 focused offline tests
+PASS (1.53s)**. Exactly one approved synthetic research criterion
+in the experimental quote-only schema completed after **35,887ms**
+with `finish_reason=stop`, syntax-valid JSON, 296 completion tokens
+and exit code 2. The strict model-level validator rejected it:
+`LLM_SCHEMA_REJECTED` with the fixed category
+`MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE`.
+The returned `status=not_assessed` was combined with a non-null score
+or non-empty evidence. The safe category **does not distinguish which
+of those two values** was present; neither should be inferred or logged.
+One shared-service E2E/decode histogram increment was 35.843329s
+/ 35.807389s, with prefill 0.033190s and queue 0.000099s.
+Shared exporter deltas are not isolated request traces. The unrelated
+`/srv/projects/text-similarity/app` SSH-gated command in the operator's
+terminal output belongs to another repository and was not inspected,
+modified or counted toward this project's gate.
+
+**Targeted Stage11 diagnostic-only alternative:** a separately gated
+`--research-consistent-status` prompt variant augments the **system
+instruction** with explicit mutually exclusive branches: assessed
+requires supported exact quote evidence and integer score; abstention
+requires null score and empty evidence, with an informative reason.
+Never force a score, fabricate evidence, reinterpret absent evidence,
+or silently repair a contradictory model output. The model still
+uses the existing quote-only experimental JSON schema and final
+strict production validator; no production provider, business Rubric,
+DI or runtime changes. It is not a conditional JSON Schema feature
+claim, only an opt-in prompt hypothesis.
+
+This variant permits exactly one `research` synthetic criterion,
+`--disable-thinking --diagnostics --compact-response
+--quote-only-evidence --research-consistent-status`, 512 max output
+tokens, no retries, one in-flight and 45s timeout. The default
+is a no-network dry-run. Any live invocation requires a **new**
+explicitly authorized shared GPU one-shot resource window; not
+covered by consumed prior permissions. If incomplete, invalid,
+or conflicting, stop and retain sanitized results. **Passing
+schema never proves semantic accuracy, true abstention quality,
+expert relevance or production readiness**.
+
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_vllm_diagnostics.py tests/test_stage11_real_model_criterion_probe.py tests/test_stage07_local_llm.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_model_criterion_probe --domain research --disable-thinking --diagnostics --compact-response --quote-only-evidence --research-consistent-status --max-output-tokens 512
+```
+
+Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; real model quality,
+provenance, accepted three-domain benchmark, No-Egress, signed
+API/Worker/DB/LLM E2E and performance tests `PENDING_SERVER`.

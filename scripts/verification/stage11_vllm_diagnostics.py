@@ -612,6 +612,47 @@ class QuoteOnlyEvidenceDiagnosticLocalLlmProvider(
         return result
 
 
+
+_RESEARCH_CONSISTENT_STATUS_GUIDANCE = (
+    " Stage11 research-only contract test. Make a decision BEFORE generating "
+    "the JSON: choose exactly one valid branch. BRANCH A: If the criterion "
+    "can be assessed using exact, semantically relevant quotes from the "
+    "original submission, set status='assessed', score to an integer from "
+    "0 to 5 chosen from the provided rubric anchors, and evidence to a "
+    "non-empty array of exact source quotes. BRANCH B: If evidence is "
+    "insufficient or this criterion cannot responsibly be assessed, set "
+    "status='not_assessed', score=null, evidence=[], with a brief non-empty "
+    "reason explaining the limitation. For BRANCH B, use empty strengths, "
+    "weaknesses and recommendations arrays when unsupported. Never output "
+    "not_assessed with a numeric score or any evidence. Never invent "
+    "evidence, force an assessment, or downgrade an assessment merely "
+    "to satisfy output syntax. Preserve the complete JSON schema, "
+    "criterion code, rubric evidence rules and original source quotes."
+)
+
+
+class ResearchConsistentStatusDiagnosticLocalLlmProvider(
+    QuoteOnlyEvidenceDiagnosticLocalLlmProvider
+):
+    """Research-only prompt experiment; production inference is unchanged."""
+
+    async def _send(
+        self, method: str, path: str, payload: dict | None = None,
+    ) -> dict:
+        if method != "POST" or path != "/chat/completions":
+            return await super()._send(method, path, payload)
+        if not isinstance(payload, dict):
+            raise LlmProviderError("LLM_INPUT_REJECTED")
+        messages = payload.get("messages")
+        if (type(messages) is not list or len(messages) != 2
+                or type(messages[0]) is not dict
+                or type(messages[0].get("content")) is not str):
+            raise LlmProviderError("LLM_INPUT_REJECTED")
+        request = deepcopy(payload)
+        request["messages"][0]["content"] += _RESEARCH_CONSISTENT_STATUS_GUIDANCE
+        return await super()._send(method, path, request)
+
+
 def parse_metrics(raw: bytes) -> dict[str, float]:
     """Sum approved Prometheus samples across labels without exposing labels."""
     if len(raw) > _MAX_METRICS_BYTES:

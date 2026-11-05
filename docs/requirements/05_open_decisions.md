@@ -2120,3 +2120,25 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Actual Simorgh observation:** 203 focused software checks PASS; one synthetic `research_academic_writing` single request returned syntax-valid JSON/stop with 296 completion tokens after 35,987ms, but `MODEL_RULE_REJECTED`, exit 2; research contract FAIL. Previous experimental `media` and `speech` narrow contract examples PASS, not expert scoring.
 - **Diagnostic-only implementation:** `695ce146` safely categorizes model-validator root rules in memory, without logging model content or relaxing validation; `cb7f9992` updates the one old unit test expectation. [GitHub Actions 42003194641](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/42003194641) PASS with 59 safety and 309 focused offline tests plus candidate container checks. A prior red CI run 42003065215 was fixed; no undisclosed failed tests treated as passed.
 - **Decision:** no confirmed root subtype from the prior run; never infer or auto-repair status/score/evidence. Further GPU request only under a fresh explicit shared-owner one-shot window/resource ceiling. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; enterprise acceptance/security/load/E2E `PENDING_SERVER`.
+
+
+### Stage11 — 2026-11-05 — research abstention status/score-evidence conflict
+
+- Real Simorgh operator result: 214 focused software tests PASS;
+  one separately permitted synthetic research quote-only request
+  returned `MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE`
+  after 35,887ms, 296 output tokens, exit 2. Model declared
+  `not_assessed` but supplied a numeric score and/or evidence;
+  exact offending value not exposed. Full research contract FAIL.
+- Keep Pydantic and exact quote grounding **fail-closed**.
+  No automatic score clearing, evidence dropping, status flipping
+  or acceptance of contradictory results. A Stage11-only
+  explicit exclusive assessed/abstention system-prompt experiment
+  is proposed as opt-in. Standard and other-domain runs untouched.
+- The unrelated `text-similarity/app` command belongs to
+  an independent repository and is not evidence of this project's
+  Stage11 gates. No other repository modifications performed.
+- Further GPU use requires fresh explicit shared-owner approval.
+  Model quality/No-Egress/API-Worker-DB E2E/performance
+  `PENDING_SERVER`. Stage11 `BLOCKED`,
+  Stage12 `NOT_STARTED`.

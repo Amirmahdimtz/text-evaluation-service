@@ -27,6 +27,7 @@ from scripts.verification.stage11_vllm_diagnostics import (
     CompactResponseDiagnosticLocalLlmProvider, DiagnosticLocalLlmProvider,
     IndexedEvidenceDiagnosticLocalLlmProvider,
     QuoteOnlyEvidenceDiagnosticLocalLlmProvider,
+    ResearchConsistentStatusDiagnosticLocalLlmProvider,
     UnconstrainedDiagnosticLocalLlmProvider, _SAFE_SCHEMA_CATEGORIES,
     metrics_delta, read_metrics,
 )
@@ -200,6 +201,7 @@ async def _run_live(
     diagnostics: bool = False, max_output_tokens: int = 512,
     comparison_unconstrained: bool = False, compact_response: bool = False,
     indexed_evidence: bool = False, quote_only_evidence: bool = False,
+    research_consistent_status: bool = False,
 ) -> dict:
     if (diagnostics and domain is None
             or max_output_tokens not in (256, 512)
@@ -216,6 +218,10 @@ async def _run_live(
             or (quote_only_evidence and (
                 not compact_response or indexed_evidence
                 or domain is None or not diagnostics
+                or not disable_thinking))
+            or (research_consistent_status and (
+                domain != "research" or not quote_only_evidence
+                or not compact_response or not diagnostics
                 or not disable_thinking))):
         raise ValueError("STAGE11_DIAGNOSTICS_SCOPE_INVALID")
     _require_safe_environment()
@@ -238,7 +244,9 @@ async def _run_live(
     config.settings = config.settings.model_copy(update={"llm": llm_settings})
     before = await read_metrics() if diagnostics else None
     provider = (
-        QuoteOnlyEvidenceDiagnosticLocalLlmProvider(config, SecretResolver())
+        ResearchConsistentStatusDiagnosticLocalLlmProvider(config, SecretResolver())
+        if research_consistent_status
+        else QuoteOnlyEvidenceDiagnosticLocalLlmProvider(config, SecretResolver())
         if quote_only_evidence
         else IndexedEvidenceDiagnosticLocalLlmProvider(config, SecretResolver())
         if indexed_evidence
@@ -259,7 +267,8 @@ async def _run_live(
             await evaluator.close_async()
     report["thinking_mode_requested"] = llm_settings.thinking_mode
     report["prompt_variant"] = (
-        "quote_only_evidence_candidate_v1" if quote_only_evidence
+        "research_consistent_status_candidate_v1" if research_consistent_status
+        else "quote_only_evidence_candidate_v1" if quote_only_evidence
         else "indexed_evidence_candidate_v1" if indexed_evidence
         else "compact_response_candidate_v1" if compact_response else "standard"
     )
@@ -300,7 +309,18 @@ def main(argv: list[str] | None = None) -> int:
                         help="Use synthetic, pre-indexed original-source evidence spans.")
     parser.add_argument("--quote-only-evidence", action="store_true",
                         help="Synthetic quote-only response; exact unique offsets calculated in Python.")
+    parser.add_argument("--research-consistent-status", action="store_true",
+                        help="Research-only explicit assessed/abstain contract guidance.")
     args = parser.parse_args(argv)
+    if args.research_consistent_status and (
+            args.domain != "research" or not args.quote_only_evidence
+            or not args.compact_response or not args.diagnostics
+            or not args.disable_thinking):
+        parser.error(
+            "--research-consistent-status requires --domain research "
+            "--quote-only-evidence --compact-response "
+            "--diagnostics --disable-thinking"
+        )
     if args.quote_only_evidence and (
             not args.compact_response or args.indexed_evidence
             or args.domain is None or not args.diagnostics
@@ -338,7 +358,9 @@ def main(argv: list[str] | None = None) -> int:
                 "requires": "--execute-live",
                 "diagnostics_requested": args.diagnostics,
                 "prompt_variant": (
-                    "quote_only_evidence_candidate_v1" if args.quote_only_evidence
+                    "research_consistent_status_candidate_v1"
+                    if args.research_consistent_status
+                    else "quote_only_evidence_candidate_v1" if args.quote_only_evidence
                     else "indexed_evidence_candidate_v1" if args.indexed_evidence
                     else "compact_response_candidate_v1" if args.compact_response
                     else "standard"
@@ -364,6 +386,8 @@ def main(argv: list[str] | None = None) -> int:
             options["indexed_evidence"] = True
         if args.quote_only_evidence:
             options["quote_only_evidence"] = True
+        if args.research_consistent_status:
+            options["research_consistent_status"] = True
         results = asyncio.run(_run_live(**options))
         print(json.dumps(results, ensure_ascii=False, sort_keys=True))
         return 0 if results["status"] in (

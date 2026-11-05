@@ -699,3 +699,35 @@ def test_quote_only_dry_run_accepts_one_selected_domain_without_gpu(domain, monk
          "research": "research_academic_writing"}[domain]
     ]
     assert result["prompt_variant"] == "quote_only_evidence_candidate_v1"
+
+
+def test_research_consistent_status_provider_selection_offline(monkeypatch):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        ResearchConsistentStatusDiagnosticLocalLlmProvider,
+    )
+
+    monkeypatch.setenv("TES_ENVIRONMENT", "development")
+    for env_key in (
+        "TES_STAGE11_SETTINGS_FILE", "TES_STAGE05_DATABASE_URL",
+        "TES_STAGE11_PROCESS_E2E",
+    ):
+        monkeypatch.delenv(env_key, raising=False)
+
+    async def no_metrics():
+        return None
+
+    async def fake_cases(evaluator, *, domain):
+        assert domain == "research"
+        assert isinstance(
+            evaluator._provider, ResearchConsistentStatusDiagnosticLocalLlmProvider,
+        )
+        return {"status": "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS"}
+
+    monkeypatch.setattr(probe, "read_metrics", no_metrics)
+    monkeypatch.setattr(probe, "_run_cases", fake_cases)
+    report = asyncio.run(probe._run_live(
+        domain="research", disable_thinking=True, diagnostics=True,
+        compact_response=True, quote_only_evidence=True,
+        research_consistent_status=True, max_output_tokens=512,
+    ))
+    assert report["prompt_variant"] == "research_consistent_status_candidate_v1"

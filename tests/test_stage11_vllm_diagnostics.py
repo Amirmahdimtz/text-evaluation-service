@@ -709,3 +709,118 @@ def test_quote_only_root_categories_are_fixed_and_expose_no_values(data, expecte
     assert result == expected
     assert result in diag._SAFE_SCHEMA_CATEGORIES
     assert "redacted" not in result
+
+
+@pytest.mark.parametrize("status,score,evidence_present,expected_status,expected_error", [
+    ("not_assessed", None, False, "valid", None),
+    ("assessed", 3, True, "valid", None),
+    ("not_assessed", 3, False, "failed",
+     "MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE"),
+    ("not_assessed", None, True, "failed",
+     "MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE"),
+    ("assessed", None, False, "failed",
+     "MODEL_RULE_ASSESSED_REQUIRES_SCORE_EVIDENCE"),
+])
+def test_research_consistent_status_variant_uses_real_strict_decoder(
+    monkeypatch, status, score, evidence_present,
+    expected_status, expected_error,
+):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        ResearchConsistentStatusDiagnosticLocalLlmProvider,
+    )
+    case, _, _ = probe._load_selected_rubrics()[2]
+    quote = case.original_text[:21]
+    sample = {
+        "criterion_code": "research_academic_writing",
+        "status": status, "score": score,
+        "reason": "Synthetic explanation", "strengths": [],
+        "weaknesses": [], "recommendations": [],
+        "evidence": [{
+            "source_kind": "original_submission", "quote": quote,
+        }] if evidence_present else [],
+    }
+    observed = []
+
+    async def handler(request):
+        assert request.url.path == "/v1/chat/completions"
+        payload = json.loads(request.content)
+        observed.append(payload)
+        system = payload["messages"][0]["content"]
+        assert "BRANCH A:" in system and "BRANCH B:" in system
+        assert "Never output not_assessed with a numeric score" in system
+        schema_props = payload["response_format"]["json_schema"]["schema"][
+            "$defs"]["OriginalEvidence"]["properties"]
+        ]
+        assert set(schema_props) == {"source_kind", "quote"}
+        assert payload["max_tokens"] == 512
+        return httpx.Response(200, json=_model_reply(
+            content=json.dumps(sample, ensure_ascii=False),
+        ))
+
+    monkeypatch.setattr(
+        probe, "ResearchConsistentStatusDiagnosticLocalLlmProvider",
+        lambda config, secrets: ResearchConsistentStatusDiagnosticLocalLlmProvider(
+            config, secrets, transport=httpx.MockTransport(handler),
+        ),
+    )
+    async def no_metrics():
+        return None
+
+    monkeypatch.setattr(probe, "read_metrics", no_metrics)
+    result = asyncio.run(probe._run_live(
+        domain="research", disable_thinking=True, diagnostics=True,
+        compact_response=True, quote_only_evidence=True,
+        research_consistent_status=True,
+    ))
+    assert len(observed) == 1
+    assert result["scope"] == "single_domain"
+    assert result["prompt_variant"] == "research_consistent_status_candidate_v1"
+    row = result["results"][0]
+    assert row["contract"] == expected_status
+    if expected_error is not None:
+        assert row["schema_failure_category"] == expected_error
+        assert result["status"] == "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_FAILURE"
+    else:
+        assert result["status"] == "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS"
+        assert row["status"] == status
+        assert row["score"] == score
+        assert row["evidence_count"] == (1 if evidence_present else 0)
+    safe = json.dumps(result, ensure_ascii=False)
+    assert "Synthetic explanation" not in safe
+    assert quote not in safe
+
+
+@pytest.mark.parametrize("args", [
+    ["--research-consistent-status"],
+    ["--research-consistent-status", "--domain", "media",
+     "--quote-only-evidence", "--compact-response", "--diagnostics",
+     "--disable-thinking"],
+    ["--research-consistent-status", "--domain", "research",
+     "--compact-response", "--diagnostics", "--disable-thinking"],
+])
+def test_research_consistent_status_refuses_other_scopes(args, capsys):
+    with pytest.raises(SystemExit) as exc:
+        probe.main(["--execute-live", *args])
+    assert exc.value.code == 2
+    assert "--research-consistent-status requires" in capsys.readouterr().err
+
+
+def test_research_consistent_status_dry_run_has_no_io(monkeypatch, capsys):
+    async def forbidden(**kwargs):
+        pytest.fail("no model access permitted in dry-run")
+    monkeypatch.setattr(probe, "_run_live", forbidden)
+    assert probe.main([
+        "--research-consistent-status", "--quote-only-evidence",
+        "--compact-response", "--domain", "research",
+        "--disable-thinking", "--diagnostics", "--max-output-tokens", "512",
+    ]) == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["status"] == "DRY_RUN_NO_NETWORK"
+    assert output["prompt_variant"] == "research_consistent_status_candidate_v1"
+    assert output["criteria"] == ["research_academic_writing"]
+    assert output["requests_planned"] == 1
+
+
+def test_research_consistent_status_direct_call_cannot_bypass_scope():
+    with pytest.raises(ValueError, match="STAGE11_DIAGNOSTICS_SCOPE_INVALID"):
+        asyncio.run(probe._run_live(research_consistent_status=True))
