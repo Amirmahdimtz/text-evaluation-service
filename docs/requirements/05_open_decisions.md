@@ -1946,3 +1946,9 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Decision state:** `compact_response_candidate_v1=EXPERIMENTAL`;
   live speed/validity `PENDING_SERVER`; Stage11 `BLOCKED`, Stage12
   `NOT_STARTED`; original acceptance IDs unchanged.
+
+### Stage11 — 2026-11-05 — compact-response CI completed
+
+- Commit `794579e72d16ecfc7a26d1af54da96bad1b6aa47`: Stage11-only optional concise prompt variant, preserving rubric/evidence and response validation; no production default changed.
+- [CI 41990803105](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41990803105): **SUCCESS**; 59 safety + 241 relevant offline synthetic/provider tests passed, candidate container image/networkless startup tests passed. New compact-mode tests included in this total.
+- Live GPU speed/strict criterion validity, served backend/identity and expert three-domain accuracy remain `PENDING_SERVER`; no model request was executed by CI. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; no changed business policies or acceptance gates.

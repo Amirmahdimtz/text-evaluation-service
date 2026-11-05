@@ -1313,3 +1313,18 @@ expert-reviewed three-domain quality separately. Until actual
 on-host execution, `COMPACT_VARIANT=OFFLINE_PREPARED`,
 real improvement `UNVERIFIED`, Stage11 `BLOCKED`,
 Stage12 `NOT_STARTED`.
+
+### 2026-11-05 — compact-response offline CI verification
+
+[GitHub Actions 41990803105](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41990803105)
+completed **SUCCESS** for commit `794579e72d16ecfc7a26d1af54da96bad1b6aa47`:
+**59** existing safety checks and **241** focused synthetic/provider/diagnostic
+checks passed. The API-only candidate image built, and its default networkless
+loopback health and disabled-Worker checks passed. Added tests exercise the
+real candidate Rubric instructions (all non-guidance fields unchanged),
+strict eight-field response type, invalid prompt rejection, no-network
+dry-run and compact-mode provider selection. All tests are offline with
+stubs; no real on-prem GPU request or real compact-mode completion occurred.
+
+**Status:** `COMPACT_VARIANT=OFFLINE_CI_VERIFIED`; latency/criterion correctness
+on Simorgh `PENDING_SERVER`; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

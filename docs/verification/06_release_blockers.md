@@ -288,3 +288,17 @@ The bounded before/after **shared-service** vLLM exporter deltas were: request E
 While the probe was running, the operator's 4-second-interval GPU snapshots reported utilization **0%** or **8%** and constant reported allocated memory **19,601/24,576 MiB**. These sparse instantaneous samples make sustained GPU saturation less evident but do not establish CPU-bound XGrammar execution, rule out short GPU kernels or prove exclusive GPU ownership. No additional inference or live profiling was performed by the assistant. The cumulative `num_requests_running`/`waiting` gauge deltas are **snapshot differences**, not request counts or queue traces.
 
 **Product implication and stop rule:** raising output cap to 512 under the existing 45s timeout is not an evidence-based fix; reducing the output budget to 256 terminates generation but truncates the complete strict schema, so it is also **not** a production fix. Keep strong schema, evidence, score and quote-offset validation intact; do not accept partial JSON, remove rubric-required information, automatically retry, infer AI quality or alter shared vLLM/container settings. Owner-approved next steps should be strictly prioritized: preserve the current diagnostic record, verify effective serving backend/model/tokenizer **privately**, evaluate a bounded non-production compact-output hypothesis with offline fixture/schema tests **before** any additional GPU POST, then—only if explicitly re-authorized with a resource ceiling—measure both strict contract completion and phase timing in a controlled test. Stage11 remains `BLOCKED`, original live-model/three-domain/quality/security/E2E gates `PENDING_SERVER`, Stage12 `NOT_STARTED`.
+
+## 2026-11-05 — compact-response prompt-only engineering verification
+
+The Stage11 diagnostic now supports a separately gated `--compact-response`
+variant. Its only change to the rubric request is extra concision guidance;
+provider JSON Schema and exact source quote/offset validator are unchanged,
+standard production path stays default. In GitHub Actions
+[41990803105](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41990803105),
+59 safety and 241 relevant offline tests passed, along with the networkless
+API candidate image check. This is a software-only verification, **not**
+performance/accuracy acceptance. One real bounded model POST to compare
+speed and full strict output is `PENDING_SERVER` and requires a valid
+shared-owner permission/resource window. No repeat retries on an incomplete
+contract. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
