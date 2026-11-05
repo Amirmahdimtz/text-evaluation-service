@@ -533,7 +533,7 @@ def test_quote_only_provider_is_bounded_to_one_explicit_domain_no_network(
     ("score_invalid", "SCHEMA_FIELD_SCORE_INVALID"),
     ("status_invalid", "SCHEMA_FIELD_STATUS_INVALID"),
     ("wrong_criterion", "CRITERION_CODE_MISMATCH"),
-    ("missing_evidence", "MODEL_RULE_REJECTED"),
+    ("missing_evidence", "MODEL_RULE_ASSESSED_REQUIRES_SCORE_EVIDENCE"),
     ("duplicate_key", "JSON_DUPLICATE_KEY"),
     ("json_syntax", "JSON_SYNTAX_INVALID"),
 ])
