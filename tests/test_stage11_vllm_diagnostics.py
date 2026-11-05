@@ -750,7 +750,6 @@ def test_research_consistent_status_variant_uses_real_strict_decoder(
         assert "Never output not_assessed with a numeric score" in system
         schema_props = payload["response_format"]["json_schema"]["schema"][
             "$defs"]["OriginalEvidence"]["properties"]
-        ]
         assert set(schema_props) == {"source_kind", "quote"}
         assert payload["max_tokens"] == 512
         return httpx.Response(200, json=_model_reply(
