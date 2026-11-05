@@ -2024,3 +2024,26 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **New Stage11-only design:** `quote_only_evidence_candidate_v1` avoids trusting model-calculated offsets by accepting an exact model-quoted source substring and deriving offsets with Python **only for one unique match**. No automatic correction of model-generated offsets, no fuzzy matches, no change to production's strict final eight-field contract, no acceptance of unsupported evidence.
 - **Actual CI:** [41996511432](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41996511432) SUCCESS, 59 safety and 276 focused tests passed, candidate image checks PASS. Model/GPU run of quote-only candidate still `PENDING_SERVER`.
 - **Boundary:** next GPU request needs distinct authorized one-shot window, model/server remains shared. No Stage11 Gate waiver, no new production/business approvals, no Stage12 work. Status Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+
+### Stage11 — 2026-11-05 — media quote-only strict contract observed PASS
+
+- On Simorgh, `181 PASS` focused local tests, dry-run
+  `DRY_RUN_NO_NETWORK`, and **one** permitted synthetic
+  `media_message_clarity` inference in Stage11 experimental
+  quote-only mode. Result: `contract=valid`, `status=assessed`,
+  **one exact original-source evidence span**, candidate score
+  2/5, **31,700ms**, 315 completion tokens, exit 0.
+- Distinguish **single media criterion** success from the
+  misleading historical string `REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS`;
+  `requests_planned=1` and speech/research were NOT_RUN.
+  Standard production provider is unchanged; no official quality
+  score/semantic evidence relevance verified.
+- Offline-only correction changes result labels for one domain and
+  permits independent Stage11 quote-only synthetic diagnostic
+  selection for speech/research. Additional live requests remain
+  individually owner-gated, one request, no retries.
+- Stage11 `BLOCKED`; actual tri-domain expert quality,
+  full signed API/Worker/DB/model E2E, security, resource/No-Egress,
+  served-model provenance and original mandatory gates
+  `PENDING_SERVER`. Stage12 `NOT_STARTED`.

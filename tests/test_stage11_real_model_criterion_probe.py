@@ -638,3 +638,64 @@ def test_indexed_evidence_provider_selection_and_no_network(monkeypatch):
     ))
     assert outcome["prompt_variant"] == "indexed_evidence_candidate_v1"
     assert outcome["diagnostics"]["response"]["finish_reason"] == "UNAVAILABLE"
+
+
+@pytest.mark.parametrize("domain", ["speech", "media", "research"])
+def test_single_domain_contract_success_does_not_claim_three_domain(domain):
+    class FakeEvaluator:
+        async def evaluate_criterion_async(self, *, criterion, **kwargs):
+            return CriterionAssessment(
+                criterion_code=criterion.criterion_code,
+                status="assessed", score=3, reason="Synthetic",
+                reason_code=None,
+                evidence=((kwargs["original_text"][:7], 0, 7),),
+            )
+
+    result = asyncio.run(probe._run_cases(FakeEvaluator(), domain=domain))
+    assert result["status"] == "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS"
+    assert result["scope"] == "single_domain"
+    assert result["requests_planned"] == result["requests_attempted"] == 1
+    assert result["results"][0]["domain"] == domain
+
+
+def test_single_domain_contract_failure_does_not_claim_three_domain():
+    class FakeEvaluator:
+        async def evaluate_criterion_async(self, **kwargs):
+            raise LlmProviderError("LLM_SCHEMA_REJECTED")
+
+    result = asyncio.run(probe._run_cases(FakeEvaluator(), domain="media"))
+    assert result["status"] == "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_FAILURE"
+    assert result["scope"] == "single_domain"
+    assert result["requests_attempted"] == 1
+
+
+def test_single_domain_success_cli_exit_zero(monkeypatch, capsys):
+    async def fake(*, domain, disable_thinking, diagnostics, max_output_tokens):
+        assert domain == "speech"
+        return {"status": "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS"}
+
+    monkeypatch.setattr(probe, "_run_live", fake)
+    assert probe.main(["--execute-live", "--domain", "speech"]) == 0
+    assert "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("domain", ["speech", "media", "research"])
+def test_quote_only_dry_run_accepts_one_selected_domain_without_gpu(domain, monkeypatch, capsys):
+    async def forbidden(**kwargs):
+        pytest.fail("No GPU access in dry-run")
+
+    monkeypatch.setattr(probe, "_run_live", forbidden)
+    assert probe.main([
+        "--quote-only-evidence", "--compact-response",
+        "--domain", domain, "--disable-thinking",
+        "--diagnostics", "--max-output-tokens", "512",
+    ]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "DRY_RUN_NO_NETWORK"
+    assert result["requests_planned"] == 1
+    assert result["criteria"] == [
+        {"speech": "speech_clarity",
+         "media": "media_message_clarity",
+         "research": "research_academic_writing"}[domain]
+    ]
+    assert result["prompt_variant"] == "quote_only_evidence_candidate_v1"

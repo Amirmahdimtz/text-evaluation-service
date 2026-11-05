@@ -1443,3 +1443,42 @@ Actual quality, original quote relevance and full three-domain
 validation still require expert-reviewed evidence. Pending live
 verification: `PENDING_SERVER`; Stage11 `BLOCKED`,
 Stage12 `NOT_STARTED`.
+
+
+## 2026-11-05 — one real media quote-only contract passes
+
+The Simorgh operator updated to `a2d5e5b`, ran **181 offline focused
+tests (PASS in 1.43s)** and a `DRY_RUN_NO_NETWORK`. With separately
+authorized **one** synthetic media criterion request in strict
+JSON-schema/quote-only experimental mode, actual `media_message_clarity`
+returned **contract=valid**, `status=assessed`, **provisional score 2/5**,
+**one verified exact quote+offset**, **31,700ms** criterion wall time,
+`finish_reason=stop`, 315 completion and 782 prompt tokens,
+`PROBE_EXIT=0`. This is the first **observed real media single-criterion
+contract success via the new quote-only diagnostic**, not proof that
+the evidence is semantically relevant, the score is expert-correct
+or any production path now uses this contract.
+
+**Do not call this a three-domain PASS.** The legacy probe status
+string `REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS` appeared because
+`_run_cases` used one result label regardless of `--domain`;
+this run explicitly had `requests_planned=1` and only media.
+A follow-up fixes single-domain result codes and preserves
+three-domain status only for all-three scope. The same experimental
+quote-only approach can now be selected independently for `speech`,
+`media`, or `research`, but **no speech/research live result exists**.
+
+Shared vLLM before/after exporter had +1 completed request,
+E2E **31.659440s**, decode **31.415452s**, prefill
+**0.199588s**, queue **0.042499s**, and +315 generated
+tokens. Shared exporter values are not independently
+request-correlated. **31.7s is not a throughput/latency PASS**,
+and one score is not a golden quality benchmark.
+
+Future **single-domain** operator test requires an explicitly
+new shared-owner permitted GPU window/resource budget for
+*each* request, with no retries and no server config changes.
+Candidate dry-run has zero model calls and only one selected
+criterion. Full staging E2E/No-Egress/quality/model
+identity/alternative model and 56 mandatory Stage11 gates
+remain PENDING_SERVER. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

@@ -480,7 +480,7 @@ def test_quote_only_dry_run_scope_and_no_network(monkeypatch, capsys):
 @pytest.mark.parametrize("flags", [
     ["--quote-only-evidence"],
     ["--quote-only-evidence", "--domain", "media", "--diagnostics", "--disable-thinking"],
-    ["--quote-only-evidence", "--domain", "speech", "--diagnostics",
+    ["--quote-only-evidence", "--diagnostics",
      "--compact-response", "--disable-thinking"],
     ["--quote-only-evidence", "--indexed-evidence", "--domain", "media",
      "--diagnostics", "--compact-response", "--disable-thinking"],
@@ -490,3 +490,37 @@ def test_quote_only_scope_guard_requires_explicit_synthetic_media(flags, capsys)
         probe.main(["--execute-live", *flags])
     assert caught.value.code == 2
     assert "--quote-only-evidence requires" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("domain", ["speech", "media", "research"])
+def test_quote_only_provider_is_bounded_to_one_explicit_domain_no_network(
+    monkeypatch, domain,
+):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        QuoteOnlyEvidenceDiagnosticLocalLlmProvider,
+    )
+
+    monkeypatch.setenv("TES_ENVIRONMENT", "development")
+    for key in (
+        "TES_STAGE11_SETTINGS_FILE", "TES_STAGE05_DATABASE_URL",
+        "TES_STAGE11_PROCESS_E2E",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    async def no_metrics():
+        return None
+
+    async def fake_cases(evaluator, *, domain: selected):
+        assert selected == domain
+        assert isinstance(evaluator._provider, QuoteOnlyEvidenceDiagnosticLocalLlmProvider)
+        return {"status": "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS"}
+
+    monkeypatch.setattr(probe, "read_metrics", no_metrics)
+    monkeypatch.setattr(probe, "_run_cases", fake_cases)
+    result = asyncio.run(probe._run_live(
+        domain=domain, disable_thinking=True, diagnostics=True,
+        compact_response=True, quote_only_evidence=True,
+        max_output_tokens=512,
+    ))
+    assert result["prompt_variant"] == "quote_only_evidence_candidate_v1"
+    assert result["status"] == "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS"

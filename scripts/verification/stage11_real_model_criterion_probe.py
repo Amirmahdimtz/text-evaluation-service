@@ -169,9 +169,16 @@ async def _run_cases(evaluator: CriterionEvaluationService, *, domain: str | Non
                 circuit_opened = True
                 break
     return {
-        "status": ("REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS"
-                   if all(row["contract"] == "valid" for row in details)
-                   else "REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE"),
+        "status": (
+            "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS"
+            if domain is not None and all(row["contract"] == "valid" for row in details)
+            else "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_FAILURE"
+            if domain is not None
+            else "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS"
+            if all(row["contract"] == "valid" for row in details)
+            else "REAL_MODEL_THREE_DOMAIN_CONTRACT_PARTIAL_FAILURE"
+        ),
+        "scope": "single_domain" if domain is not None else "three_domain",
         "model_api_id": _MODEL_ID,
         "model_revision_verified": False,
         "requests_planned": len(cases),
@@ -208,7 +215,7 @@ async def _run_live(
                 or not diagnostics or not disable_thinking))
             or (quote_only_evidence and (
                 not compact_response or indexed_evidence
-                or domain != "media" or not diagnostics
+                or domain is None or not diagnostics
                 or not disable_thinking))):
         raise ValueError("STAGE11_DIAGNOSTICS_SCOPE_INVALID")
     _require_safe_environment()
@@ -296,11 +303,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.quote_only_evidence and (
             not args.compact_response or args.indexed_evidence
-            or args.domain != "media" or not args.diagnostics
+            or args.domain is None or not args.diagnostics
             or not args.disable_thinking):
         parser.error(
             "--quote-only-evidence requires --compact-response "
-            "--domain media --diagnostics --disable-thinking "
+            "--domain speech|media|research --diagnostics --disable-thinking "
             "and forbids --indexed-evidence"
         )
     if args.indexed_evidence and (
@@ -359,7 +366,10 @@ def main(argv: list[str] | None = None) -> int:
             options["quote_only_evidence"] = True
         results = asyncio.run(_run_live(**options))
         print(json.dumps(results, ensure_ascii=False, sort_keys=True))
-        return 0 if results["status"] == "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS" else 2
+        return 0 if results["status"] in (
+            "REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS",
+            "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS",
+        ) else 2
     except Exception:
         print(json.dumps({
             "status": "STAGE11_PROBE_ABORTED",
