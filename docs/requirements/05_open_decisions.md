@@ -1925,3 +1925,24 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - **Sparse GPU samples:** utilization 0 or 8% at approximately 4-second intervals; used memory 19,601/24,576 MiB. No saturation conclusion from snapshots alone.
 - **Decision:** do not treat 256 token truncation or a blind 512-token increase as a fix; preserve strict JSON, quote offsets and evidence requirements. Prefer offline compact-output feasibility and model/backend provenance over repeated uninstrumented GPU POSTs. New live testing requires another explicit approved request/resource window; no shared runtime, Production or secrets changes authorized. Detailed evidence in [Stage11 release blockers](../verification/06_release_blockers.md).
 - **Stage status:** Stage11 `BLOCKED`, Stage12 `NOT_STARTED`; original acceptance items remain `PENDING_SERVER`. No new business/quality threshold was confirmed.
+
+
+### Stage11 — 2026-11-05 — compact-response candidate prepared without changing schema
+
+- Response-length investigation preserved the previous 512-token timeout and
+  256-token incomplete-JSON failures. The 256-token shared exporter interval
+  reported 29.070515s decoding and only 0.032774s prefill; low sampled GPU
+  activity does not prove a specific backend bottleneck.
+- **Change scope:** Stage11 synthetic diagnostic only; opt-in
+  `--compact-response` requires one explicit `--domain`,
+  `--disable-thinking` and `--diagnostics`. It appends short-output
+  preferences to existing `response_guidance`, leaving every other Rubric
+  prompt field, strict typed schema, original quote/offset verification,
+  scoring rules, source privacy and standard production behavior unchanged.
+- Offline safety/contract tests and CI status must be recorded from
+  actual execution; no performance improvement is claimed before one
+  separately authorized live test. No model/GPU/server setting changed.
+  See [Stage11 three-domain probe](../verification/17_stage11_real_model_three_domain_probe.md).
+- **Decision state:** `compact_response_candidate_v1=EXPERIMENTAL`;
+  live speed/validity `PENDING_SERVER`; Stage11 `BLOCKED`, Stage12
+  `NOT_STARTED`; original acceptance IDs unchanged.

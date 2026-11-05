@@ -349,3 +349,154 @@ def test_direct_live_call_cannot_bypass_single_domain_guard():
         asyncio.run(probe._run_live(diagnostics=True))
     with pytest.raises(ValueError, match="STAGE11_DIAGNOSTICS_SCOPE_INVALID"):
         asyncio.run(probe._run_live(domain="media", max_output_tokens=256))
+
+
+def test_compact_guidance_preserves_actual_criterion_rubric_fields():
+    from scripts.verification.stage11_vllm_diagnostics import (
+        compact_criterion_instructions,
+    )
+    from src.infrastructure.providers.llm.structured_response import CriterionInference
+
+    class CapturingProvider:
+        instructions = None
+
+        async def evaluate_async(self, **kwargs):
+            self.instructions = kwargs["instructions"]
+            return CriterionInference(
+                criterion_code=kwargs["criterion_code"],
+                status="not_assessed", score=None,
+                reason="Insufficient evidence", strengths=[],
+                weaknesses=[], recommendations=[], evidence=[],
+            )
+
+    case, rubric, checksum = probe._load_selected_rubrics()[1]
+    provider = CapturingProvider()
+    asyncio.run(CriterionEvaluationService(provider).evaluate_criterion_async(
+        criterion=rubric, original_text=case.original_text,
+        rubric_checksum=checksum,
+    ))
+    original = json.loads(provider.instructions)
+    variant = json.loads(compact_criterion_instructions(provider.instructions))
+    assert set(original) == set(variant)
+    assert {
+        key: value for key, value in original.items() if key != "response_guidance"
+    } == {
+        key: value for key, value in variant.items() if key != "response_guidance"
+    }
+    assert "required JSON field" in variant["response_guidance"]
+    assert "evidence quotes and offsets" in variant["response_guidance"]
+    assert "Do not change score, status" in variant["response_guidance"]
+    assert len(compact_criterion_instructions(provider.instructions)) <= 10000
+    assert len(CriterionInference.model_fields) == 8
+
+
+@pytest.mark.parametrize("invalid", [
+    "not json", "[]", "{}", '{"response_guidance":"hi"}',
+    '{"response_guidance":"first","response_guidance":"second"}',
+    "x" * 10001,
+])
+def test_compact_guidance_rejects_untrusted_or_missing_contract(invalid):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        compact_criterion_instructions,
+    )
+    with pytest.raises(LlmProviderError, match="LLM_INPUT_REJECTED"):
+        compact_criterion_instructions(invalid)
+
+
+def test_compact_provider_only_rewrites_instruction_field(monkeypatch):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        CompactResponseDiagnosticLocalLlmProvider,
+    )
+
+    captured = {}
+
+    async def fake_provider_evaluate(self, **kwargs):
+        captured.update(kwargs)
+        return "synthetic-ok"
+
+    monkeypatch.setattr(LocalLlmProvider, "evaluate_async", fake_provider_evaluate)
+    case, rubric, checksum = probe._load_selected_rubrics()[1]
+    raw = json.dumps({
+        "criterion_code": rubric.criterion_code,
+        "operational_definition": rubric.operational_definition,
+        "evaluation_instructions": rubric.evaluation_instructions,
+        "evidence_requirements": rubric.evidence_requirements,
+        "applicability_rules": rubric.applicability_rules,
+        "score_anchors": rubric.scoring_anchors,
+        "response_guidance": "Preserve source evidence",
+    }, ensure_ascii=False)
+    provider = object.__new__(CompactResponseDiagnosticLocalLlmProvider)
+    output = asyncio.run(provider.evaluate_async(
+        source_text=case.original_text, criterion_code=rubric.criterion_code,
+        instructions=raw, rubric_checksum=checksum,
+    ))
+    assert output == "synthetic-ok"
+    assert captured["source_text"] == case.original_text
+    assert captured["criterion_code"] == rubric.criterion_code
+    assert captured["rubric_checksum"] == checksum
+    assert json.loads(captured["instructions"])["score_anchors"] == rubric.scoring_anchors
+    assert json.loads(captured["instructions"])["response_guidance"] != "Preserve source evidence"
+
+
+def test_compact_dry_run_has_zero_network_calls_and_fixed_scope(capsys, monkeypatch):
+    async def forbidden(*args, **kwargs):
+        pytest.fail("compact dry-run must not touch the model")
+    monkeypatch.setattr(probe, "_run_live", forbidden)
+    assert probe.main([
+        "--compact-response", "--domain", "media", "--disable-thinking",
+        "--diagnostics", "--max-output-tokens", "512",
+    ]) == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["status"] == "DRY_RUN_NO_NETWORK"
+    assert output["requests_planned"] == 1
+    assert output["prompt_variant"] == "compact_response_candidate_v1"
+
+
+@pytest.mark.parametrize("args", [
+    ["--compact-response"],
+    ["--compact-response", "--domain", "media"],
+    ["--compact-response", "--domain", "media", "--diagnostics"],
+    ["--compact-response", "--diagnostics", "--disable-thinking"],
+])
+def test_compact_live_and_offline_modes_require_safe_scope(capsys, args):
+    with pytest.raises(SystemExit) as exc:
+        probe.main(["--execute-live", *args])
+    assert exc.value.code == 2
+    assert "requires --domain --diagnostics --disable-thinking" in capsys.readouterr().err
+
+
+def test_compact_live_mode_selects_diagnostic_provider_without_network(monkeypatch):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        CompactResponseDiagnosticLocalLlmProvider,
+    )
+
+    monkeypatch.setenv("TES_ENVIRONMENT", "development")
+    for key in (
+        "TES_STAGE11_SETTINGS_FILE", "TES_STAGE05_DATABASE_URL",
+        "TES_STAGE11_PROCESS_E2E",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    async def no_metrics():
+        return None
+
+    async def fake_cases(evaluator, *, domain):
+        assert domain == "media"
+        assert isinstance(
+            evaluator._provider, CompactResponseDiagnosticLocalLlmProvider,
+        )
+        return {"status": "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS"}
+
+    monkeypatch.setattr(probe, "read_metrics", no_metrics)
+    monkeypatch.setattr(probe, "_run_cases", fake_cases)
+    report = asyncio.run(probe._run_live(
+        domain="media", disable_thinking=True, diagnostics=True,
+        max_output_tokens=512, compact_response=True,
+    ))
+    assert report["prompt_variant"] == "compact_response_candidate_v1"
+    assert report["diagnostics"]["max_output_tokens"] == 512
+
+
+def test_compact_direct_api_call_rejects_unsafely_broad_run():
+    with pytest.raises(ValueError, match="STAGE11_DIAGNOSTICS_SCOPE_INVALID"):
+        asyncio.run(probe._run_live(compact_response=True))

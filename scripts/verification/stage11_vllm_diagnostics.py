@@ -11,7 +11,7 @@ import math
 
 import httpx
 
-from src.infrastructure.providers.llm.local_llm_provider import LocalLlmProvider
+from src.infrastructure.providers.llm.local_llm_provider import LlmProviderError, LocalLlmProvider
 
 _METRICS_URL = "http://127.0.0.1:8000/metrics"
 _MAX_METRICS_BYTES = 2 * 1024 * 1024
@@ -99,6 +99,72 @@ class DiagnosticLocalLlmProvider(LocalLlmProvider):
             self.response_diagnostic = _response_metadata(result)
         return result
 
+
+
+# Experimental prompt-only variant; never registered in production DI.
+_COMPACT_RESPONSE_GUIDANCE = (
+    "Stage11 synthetic diagnostic only. Keep every required JSON field and comply "
+    "with all rubric score anchors and evidence requirements. Prefer a single short "
+    "Persian reason sentence (target 120 characters), and at most one brief, "
+    "supported item per strengths, weaknesses and recommendations list where "
+    "the rubric permits; otherwise use empty lists for unsupported items. "
+    "Provide all necessary exact original-source evidence quotes and offsets, "
+    "without normalization, omission or invention. Do not change score, status "
+    "or abstention rules. Emit compact JSON without optional whitespace."
+)
+
+
+def compact_criterion_instructions(instructions: str) -> str:
+    """Change only output brevity guidance, never the rubric or evidence rules."""
+    if not isinstance(instructions, str) or len(instructions) > 10000:
+        raise LlmProviderError("LLM_INPUT_REJECTED")
+
+    def unique_pairs(pairs):
+        values = {}
+        for key, value in pairs:
+            if key in values:
+                raise ValueError("DUPLICATE_KEY")
+            values[key] = value
+        return values
+
+    try:
+        payload = json.loads(instructions, object_pairs_hook=unique_pairs)
+    except (ValueError, TypeError, RecursionError):
+        raise LlmProviderError("LLM_INPUT_REJECTED") from None
+    if (not isinstance(payload, dict)
+            or not all(key in payload for key in (
+                "criterion_code", "operational_definition",
+                "evaluation_instructions", "evidence_requirements",
+                "applicability_rules", "score_anchors", "response_guidance",
+            ))
+            or not isinstance(payload["response_guidance"], str)
+            or not payload["response_guidance"].strip()):
+        raise LlmProviderError("LLM_INPUT_REJECTED")
+    modified = dict(payload)
+    modified["response_guidance"] = (
+        payload["response_guidance"] + " " + _COMPACT_RESPONSE_GUIDANCE
+    )
+    output = json.dumps(
+        modified, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    )
+    if len(output) > 10000:
+        raise LlmProviderError("LLM_INPUT_REJECTED")
+    return output
+
+
+class CompactResponseDiagnosticLocalLlmProvider(DiagnosticLocalLlmProvider):
+    """Opt-in prompt-brevity test; production schema and decoder are unchanged."""
+
+    async def evaluate_async(
+        self, *, source_text: str, criterion_code: str,
+        instructions: str, rubric_checksum: str,
+    ):
+        return await super().evaluate_async(
+            source_text=source_text,
+            criterion_code=criterion_code,
+            instructions=compact_criterion_instructions(instructions),
+            rubric_checksum=rubric_checksum,
+        )
 
 def parse_metrics(raw: bytes) -> dict[str, float]:
     """Sum approved Prometheus samples across labels without exposing labels."""

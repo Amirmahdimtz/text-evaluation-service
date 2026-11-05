@@ -24,8 +24,8 @@ from src.infrastructure.providers.llm.local_llm_provider import (
 )
 from src.infrastructure.security.secrets import SecretResolver
 from scripts.verification.stage11_vllm_diagnostics import (
-    DiagnosticLocalLlmProvider, UnconstrainedDiagnosticLocalLlmProvider,
-    metrics_delta, read_metrics,
+    CompactResponseDiagnosticLocalLlmProvider, DiagnosticLocalLlmProvider,
+    UnconstrainedDiagnosticLocalLlmProvider, metrics_delta, read_metrics,
 )
 from src.infrastructure.utils.config_reader import ConfigReader
 
@@ -182,14 +182,17 @@ async def _run_cases(evaluator: CriterionEvaluationService, *, domain: str | Non
 async def _run_live(
     *, domain: str | None = None, disable_thinking: bool = False,
     diagnostics: bool = False, max_output_tokens: int = 512,
-    comparison_unconstrained: bool = False,
+    comparison_unconstrained: bool = False, compact_response: bool = False,
 ) -> dict:
     if (diagnostics and domain is None
             or max_output_tokens not in (256, 512)
             or (max_output_tokens != 512 and not diagnostics)
             or (comparison_unconstrained and (
                 not diagnostics or domain != "media" or max_output_tokens != 256
-                or not disable_thinking))):
+                or not disable_thinking))
+            or (compact_response and (
+                not diagnostics or domain is None or not disable_thinking
+                or comparison_unconstrained))):
         raise ValueError("STAGE11_DIAGNOSTICS_SCOPE_INVALID")
     _require_safe_environment()
     config = ConfigReader()
@@ -211,7 +214,9 @@ async def _run_live(
     config.settings = config.settings.model_copy(update={"llm": llm_settings})
     before = await read_metrics() if diagnostics else None
     provider = (
-        UnconstrainedDiagnosticLocalLlmProvider(config, SecretResolver())
+        CompactResponseDiagnosticLocalLlmProvider(config, SecretResolver())
+        if compact_response
+        else UnconstrainedDiagnosticLocalLlmProvider(config, SecretResolver())
         if comparison_unconstrained
         else DiagnosticLocalLlmProvider(config, SecretResolver())
         if diagnostics else LocalLlmProvider(config, SecretResolver())
@@ -225,6 +230,9 @@ async def _run_live(
         finally:
             await evaluator.close_async()
     report["thinking_mode_requested"] = llm_settings.thinking_mode
+    report["prompt_variant"] = (
+        "compact_response_candidate_v1" if compact_response else "standard"
+    )
     if diagnostics:
         status, deltas = metrics_delta(before, after)
         report["diagnostics"] = {
@@ -256,7 +264,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="Collect only sanitized response and bounded shared metrics.")
     parser.add_argument("--max-output-tokens", type=int, choices=(256, 512),
                         default=512, help="Opt-in reduced cap only with diagnostics.")
+    parser.add_argument("--compact-response", action="store_true",
+                        help="Opt-in concise prompt while preserving full strict schema.")
     args = parser.parse_args(argv)
+    if args.compact_response and (
+            args.domain is None or not args.diagnostics or not args.disable_thinking):
+        parser.error("--compact-response requires --domain --diagnostics --disable-thinking")
     if args.disable_thinking and args.domain is None:
         parser.error("--disable-thinking requires --domain")
     if args.diagnostics and args.domain is None:
@@ -274,6 +287,10 @@ def main(argv: list[str] | None = None) -> int:
                 "criteria": [item[0].criterion_code for item in choices],
                 "requires": "--execute-live",
                 "diagnostics_requested": args.diagnostics,
+                "prompt_variant": (
+                    "compact_response_candidate_v1" if args.compact_response
+                    else "standard"
+                ),
                 "max_output_tokens": args.max_output_tokens,
                 "thinking_mode_requested": (
                     "disabled" if args.disable_thinking else "runtime_default"
@@ -284,10 +301,14 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"status": "STAGE11_PROBE_PREPARATION_FAILED"}))
             return 2
     try:
-        results = asyncio.run(_run_live(
-            domain=args.domain, disable_thinking=args.disable_thinking,
-            diagnostics=args.diagnostics, max_output_tokens=args.max_output_tokens,
-        ))
+        options = {
+            "domain": args.domain, "disable_thinking": args.disable_thinking,
+            "diagnostics": args.diagnostics,
+            "max_output_tokens": args.max_output_tokens,
+        }
+        if args.compact_response:
+            options["compact_response"] = True
+        results = asyncio.run(_run_live(**options))
         print(json.dumps(results, ensure_ascii=False, sort_keys=True))
         return 0 if results["status"] == "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS" else 2
     except Exception:

@@ -1261,3 +1261,55 @@ requirements based solely on a synthetic CPU-only profile.
 Narrow CPU hypothesis `OBSERVED`; provenance and backend
 `UNVERIFIED`; model/GPU/security/quality/performance gates
 `PENDING_SERVER`; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+
+## 2026-11-05 — prompt-only compact-response diagnostic candidate
+
+The operator's authorized one-shot 256-token media trial returned HTTP completion
+at 29,145ms, but `finish_reason=length` and invalid/truncated JSON.
+One shared exporter request-completion sample observed about 29.07s decoding
+versus 0.033s prefill; sampled GPU utilization was 0–8%.
+These are not causal evidence of XGrammar or model quality.
+
+A **Stage11-only opt-in prompt variant** is now implemented in the existing
+real-model diagnostic and no production DI/configuration is changed. It
+appends concision instructions solely to the existing
+`response_guidance` field, preserving the original candidate Rubric
+checksum, score anchors, applicability/evidence requirements, strict
+eight-field `CriterionInference` schema, model provider decoder,
+exact quote/Unicode offsets and rejection on incomplete generation.
+It prefers a shorter Persian reason and fewer unsupported list items,
+but **never permits removal of rubric-required evidence**.
+This is a hypothesis about output length, not proven latency optimization.
+Its identifier is `compact_response_candidate_v1`; standard prompt
+remains the default.
+
+**Offline safe validation** (zero GPU/model HTTP calls):
+
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py tests/test_stage07_local_llm.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_model_criterion_probe --domain media --disable-thinking --diagnostics --max-output-tokens 512 --compact-response
+```
+
+**Future separate authorization required:** after shared vLLM owner approval
+for exactly one additional synthetic, single-domain request (max 512
+completion tokens, 45s, no retries, in-flight=1, unchanged backend/runtime,
+explicit resource/stop budget), an authorized operator may add
+`--execute-live` to the last command once. This is **not** automatic
+permission or a request to repeat the failed probe. On error, timeout,
+resource alarm or incomplete schema **STOP**, preserve the sanitized
+response/timings and do not retry. No raw prompts/responses, model identifiers,
+secrets or logs may be published.
+
+**Success criterion:** `contract=valid` and a complete schema- and
+original-quote-valid response, not merely HTTP 200 or JSON syntax;
+an abstention is not expert-confirmed scoring. Compare elapsed
+time and output token count against the prior *non-equivalent*
+256-token/truncated and 512-token/timed-out observations with
+explicit limitations. Confirm actual served artifact/backend and
+expert-reviewed three-domain quality separately. Until actual
+on-host execution, `COMPACT_VARIANT=OFFLINE_PREPARED`,
+real improvement `UNVERIFIED`, Stage11 `BLOCKED`,
+Stage12 `NOT_STARTED`.
