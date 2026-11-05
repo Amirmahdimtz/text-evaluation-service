@@ -186,3 +186,22 @@ The quote-only model-side schema is experimental and is
 not enabled in production. Unverified: actual accuracy,
 semantic evidence relevance, full domain coverage,
 artifact and runtime identity, enterprise benchmark and E2E.
+
+
+## 2026-11-05 — second research real model-rule rejection
+
+One additional operator-authorized single synthetic
+`research_academic_writing` quote-only criterion trial
+returned syntactically valid JSON after **35,987ms**, with
+296 completion tokens, but was rejected by the existing
+`CriterionInference` Pydantic model-level rules
+(`MODEL_RULE_REJECTED`). No valid research score,
+evidence or expert quality evidence was obtained.
+The precise rule was not recorded by the prior redacted
+diagnostic; do not label any individual status/score
+inconsistency as established. Offline synthetic test
+enhancement classifies rule types without exposing model
+content. The experimental quote-only `media` and `speech`
+contract examples remain valid independently, but
+three-domain quality, reviewer relevance and accuracy
+remain `PENDING_SERVER`.

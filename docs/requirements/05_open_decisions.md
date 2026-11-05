@@ -2096,3 +2096,21 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   research exact historic reason `UNAVAILABLE`, real
   multi-domain quality/API-Worker-DB E2E/No-Egress/throughput
   `PENDING_SERVER`. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+
+### Stage11 — 2026-11-05 — research model-validator rule failure observed
+
+- Actual operator follow-up: **203 PASS** focused tests; one
+  authorized research quote-only synthetic inference
+  returned 296 completion tokens and 35,987ms,
+  `LLM_SCHEMA_REJECTED` / `MODEL_RULE_REJECTED`;
+  no rubric evidence or score accepted; research contract FAIL.
+- Strict Pydantic model-validator rule family was identified,
+  not the specific violated condition. A Stage11-only safe
+  root-rule classification now differentiates status/score/evidence,
+  blank reason and comment validity with predefined category
+  labels, preserving final strict validator.
+- No additional GPU test or production modification claimed.
+  Real model quality and full system/security/performance gates
+  stay `PENDING_SERVER`; Stage11 `BLOCKED`;
+  Stage12 `NOT_STARTED`.

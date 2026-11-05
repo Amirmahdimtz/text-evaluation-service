@@ -427,3 +427,34 @@ historical failing field remains **UNAVAILABLE**. The next
 optional, separately authorized one-shot research request
 would test this new taxonomy, **not guarantee a valid result**.
 Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
+
+
+## 2026-11-05 — repeated research rule failure, classification still needed
+
+Simorgh operator updated to `23ff611`, ran **203 focused offline tests PASS
+(1.50s)** and one separately authorized synthetic `research_academic_writing`
+quote-only experiment with strict final validation. The model returned a
+complete HTTP response, `finish_reason=stop`, JSON syntax valid,
+**296 output / 778 prompt tokens**, one criterion attempt, zero retries,
+**35,987ms** wall time and `RESEARCH_EXIT=2`.
+The application returned `LLM_SCHEMA_REJECTED` with fixed category
+`MODEL_RULE_REJECTED`; no score/evidence accepted. Shared vLLM metric
+deltas included one E2E completion of 35.946048s, decoding 35.909974s,
+prefill 0.033930s, queue 0.000192s and +296 generated tokens;
+attribution `SHARED_SERVICE_UNATTRIBUTED` and effective backend still
+unverified. Repeated 296-token output suggests consistency of the
+sample under deterministic settings, not an audited guarantee.
+
+`MODEL_RULE_REJECTED` narrows the failure to final Pydantic root
+constraints but does **not** identify which rule. The four existing
+root conditions are: assessed without score/evidence, abstention
+carrying score/evidence, blank reason, or invalid comment entries.
+The earlier sanitized trace contains no model content or rule subtype;
+do not infer one, fabricate a score, change rubric thresholds, or
+relax strict verification. A Stage11-only diagnostic classifier
+now matches the same structural root predicates in memory and
+returns only fixed categories; normal production schema/decoder
+remain unchanged. No new GPU or inference request was executed
+by assistant. Any further probe requires distinct owner-approved
+shared-GPU one-shot window, with stop limits. Stage11 `BLOCKED`,
+Stage12 `NOT_STARTED`; research actual contract remains FAIL.

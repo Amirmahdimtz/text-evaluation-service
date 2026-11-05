@@ -104,6 +104,9 @@ _SAFE_SCHEMA_CATEGORIES = frozenset({
     "SCHEMA_FIELD_SCORE_INVALID", "SCHEMA_FIELD_REASON_INVALID",
     "SCHEMA_FIELD_STRENGTHS_INVALID", "SCHEMA_FIELD_WEAKNESSES_INVALID",
     "SCHEMA_FIELD_RECOMMENDATIONS_INVALID", "SCHEMA_FIELD_EVIDENCE_INVALID",
+    "MODEL_RULE_ASSESSED_REQUIRES_SCORE_EVIDENCE",
+    "MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE",
+    "MODEL_RULE_REASON_BLANK", "MODEL_RULE_COMMENT_INVALID",
 })
 
 
@@ -404,8 +407,41 @@ _QUOTE_ONLY_FIELDS = frozenset({
 })
 
 
-def _quote_only_validation_category(exc: ValidationError) -> str:
-    """Return only a fixed schema location; never serialize Pydantic messages."""
+def _quote_only_root_rule_category(data: dict | None) -> str:
+    """Safely classify the *existing* Pydantic model_validator predicates.
+
+    Uses structural predicates only; no source quotes, rationale, field values,
+    actual score, or Pydantic error messages are emitted or persisted.
+    """
+    if type(data) is not dict:
+        return "MODEL_RULE_REJECTED"
+
+    status = data.get("status")
+    score = data.get("score")
+    evidence = data.get("evidence")
+    if status == "assessed" and (score is None or evidence == []):
+        return "MODEL_RULE_ASSESSED_REQUIRES_SCORE_EVIDENCE"
+    if status == "not_assessed" and (score is not None or evidence != []):
+        return "MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE"
+
+    reason = data.get("reason")
+    if type(reason) is str and not reason.strip():
+        return "MODEL_RULE_REASON_BLANK"
+
+    for field in ("strengths", "weaknesses", "recommendations"):
+        items = data.get(field)
+        if type(items) is list and any(
+            type(item) is not str or not item.strip() or len(item) > 1000
+            for item in items
+        ):
+            return "MODEL_RULE_COMMENT_INVALID"
+    return "MODEL_RULE_REJECTED"
+
+
+def _quote_only_validation_category(
+    exc: ValidationError, *, model_output: dict | None = None,
+) -> str:
+    """Return only known schema/rule categories, never validation messages."""
     try:
         entries = exc.errors(
             include_input=False, include_context=False, include_url=False,
@@ -416,9 +452,9 @@ def _quote_only_validation_category(exc: ValidationError) -> str:
         for entry in entries:
             location = entry.get("loc")
             if not location:
-                # Root validators reject inconsistent score/status/evidence,
-                # missing explanation and other business invariants.
-                return "MODEL_RULE_REJECTED"
+                # Only inspect structural conditions of the already parsed,
+                # in-memory model reply when Pydantic rejected its root rule.
+                return _quote_only_root_rule_category(model_output)
             if not isinstance(location, (list, tuple)):
                 return "SCHEMA_MISSING_OR_INVALID_FIELD"
             head = location[0]
@@ -522,7 +558,9 @@ def _convert_quote_only_response(
     except ValidationError as exc:
         raise LlmProviderError(
             "LLM_SCHEMA_REJECTED",
-            failure_kind=_quote_only_validation_category(exc),
+            failure_kind=_quote_only_validation_category(
+                exc, model_output=data if type(data) is dict else None,
+            ),
         ) from None
     except json.JSONDecodeError:
         raise LlmProviderError(

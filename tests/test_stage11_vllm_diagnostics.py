@@ -387,7 +387,7 @@ def test_quote_only_schema_removes_offsets_only_from_model_wire_contract():
     ("none", "valid"), ("missing", "EVIDENCE_QUOTE_NOT_FOUND"),
     ("duplicate", "EVIDENCE_QUOTE_AMBIGUOUS"),
     ("model_offsets", "SCHEMA_EVIDENCE_INVALID"),
-    ("wrong_status", "MODEL_RULE_REJECTED"),
+    ("wrong_status", "MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE"),
 ])
 def test_quote_only_diagnostic_retains_full_final_validation(
     monkeypatch, fault, expected,
@@ -620,3 +620,92 @@ def test_quote_only_pydantic_location_diagnostic_is_allowlisted(
     assert diag._quote_only_validation_category(
         RedactedValidationError(),
     ) == expected
+
+
+@pytest.mark.parametrize("fault,expected", [
+    ("assessed_no_score", "MODEL_RULE_ASSESSED_REQUIRES_SCORE_EVIDENCE"),
+    ("assessed_no_evidence", "MODEL_RULE_ASSESSED_REQUIRES_SCORE_EVIDENCE"),
+    ("abstention_has_score", "MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE"),
+    ("abstention_has_evidence", "MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE"),
+    ("whitespace_reason", "MODEL_RULE_REASON_BLANK"),
+    ("blank_comment", "MODEL_RULE_COMMENT_INVALID"),
+])
+def test_quote_only_root_rule_diagnostics_use_strict_real_validator(
+    monkeypatch, fault, expected,
+):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        QuoteOnlyEvidenceDiagnosticLocalLlmProvider,
+    )
+    case, _, _ = probe._load_selected_rubrics()[2]
+    data = {
+        "criterion_code": "research_academic_writing",
+        "status": "assessed", "score": 3,
+        "reason": "Synthetic test reason",
+        "strengths": ["Supported point"], "weaknesses": [],
+        "recommendations": [], "evidence": [{
+            "source_kind": "original_submission",
+            "quote": case.original_text[:21],
+        }],
+    }
+    if fault == "assessed_no_score":
+        data["score"] = None
+    elif fault == "assessed_no_evidence":
+        data["evidence"] = []
+    elif fault == "abstention_has_score":
+        data["status"] = "not_assessed"
+        data["evidence"] = []
+    elif fault == "abstention_has_evidence":
+        data["status"] = "not_assessed"
+        data["score"] = None
+    elif fault == "whitespace_reason":
+        data["reason"] = "   "
+    elif fault == "blank_comment":
+        data["strengths"] = ["  "]
+
+    async def handler(request):
+        assert request.url.path == "/v1/chat/completions"
+        return httpx.Response(200, json=_model_reply(
+            content=json.dumps(data, ensure_ascii=False),
+        ))
+
+    monkeypatch.setattr(
+        probe, "QuoteOnlyEvidenceDiagnosticLocalLlmProvider",
+        lambda config, secrets: QuoteOnlyEvidenceDiagnosticLocalLlmProvider(
+            config, secrets, transport=httpx.MockTransport(handler),
+        ),
+    )
+
+    async def no_metrics():
+        return None
+
+    monkeypatch.setattr(probe, "read_metrics", no_metrics)
+    result = asyncio.run(probe._run_live(
+        domain="research", disable_thinking=True, diagnostics=True,
+        compact_response=True, quote_only_evidence=True,
+    ))
+    item = result["results"][0]
+    assert item["contract"] == "failed"
+    assert item["error_code"] == "LLM_SCHEMA_REJECTED"
+    assert item["schema_failure_category"] == expected
+    safe = json.dumps(result, ensure_ascii=False)
+    assert "Synthetic test reason" not in safe
+    assert case.original_text not in safe
+    assert "Supported point" not in safe
+
+
+@pytest.mark.parametrize("data,expected", [
+    ({}, "MODEL_RULE_REJECTED"),
+    ({"status": "assessed", "score": 3, "evidence": []},
+     "MODEL_RULE_ASSESSED_REQUIRES_SCORE_EVIDENCE"),
+    ({"status": "not_assessed", "score": None, "evidence": [{"quote": "redacted"}]},
+     "MODEL_RULE_ABSTENTION_HAS_SCORE_OR_EVIDENCE"),
+    ({"status": "assessed", "score": 3, "evidence": [{"quote": "redacted"}],
+      "reason": "  "}, "MODEL_RULE_REASON_BLANK"),
+    ({"status": "assessed", "score": 3, "evidence": [{"quote": "redacted"}],
+      "reason": "ok", "recommendations": ["  "]}, "MODEL_RULE_COMMENT_INVALID"),
+])
+def test_quote_only_root_categories_are_fixed_and_expose_no_values(data, expected):
+    result = diag._quote_only_root_rule_category(data)
+    assert result == expected
+    assert result in diag._SAFE_SCHEMA_CATEGORIES
+    assert "redacted" not in result
