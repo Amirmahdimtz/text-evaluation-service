@@ -577,3 +577,11 @@ if absent the historical decomposition is
 `UNRECOVERABLE`. No change to vLLM, schema,
 timeouts, model, or existing GPU permissions.
 Stage11 BLOCKED; Stage12 NOT_STARTED.
+
+## 2026-11-05 — compact media request completes but fails strict schema
+
+Operator-reported on Simorgh: 146 local offline regression tests passed in 1.24 seconds after checkout `8006a60`; default compact-response dry-run returned `DRY_RUN_NO_NETWORK`. The separately approved single synthetic `media_message_clarity` real compact-response request (strict `json_schema`, disabled thinking, 512 completion token cap, one in flight, no retries) completed within **31,143ms** and returned `finish_reason=stop`, `json_syntax=valid`, usage **739 prompt / 428 completion / 1,167 total tokens**, but application criterion decode rejected it: `LLM_SCHEMA_REJECTED`, process exit 2. No accepted score, grounded evidence, or successful quality result exists.
+
+One **shared-service** request histogram sample was added over the observation window: end-to-end 31.103686s, decode 30.983111s, prefill 0.118173s, queue 0.000531s, TTFT 0.120736s; shared generated tokens +428 and prompt tokens +739. These counts match this run's usage, supporting but **not proving** isolated attribution on a shared vLLM instance; they establish no general production latency SLO, concurrency ceiling, GPU saturation or root-cause backend diagnosis. Compared with the earlier 512-token timed-out standard request and 256-token truncated request, prompts/token limits/outcomes differ; claims of speedup or fix are **not supported**.
+
+**Diagnosis gap:** `LLM_SCHEMA_REJECTED` aggregates Pydantic field/status failures, wrong criterion, invalid original-source evidence or response envelope problems. The 31-second run preserved no safe per-category exception detail, and raw model response must not be published. Stage11-only fixed-category diagnostics added in `10c8a743`, verified in GitHub Actions [41992600596](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41992600596): 59 safety + 249 focused software tests passed. No new model request. Only a separately owner-approved single synthetic POST may reveal which fixed category occurred; no automated retry and no production provider relaxation. Stage11 `BLOCKED`; model/accuracy/E2E/acceptance `PENDING_SERVER`; Stage12 `NOT_STARTED`.

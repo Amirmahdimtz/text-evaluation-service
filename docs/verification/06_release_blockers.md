@@ -302,3 +302,11 @@ performance/accuracy acceptance. One real bounded model POST to compare
 speed and full strict output is `PENDING_SERVER` and requires a valid
 shared-owner permission/resource window. No repeat retries on an incomplete
 contract. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-05 — real compact-response single media criterion failed schema validation
+
+**Observed by Simorgh operator, not assistant-executed:** after fast-forward `8006a60`, 146 local focused tests passed; the optional compact prompt's default dry-run was safe. Exactly one opt-in synthetic media criterion POST returned `finish_reason=stop`, syntactically valid JSON, **428 completion tokens**, **739 prompt tokens**, **31,143ms** criterion duration, but the strict application decoder raised `LLM_SCHEMA_REJECTED` and probe exited 2. **HTTP completion/JSON syntax are not proof of assessment validity.** The redacted output does not identify which Pydantic/schema/evidence check failed, so do not assume wrong offsets, fabricated quotes, status conflicts or a particular backend cause.
+
+Shared vLLM phase histograms for the window added one E2E sample of 31.103686s and decode sample of 30.983111s, prefill 0.118173s, queue 0.000531s, with +428 shared generation tokens; attribution is not strictly isolated on a shared service. This is one negative criterion-contract example and no validated output quality or SLO. No GPU restart, new model, secret, firewall or production configuration change reported.
+
+**Targeted software fix:** Stage11-only diagnostic `10c8a743` classifies subsequent `LLM_SCHEMA_REJECTED` into a fixed safe category while reusing the exact strict validator and emitting neither raw response nor error messages. [CI 41992600596](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41992600596) succeeded with **59 safety and 249 focused synthetic tests** and networkless image tests. No historical per-category result can be recovered from the prior sanitized log, and **no new live test has been run**. Further model POST needs fresh shared-owner permission/resource ceiling; never auto-retry. Stage11 `BLOCKED`; original enterprise gates `PENDING_SERVER`; Stage12 `NOT_STARTED`.
