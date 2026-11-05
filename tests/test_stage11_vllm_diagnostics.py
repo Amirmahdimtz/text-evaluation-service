@@ -339,3 +339,154 @@ def test_unknown_schema_error_category_never_leaks_arbitrary_failure_kind():
     result = asyncio.run(probe._run_cases(FakeEvaluator(), domain="media"))
     assert result["results"][0]["schema_failure_category"] == "UNAVAILABLE"
     assert "private-free-text-untrusted" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("original,quote,expected", [
+    ("این متن فارسی است.", "متن فارسی", (4, 13)),
+    ("واژه‌ها روشن‌اند.", "روشن‌اند", (8, 16)),
+])
+def test_quote_only_exact_unicode_anchor(original, quote, expected):
+    assert diag._source_anchor_unique(source_text=original, quote=quote) == expected
+
+
+@pytest.mark.parametrize("source,quote,category", [
+    ("تکرار و تکرار", "تکرار", "EVIDENCE_QUOTE_AMBIGUOUS"),
+    ("متن آزمایشی", "not-present", "EVIDENCE_QUOTE_NOT_FOUND"),
+    ("متن آزمایشی", "", "SCHEMA_EVIDENCE_INVALID"),
+])
+def test_quote_only_ambiguous_or_absent_quote_is_rejected(
+    source, quote, category,
+):
+    from src.infrastructure.providers.llm.local_llm_provider import LlmProviderError
+    with pytest.raises(LlmProviderError) as caught:
+        diag._source_anchor_unique(source_text=source, quote=quote)
+    assert caught.value.failure_kind == category
+
+
+def test_quote_only_schema_removes_offsets_only_from_model_wire_contract():
+    from src.infrastructure.providers.llm.structured_response import CriterionInference
+    original = CriterionInference.model_json_schema()
+    quote_only = diag._quote_only_schema()
+    assert set(original["$defs"]["OriginalEvidence"]["properties"]) == {
+        "source_kind", "quote", "start_offset", "end_offset",
+    }
+    assert set(quote_only["$defs"]["OriginalEvidence"]["properties"]) == {
+        "source_kind", "quote",
+    }
+    assert set(quote_only["$defs"]["OriginalEvidence"]["required"]) == {
+        "source_kind", "quote",
+    }
+    # The real application Pydantic schema must never be mutated in memory.
+    assert set(CriterionInference.model_json_schema()[
+        "$defs"]["OriginalEvidence"]["properties"]) == {
+            "source_kind", "quote", "start_offset", "end_offset",
+    }
+
+
+@pytest.mark.parametrize("fault,expected", [
+    ("none", "valid"), ("missing", "EVIDENCE_QUOTE_NOT_FOUND"),
+    ("duplicate", "EVIDENCE_QUOTE_AMBIGUOUS"),
+    ("model_offsets", "SCHEMA_EVIDENCE_INVALID"),
+    ("wrong_status", "SCHEMA_MISSING_OR_INVALID_FIELD"),
+])
+def test_quote_only_diagnostic_retains_full_final_validation(
+    monkeypatch, fault, expected,
+):
+    from scripts.verification.stage11_vllm_diagnostics import (
+        QuoteOnlyEvidenceDiagnosticLocalLlmProvider,
+    )
+    from src.infrastructure.providers.llm.local_llm_provider import (
+        LlmProviderError,
+    )
+    case, _, _ = probe._load_selected_rubrics()[1]
+    unique_quote = case.original_text[:15]
+    item = {
+        "source_kind": "original_submission", "quote": unique_quote,
+    }
+    if fault == "missing":
+        item["quote"] = "not-in-original-synthetic-text"
+    if fault == "duplicate":
+        item["quote"] = "این"
+        # Force repeated exact phrase using a separate synthetic source.
+        assert case.original_text.count("این") > 1
+    if fault == "model_offsets":
+        item["start_offset"] = 0
+        item["end_offset"] = 15
+    result = {
+        "criterion_code": "media_message_clarity",
+        "status": "assessed", "score": 3,
+        "reason": "Sufficient synthetic evidence",
+        "strengths": [], "weaknesses": [],
+        "recommendations": [], "evidence": [item],
+    }
+    if fault == "wrong_status":
+        result["status"] = "not_assessed"
+
+    calls = []
+    async def handler(request):
+        calls.append(request)
+        body = json.loads(request.content)
+        assert body["response_format"]["json_schema"]["schema"][
+            "$defs"]["OriginalEvidence"]["properties"].keys() == {
+            "source_kind", "quote",
+        }
+        assert body["max_tokens"] == 512
+        assert body["chat_template_kwargs"] == {"enable_thinking": False}
+        return httpx.Response(200, json=_model_reply(
+            content=json.dumps(result, ensure_ascii=False),
+        ))
+
+    monkeypatch.setattr(
+        probe, "QuoteOnlyEvidenceDiagnosticLocalLlmProvider",
+        lambda config, secrets: QuoteOnlyEvidenceDiagnosticLocalLlmProvider(
+            config, secrets, transport=httpx.MockTransport(handler),
+        ),
+    )
+    async def no_metrics():
+        return None
+    monkeypatch.setattr(probe, "read_metrics", no_metrics)
+    report = asyncio.run(probe._run_live(
+        domain="media", disable_thinking=True, diagnostics=True,
+        compact_response=True, quote_only_evidence=True,
+    ))
+    assert len(calls) == 1
+    row = report["results"][0]
+    if expected == "valid":
+        assert row["contract"] == "valid"
+        assert row["status"] == "assessed"
+        assert row["evidence_count"] == 1
+    else:
+        assert row["contract"] == "failed"
+        assert row["error_code"] == "LLM_SCHEMA_REJECTED"
+        assert row["schema_failure_category"] == expected
+    assert "Sufficient synthetic evidence" not in json.dumps(report)
+
+
+def test_quote_only_dry_run_scope_and_no_network(monkeypatch, capsys):
+    async def forbidden(**kwargs):
+        pytest.fail("dry run must not query model or scrape metrics")
+    monkeypatch.setattr(probe, "_run_live", forbidden)
+    flags = [
+        "--domain", "media", "--compact-response", "--quote-only-evidence",
+        "--disable-thinking", "--diagnostics", "--max-output-tokens", "512",
+    ]
+    assert probe.main(flags) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["status"] == "DRY_RUN_NO_NETWORK"
+    assert result["prompt_variant"] == "quote_only_evidence_candidate_v1"
+    assert result["requests_planned"] == 1
+
+
+@pytest.mark.parametrize("flags", [
+    ["--quote-only-evidence"],
+    ["--quote-only-evidence", "--domain", "media", "--diagnostics", "--disable-thinking"],
+    ["--quote-only-evidence", "--domain", "speech", "--diagnostics",
+     "--compact-response", "--disable-thinking"],
+    ["--quote-only-evidence", "--indexed-evidence", "--domain", "media",
+     "--diagnostics", "--compact-response", "--disable-thinking"],
+])
+def test_quote_only_scope_guard_requires_explicit_synthetic_media(flags, capsys):
+    with pytest.raises(SystemExit) as caught:
+        probe.main(["--execute-live", *flags])
+    assert caught.value.code == 2
+    assert "--quote-only-evidence requires" in capsys.readouterr().err

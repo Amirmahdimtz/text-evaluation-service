@@ -6,6 +6,7 @@ shared-service counters and must never be attributed to one request.
 from __future__ import annotations
 
 import asyncio
+from copy import deepcopy
 import json
 import math
 import re
@@ -14,7 +15,7 @@ import httpx
 from pydantic import ValidationError
 
 from src.infrastructure.providers.llm.local_llm_provider import LlmProviderError, LocalLlmProvider
-from src.infrastructure.providers.llm.structured_response import decode_criterion_response
+from src.infrastructure.providers.llm.structured_response import CriterionInference, decode_criterion_response
 
 _METRICS_URL = "http://127.0.0.1:8000/metrics"
 _MAX_METRICS_BYTES = 2 * 1024 * 1024
@@ -97,7 +98,7 @@ _SAFE_SCHEMA_CATEGORIES = frozenset({
     "JSON_RESPONSE_TOO_LARGE", "SCHEMA_MISSING_OR_INVALID_FIELD",
     "SCHEMA_EVIDENCE_INVALID", "STATUS_EVIDENCE_INCONSISTENT",
     "CRITERION_CODE_MISMATCH", "EVIDENCE_QUOTE_NOT_FOUND",
-    "EVIDENCE_OFFSET_INVALID", "UNAVAILABLE",
+    "EVIDENCE_OFFSET_INVALID", "EVIDENCE_QUOTE_AMBIGUOUS", "UNAVAILABLE",
 })
 
 
@@ -183,7 +184,11 @@ class DiagnosticLocalLlmProvider(LocalLlmProvider):
         except LlmProviderError as exc:
             if str(exc) == "LLM_SCHEMA_REJECTED":
                 # An allowlisted category only; no exception message is exposed.
-                exc.failure_kind = self._schema_failure_category
+                exc.failure_kind = (
+                    exc.failure_kind
+                    if exc.failure_kind in _SAFE_SCHEMA_CATEGORIES
+                    else self._schema_failure_category
+                )
             raise
         finally:
             self._classification_context = None
@@ -350,6 +355,155 @@ class IndexedEvidenceDiagnosticLocalLlmProvider(DiagnosticLocalLlmProvider):
             instructions=indexed_evidence_instructions(instructions, source_text),
             rubric_checksum=rubric_checksum,
         )
+
+
+
+# Stage11-only alternative: the model selects original-source quotes; Python
+# derives offsets for unique exact matches. The final production decoder still
+# validates the full typed schema and exact original-source offsets.
+def _quote_only_schema() -> dict:
+    schema = deepcopy(CriterionInference.model_json_schema())
+    evidence = schema["$defs"]["OriginalEvidence"]
+    if set(evidence["properties"]) != {
+        "source_kind", "quote", "start_offset", "end_offset",
+    }:
+        raise ValueError("STAGE11_EVIDENCE_SCHEMA_CHANGED")
+    for key in ("start_offset", "end_offset"):
+        del evidence["properties"][key]
+    evidence["required"] = ["source_kind", "quote"]
+    return schema
+
+
+def _source_anchor_unique(*, source_text: str, quote: str) -> tuple[int, int]:
+    """No normalization or fuzzy relocation; ambiguous/absent quotes fail closed."""
+    if not isinstance(quote, str) or not 1 <= len(quote) <= 4096:
+        raise LlmProviderError(
+            "LLM_SCHEMA_REJECTED", failure_kind="SCHEMA_EVIDENCE_INVALID",
+        )
+    start = source_text.find(quote)
+    if start < 0:
+        raise LlmProviderError(
+            "LLM_SCHEMA_REJECTED", failure_kind="EVIDENCE_QUOTE_NOT_FOUND",
+        )
+    if source_text.find(quote, start + 1) >= 0:
+        raise LlmProviderError(
+            "LLM_SCHEMA_REJECTED", failure_kind="EVIDENCE_QUOTE_AMBIGUOUS",
+        )
+    return start, start + len(quote)
+
+
+def _convert_quote_only_response(
+    *, response: dict, source_text: str, criterion_code: str,
+    max_response_bytes: int,
+) -> dict:
+    """Convert explicit quote-only synthetic contract into fully verified offsets."""
+    try:
+        choices = response["choices"]
+        if type(choices) is not list or len(choices) != 1:
+            return response
+        choice = choices[0]
+        if type(choice) is not dict or choice.get("finish_reason") != "stop":
+            return response
+        message = choice["message"]
+        content = message["content"]
+        if not isinstance(content, str):
+            return response
+        if len(content.encode("utf-8")) > max_response_bytes:
+            raise ValueError("LLM_RESPONSE_TOO_LARGE")
+
+        def unique_pairs(pairs):
+            obj = {}
+            for key, value in pairs:
+                if key in obj:
+                    raise ValueError("LLM_DUPLICATE_JSON_KEY")
+                obj[key] = value
+            return obj
+
+        def reject_constant(_):
+            raise ValueError("LLM_NONFINITE_JSON_NUMBER")
+
+        data = json.loads(
+            content, object_pairs_hook=unique_pairs,
+            parse_constant=reject_constant,
+        )
+        if type(data) is not dict or type(data.get("evidence")) is not list:
+            return response
+        evidence = data["evidence"]
+        if len(evidence) > 32:
+            return response
+        adjusted = []
+        for item in evidence:
+            # Model-supplied offsets are forbidden in quote-only mode;
+            # they are not silently repaired.
+            if type(item) is not dict or set(item) != {"source_kind", "quote"}:
+                raise LlmProviderError(
+                    "LLM_SCHEMA_REJECTED", failure_kind="SCHEMA_EVIDENCE_INVALID",
+                )
+            if item["source_kind"] != "original_submission":
+                raise LlmProviderError(
+                    "LLM_SCHEMA_REJECTED", failure_kind="SCHEMA_EVIDENCE_INVALID",
+                )
+            start, end = _source_anchor_unique(
+                source_text=source_text, quote=item["quote"],
+            )
+            adjusted.append({
+                "source_kind": "original_submission",
+                "quote": item["quote"], "start_offset": start, "end_offset": end,
+            })
+        data["evidence"] = adjusted
+        normalized = json.dumps(
+            data, ensure_ascii=False, separators=(",", ":"),
+        )
+        # The application still checks status, score, criterion code,
+        # required evidence, offsets and all remaining fields.
+        decode_criterion_response(
+            normalized, expected_code=criterion_code,
+            source_text=source_text, max_response_bytes=max_response_bytes,
+        )
+        updated = deepcopy(response)
+        updated["choices"][0]["message"]["content"] = normalized
+        return updated
+    except LlmProviderError:
+        raise
+    except (ValueError, ValidationError, TypeError, KeyError, IndexError,
+            AttributeError, UnicodeError, RecursionError):
+        raise LlmProviderError(
+            "LLM_SCHEMA_REJECTED", failure_kind="SCHEMA_MISSING_OR_INVALID_FIELD",
+        ) from None
+
+
+class QuoteOnlyEvidenceDiagnosticLocalLlmProvider(
+    CompactResponseDiagnosticLocalLlmProvider
+):
+    """Quote-only experimental wire schema; never enabled in production DI."""
+
+    async def _send(
+        self, method: str, path: str, payload: dict | None = None,
+    ) -> dict:
+        if method != "POST" or path != "/chat/completions":
+            return await super()._send(method, path, payload)
+        context = self._classification_context
+        if context is None or not isinstance(payload, dict):
+            raise LlmProviderError("LLM_INPUT_REJECTED")
+        request = deepcopy(payload)
+        request["response_format"]["json_schema"]["schema"] = (
+            _quote_only_schema()
+        )
+        # Guided decoding must emit just exact source quotes; it must NOT
+        # generate offsets or fabricate evidence.
+        request["messages"][0]["content"] += (
+            " Stage11 synthetic diagnostic wire format: each evidence item"
+            " MUST contain only source_kind and an exact quote copied"
+            " verbatim from the original source. Never output offsets."
+            " A unique exact match is required; otherwise abstain."
+        )
+        raw = await super()._send(method, path, request)
+        result = _convert_quote_only_response(
+            response=raw, source_text=context[0], criterion_code=context[1],
+            max_response_bytes=max(65536, self._config.max_output_tokens * 48),
+        )
+        self._schema_failure_category = "CONTRACT_VALID"
+        return result
 
 
 def parse_metrics(raw: bytes) -> dict[str, float]:

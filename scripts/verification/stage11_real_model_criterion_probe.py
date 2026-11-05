@@ -26,6 +26,7 @@ from src.infrastructure.security.secrets import SecretResolver
 from scripts.verification.stage11_vllm_diagnostics import (
     CompactResponseDiagnosticLocalLlmProvider, DiagnosticLocalLlmProvider,
     IndexedEvidenceDiagnosticLocalLlmProvider,
+    QuoteOnlyEvidenceDiagnosticLocalLlmProvider,
     UnconstrainedDiagnosticLocalLlmProvider, _SAFE_SCHEMA_CATEGORIES,
     metrics_delta, read_metrics,
 )
@@ -191,7 +192,7 @@ async def _run_live(
     *, domain: str | None = None, disable_thinking: bool = False,
     diagnostics: bool = False, max_output_tokens: int = 512,
     comparison_unconstrained: bool = False, compact_response: bool = False,
-    indexed_evidence: bool = False,
+    indexed_evidence: bool = False, quote_only_evidence: bool = False,
 ) -> dict:
     if (diagnostics and domain is None
             or max_output_tokens not in (256, 512)
@@ -204,7 +205,11 @@ async def _run_live(
                 or comparison_unconstrained))
             or (indexed_evidence and (
                 not compact_response or domain != "media"
-                or not diagnostics or not disable_thinking))):
+                or not diagnostics or not disable_thinking))
+            or (quote_only_evidence and (
+                not compact_response or indexed_evidence
+                or domain != "media" or not diagnostics
+                or not disable_thinking))):
         raise ValueError("STAGE11_DIAGNOSTICS_SCOPE_INVALID")
     _require_safe_environment()
     config = ConfigReader()
@@ -226,7 +231,9 @@ async def _run_live(
     config.settings = config.settings.model_copy(update={"llm": llm_settings})
     before = await read_metrics() if diagnostics else None
     provider = (
-        IndexedEvidenceDiagnosticLocalLlmProvider(config, SecretResolver())
+        QuoteOnlyEvidenceDiagnosticLocalLlmProvider(config, SecretResolver())
+        if quote_only_evidence
+        else IndexedEvidenceDiagnosticLocalLlmProvider(config, SecretResolver())
         if indexed_evidence
         else CompactResponseDiagnosticLocalLlmProvider(config, SecretResolver())
         if compact_response
@@ -245,7 +252,8 @@ async def _run_live(
             await evaluator.close_async()
     report["thinking_mode_requested"] = llm_settings.thinking_mode
     report["prompt_variant"] = (
-        "indexed_evidence_candidate_v1" if indexed_evidence
+        "quote_only_evidence_candidate_v1" if quote_only_evidence
+        else "indexed_evidence_candidate_v1" if indexed_evidence
         else "compact_response_candidate_v1" if compact_response else "standard"
     )
     if diagnostics:
@@ -283,7 +291,18 @@ def main(argv: list[str] | None = None) -> int:
                         help="Opt-in concise prompt while preserving full strict schema.")
     parser.add_argument("--indexed-evidence", action="store_true",
                         help="Use synthetic, pre-indexed original-source evidence spans.")
+    parser.add_argument("--quote-only-evidence", action="store_true",
+                        help="Synthetic quote-only response; exact unique offsets calculated in Python.")
     args = parser.parse_args(argv)
+    if args.quote_only_evidence and (
+            not args.compact_response or args.indexed_evidence
+            or args.domain != "media" or not args.diagnostics
+            or not args.disable_thinking):
+        parser.error(
+            "--quote-only-evidence requires --compact-response "
+            "--domain media --diagnostics --disable-thinking "
+            "and forbids --indexed-evidence"
+        )
     if args.indexed_evidence and (
             not args.compact_response or args.domain != "media"
             or not args.diagnostics or not args.disable_thinking):
@@ -312,7 +331,8 @@ def main(argv: list[str] | None = None) -> int:
                 "requires": "--execute-live",
                 "diagnostics_requested": args.diagnostics,
                 "prompt_variant": (
-                    "indexed_evidence_candidate_v1" if args.indexed_evidence
+                    "quote_only_evidence_candidate_v1" if args.quote_only_evidence
+                    else "indexed_evidence_candidate_v1" if args.indexed_evidence
                     else "compact_response_candidate_v1" if args.compact_response
                     else "standard"
                 ),
@@ -335,6 +355,8 @@ def main(argv: list[str] | None = None) -> int:
             options["compact_response"] = True
         if args.indexed_evidence:
             options["indexed_evidence"] = True
+        if args.quote_only_evidence:
+            options["quote_only_evidence"] = True
         results = asyncio.run(_run_live(**options))
         print(json.dumps(results, ensure_ascii=False, sort_keys=True))
         return 0 if results["status"] == "REAL_MODEL_THREE_DOMAIN_CONTRACT_PASS" else 2

@@ -1384,3 +1384,62 @@ is still not evidence of expert-rated score accuracy. If it fails,
 record only the redacted category and stop. Stage11 `BLOCKED`,
 three-domain real quality and full E2E `PENDING_SERVER`,
 Stage12 `NOT_STARTED`.
+
+
+## 2026-11-05 — quote-only evidence and deterministic offset derivation candidate
+
+Operator repeated the authorized single-domain synthetic indexed-evidence
+media run with current `main`: **165 focused local tests PASS**,
+`DRY_RUN_NO_NETWORK` preflight, one actual 512-token-cap model POST
+produced `finish_reason=stop`, syntax-valid JSON, **419 output
+tokens**, **987 input tokens** in **31,018ms**; the strict decoder
+again rejected it with `EVIDENCE_OFFSET_INVALID`. One shared
+vLLM E2E histogram sample was 30.978029s, decode 30.942628s,
+prefill 0.033472s and queue 0.000096s. No accepted model
+criterion; no verified speedup or expert quality.
+
+This falsifies the narrow hypothesis that merely providing
+pre-indexed offset suggestions makes this model reliably
+copy Unicode offsets. The next candidate therefore tests a
+**different model/validator contract boundary**, not a relaxed
+validator:
+
+- Stage11-only `--quote-only-evidence` changes the **model-side**
+  constrained JSON Schema to expect `source_kind` and an exact
+  original-source `quote` without asking the model to calculate
+  offsets. It is paired with `--compact-response`.
+- Python maps each quote to a start/end range **only if it occurs
+  exactly once** in the unchanged source, using exact Unicode
+  codepoint string indices. Absent or ambiguous quotes, malformed
+  evidence objects, model-supplied offsets, contradictory status,
+  wrong criteria and missing Rubric-required evidence **fail closed**.
+  No fuzzy matching, normalization, repair of generated offsets
+  or synthetic score is allowed.
+- The resulting complete eight-field `CriterionInference`
+  still passes through the **existing strict production decoder**
+  and the existing `CriterionEvaluationService`; ordinary
+  production schema and endpoint remain untouched. This is a
+  **Stage11 diagnostic experiment**, not a production contract
+  change or proof that the model selected relevant evidence.
+- All original synthetic data confidentiality bounds, single
+  media criterion, local `127.0.0.1:8000`, 512 completion
+  token cap, 45s deadline, one request and zero retries stay
+  unchanged. No model/server/GPU settings are modified.
+
+Offline-only preflight:
+
+```bash
+cd /srv/projects/text-evaluation-service
+git pull --ff-only origin main
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_stage11_real_model_criterion_probe.py tests/test_stage11_vllm_diagnostics.py tests/test_stage07_local_llm.py
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m scripts.verification.stage11_real_model_criterion_probe --domain media --disable-thinking --diagnostics --compact-response --quote-only-evidence --max-output-tokens 512
+```
+
+Any `--execute-live` **requires a fresh, bounded, separately
+approved window** from the shared GPU/runtime owner. Do not assume
+prior request authorizations remain valid. One request max, stop on
+errors or model/resource contention; never automatically retry.
+Actual quality, original quote relevance and full three-domain
+validation still require expert-reviewed evidence. Pending live
+verification: `PENDING_SERVER`; Stage11 `BLOCKED`,
+Stage12 `NOT_STARTED`.

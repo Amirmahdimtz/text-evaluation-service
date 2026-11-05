@@ -1999,3 +1999,21 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   test needs distinct approved scope and resource limits; no automatic
   retries or shared vLLM changes. Stage11 `BLOCKED`, all original
   mandatory enterprise checks `PENDING_SERVER`, Stage12 `NOT_STARTED`.
+
+
+### Stage11 — 2026-11-05 — source-indexed hints ineffective; quote-only candidate
+
+- On Simorgh, 165 focused tests passed, but one authorized
+  synthetic indexed-evidence media result still failed
+  `EVIDENCE_OFFSET_INVALID` after 31,018ms with 419 tokens.
+  This does not establish a model quality score or a speedup.
+- A **Stage11-only diagnostic**, quote-only constrained model output
+  plus deterministic Python exact/unique original-source offset
+  derivation, is prepared for offline verification. No model-generated
+  offsets are repaired; the model is not asked to produce any.
+  Ambiguous/absent quotes and schema/status violations are rejected.
+  The final `CriterionInference` schema and strict validator
+  remain unchanged; no production config/path altered.
+- Status: `EXPERIMENTAL`; live real-model outcome
+  `PENDING_SERVER`. No new permissions inferred from previous runs.
+  Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
