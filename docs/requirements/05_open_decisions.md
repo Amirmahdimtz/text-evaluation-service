@@ -2047,3 +2047,9 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   full signed API/Worker/DB/model E2E, security, resource/No-Egress,
   served-model provenance and original mandatory gates
   `PENDING_SERVER`. Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-05 — 3-domain diagnostic preparation CI verified
+
+- Successfully observed **one** synthetic `media_message_clarity` **quote-only Stage11 diagnostic** contract, 1 exact matched evidence, candidate score 2/5, **31,700ms** elapsed, 315 completion tokens, exit 0. This does not mean the production service or three-domain rubric scoring is validated.
+- Follow-up correction ensures single-domain calls report `REAL_MODEL_SINGLE_DOMAIN_CONTRACT_PASS/FAILURE`, not the misleading three-domain status; the experimental quote-only diagnostic is now selectable in `speech`, `media`, `research` **one domain/request at a time**. [GitHub Actions 41998455483](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41998455483) SUCCESS: 59 safety and 287 relevant offline tests, candidate image checks PASS; **no new GPU inference** from these commits.
+- Next inference tests require distinct explicit authorized shared-GPU resource windows, with stop-on-failure. Production default/schema/score remains untouched. Actual tri-domain expert quality, second model, No-Egress, provenance and signed encrypted API→Worker→LLM→DB E2E `PENDING_SERVER`; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

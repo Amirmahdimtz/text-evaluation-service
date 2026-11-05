@@ -997,3 +997,7 @@ nonmatching `prometheus` service-name search.
 Historical per-request phase split `UNAVAILABLE`;
 remote owner-approved trace retention `UNVERIFIED`,
 Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+## 2026-11-05 — quote-only synthetic media model contract and result-label fix
+
+On-host operator evidence: current checkout through `a2d5e5b`; **181 focused software checks PASS in 1.43s**, default quote-only dry-run `DRY_RUN_NO_NETWORK`, one permitted synthetic media inference completed `contract=valid` with **one exact-match evidence span**, 31,700ms wall time, exit 0; the output used a **diagnostic-only** quote-only wire contract, not the ordinary production provider contract. The model's score 2/5 is provisional and has **not** been expert calibrated. No speech/research real inference in this observation. The current GitHub-only follow-up tests result-label accuracy and independent explicit-domain selection for `speech`/`media`/`research`: [CI 41998455483](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41998455483) **SUCCESS**, 59 safety + 287 focused tests, candidate image build/smoke PASS. Not a live quality or Stage11 gate PASS.
