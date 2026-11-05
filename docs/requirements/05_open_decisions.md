@@ -2017,3 +2017,10 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
 - Status: `EXPERIMENTAL`; live real-model outcome
   `PENDING_SERVER`. No new permissions inferred from previous runs.
   Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-05 — quote-only evidence candidate CI verified
+
+- **Actual operator test:** 165 Stage11 focused local tests passed; one permitted indexed-evidence `media_message_clarity` POST returned 419 tokens, 31,018ms, `finish_reason=stop`, JSON syntax valid, but `EVIDENCE_OFFSET_INVALID` and exit code 2. Thus model offset correctness still **FAIL**, not an assessed score or quality gate.
+- **New Stage11-only design:** `quote_only_evidence_candidate_v1` avoids trusting model-calculated offsets by accepting an exact model-quoted source substring and deriving offsets with Python **only for one unique match**. No automatic correction of model-generated offsets, no fuzzy matches, no change to production's strict final eight-field contract, no acceptance of unsupported evidence.
+- **Actual CI:** [41996511432](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41996511432) SUCCESS, 59 safety and 276 focused tests passed, candidate image checks PASS. Model/GPU run of quote-only candidate still `PENDING_SERVER`.
+- **Boundary:** next GPU request needs distinct authorized one-shot window, model/server remains shared. No Stage11 Gate waiver, no new production/business approvals, no Stage12 work. Status Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

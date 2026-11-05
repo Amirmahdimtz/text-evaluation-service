@@ -604,3 +604,9 @@ relaxing any validator or automatically relocating text. GitHub Actions
 passed 59 safety and 260 focused offline tests; **real performance
 and model correctness of this new variant are NOT_RUN/PENDING_SERVER**.
 No new GPU request or server/runtime configuration change was made.
+
+## 2026-11-05 — quote-only model evidence offline verification
+
+An authorized operator-run indexed-evidence compact-media synthetic criterion returned syntax-valid JSON after **31,018ms** with 419 completion tokens, but strict evidence offsets again failed (`EVIDENCE_OFFSET_INVALID`). The shared exporter interval contained +1 E2E histogram sample of 30.978029s, decode 30.942628s, prefill 0.033472s and queue 0.000096s; **not exclusive request attribution**. The model-generated span correctness criterion **FAIL**; no official score or quality benchmark.
+
+A Stage11-only quote-only model-output variant was added; Python deterministically derives offsets from unique exact source quotes, rejecting ambiguity, absence and extra model fields. The final strict validator is unchanged. [CI 41996511432](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/41996511432) succeeded: 59 safety plus 276 focused offline tests, container candidate build/startup checked. **GPU performance/quality with this variant NOT_RUN**; it is not part of production service defaults. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
