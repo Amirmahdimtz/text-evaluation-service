@@ -2077,3 +2077,22 @@ User ran a read-only, non-root, no-network Python audit of the existing `stage04
   approved test. No formal Golden Dataset, alternative
   model comparison, API/Worker/DB E2E or No-Egress gate
   proved; Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.
+
+### Stage11 — 2026-11-05 — research schema taxonomy CI result
+
+- Redacted historical Simorgh evidence: one `speech_clarity`
+  narrow quote-only contract PASS (18,370ms), and one
+  `research_academic_writing` contract FAIL
+  (`SCHEMA_MISSING_OR_INVALID_FIELD`, 36,029ms). Two
+  experimental criteria across three domains have valid
+  contracts including earlier media, not complete quality gates.
+- Diagnostic-only update `edc551e`: fixed allowlisted
+  schema-field and model-rule failure categories to distinguish
+  possible research errors without logging user/model content.
+  [CI 42000047038](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/42000047038):
+  59 safety + 298 focused offline tests PASS, candidate
+  container checks PASS. No on-prem new GPU test.
+- Further model request permission remains owner-gated;
+  research exact historic reason `UNAVAILABLE`, real
+  multi-domain quality/API-Worker-DB E2E/No-Egress/throughput
+  `PENDING_SERVER`. Stage11 `BLOCKED`, Stage12 `NOT_STARTED`.

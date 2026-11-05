@@ -409,3 +409,21 @@ model-level rule failures, duplicate keys and wrong criteria
 without emitting private input, model output or exception
 messages. A future GPU trial requires another fresh owner-
 approved single-request budget and must stop on failure.
+
+## 2026-11-05 — research validator field taxonomy offline CI verified
+
+A follow-up Stage11-only diagnostic improvement in commit
+`edc551e00647a217b5dc09b593bce0cdd41889fa` classifies
+quote-only conversion failures by fixed, allowlisted Pydantic
+field or model-level rule and specific known JSON/criterion
+errors. It does not retain/expose responses, input text,
+exception messages, scoring evidence or private paths, and does not
+relax the final strict `CriterionInference` validator.
+[GitHub Actions 42000047038](https://github.com/Amirmahdimtz/text-evaluation-service/actions/runs/42000047038)
+**SUCCESS**: 59 existing safety tests and 298 focused
+synthetic/provider tests passed; networkless candidate image
+checks passed. No actual new GPU inference, and research's
+historical failing field remains **UNAVAILABLE**. The next
+optional, separately authorized one-shot research request
+would test this new taxonomy, **not guarantee a valid result**.
+Stage11 `BLOCKED`; Stage12 `NOT_STARTED`.
